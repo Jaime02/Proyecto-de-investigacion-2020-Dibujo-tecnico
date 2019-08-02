@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 
+from sys import argv, exit
+from OpenGL.GL import glClear, GL_COLOR_BUFFER_BIT, glEnable, GL_DEPTH_TEST, glMatrixMode, GL_PROJECTION, \
+    glLoadIdentity, glOrtho, glRotate, glTranslate, glClearColor, GL_DEPTH_BUFFER_BIT, GL_MODELVIEW, glLineWidth, \
+    glBegin, glColor, glVertex, glEnd, glPointSize, GL_POINT_SMOOTH, GL_POINTS, GL_BLEND, glBlendFunc, GL_SRC_ALPHA, \
+    glBlendColor, GL_QUADS, glDisable, GL_LINES
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QOpenGLWidget
-from OpenGL.GL import *
-import sys
 
 
 def ver_alzado():
@@ -22,9 +25,10 @@ class Renderizador(QOpenGLWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._x = -0.1
-        self._y = -0.1
-        self._z = -0.1
+        self._x = 0
+        self._y = 0
+        self._z = 0
+
         self._rx = 45
         self._ry = 45
         self._rz = 90
@@ -39,11 +43,10 @@ class Renderizador(QOpenGLWidget):
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
         glOrtho(-10, 10, 10, -10, -150, 150)
-        glTranslate(self._x, self._y, self._z)
         glRotate(self._rx, 1, 0, 0)
         glRotate(self._ry, 0, 1, 0)
         glRotate(self._rz, 0, 0, 1)
-
+        glTranslate(self._x, self._y, self._z)
 
     def paintGL(self):
         glClearColor(1, 1, 1, 1)
@@ -51,39 +54,45 @@ class Renderizador(QOpenGLWidget):
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
 
-        glTranslate(self._x, self._y, self._z)
         glRotate(self._rx, 1, 0, 0)
         glRotate(self._ry, 0, 1, 0)
         glRotate(self._rz, 0, 0, 1)
+        glTranslate(self._x, self._y, self._z)
 
         glLineWidth(5)
         glBegin(GL_LINES)
         # X ROJO
-        glColor3d(1, 0, 0)
-        glVertex3d(0, 0, 0)
-        glVertex3d(1, 0, 0)
+        glColor(1, 0, 0)
+        glVertex(0, 0, 0)
+        glVertex(1, 0, 0)
         # Y VERDE
-        glColor3d(0, 1, 0)
-        glVertex3d(0, 0, 0)
-        glVertex3d(0, 1, 0)
+        glColor(0, 1, 0)
+        glVertex(0, 0, 0)
+        glVertex(0, 1, 0)
         # Z AZUL
-        glColor3d(0, 0, 1)
-        glVertex3d(0, 0, 0)
-        glVertex3d(0, 0, 1)
+        glColor(0, 0, 1)
+        glVertex(0, 0, 0)
+        glVertex(0, 0, 1)
 
         glEnd()
-        # GL_ONE_MINUS_DST_COLOR GL_SRC_ALPHA GL_CONSTANT_ALPHA
+
+        glPointSize(5)
+        glEnable(GL_POINT_SMOOTH)
+        glBegin(GL_POINTS)
+        glVertex(1, 1, 1)
+        glEnd()
+
         glEnable(GL_BLEND)
         # glDepthMask(GL_FALSE)
         glBlendFunc(GL_SRC_ALPHA, GL_SRC_ALPHA)
         glBlendColor(0, 1, 0, 0.6)
         glBegin(GL_QUADS)
-        glColor4fv((0, 1, 0, 0.6))
+        glColor((0, 1, 0, 0.6))
         for vertex in range(4):
-            glVertex3fv(self.vertices_vertical[vertex])
-        glColor4fv((1, 0, 0, 0.6))
+            glVertex(self.vertices_vertical[vertex])
+        glColor((1, 0, 0, 0.6))
         for vertex in range(4):
-            glVertex3fv(self.vertices_horizontal[vertex])
+            glVertex(self.vertices_horizontal[vertex])
         glEnd()
         glDisable(GL_BLEND)
 
@@ -159,7 +168,7 @@ class UiVentana:
         self.boton_debug = QtWidgets.QPushButton(self.gridLayoutWidget)
         self.boton_debug.setText("Debug")
         self.boton_debug.setMaximumSize(QtCore.QSize(50, 16777215))
-        self.Vistas.addWidget(self.boton_perfil, 1, 3, 1, 1)
+        self.Vistas.addWidget(self.boton_debug, 1, 3, 1, 1)
         self.boton_debug.clicked.connect(lambda: imprimir())
 
         self.Visor = Renderizador(self.widget_central)
@@ -224,13 +233,13 @@ def imprimir():
     # print(p_x)
     # print(p_y)
     # print(p_z)
-    print("X: " + str(p_rx))
-    print("Y: " + str(p_ry))
-    print("Z: " + str(p_rz))
+    print("Rotación X: " + str(p_rx))
+    print("Rotación Y: " + str(p_ry))
+    print("Rotación Z: " + str(p_rz))
 
 
 if __name__ == "__main__":
-    app = QtWidgets.QApplication(sys.argv)
+    app = QtWidgets.QApplication(argv)
     ventana = QtWidgets.QMainWindow()
     ui = UiVentana()
-    sys.exit(app.exec_())
+    exit(app.exec_())
