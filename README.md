@@ -1,2 +1,2 @@
-# Txorradillas
-I have made this repository in order to save my python projects
+# Desarrollo de un programa de dibujo técnico mediante Python y OpenGL
+Esta rama contiene código defectuoso o en pruebas
