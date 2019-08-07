@@ -31,7 +31,7 @@ class Renderizador(QOpenGLWidget):
                            (-9.23, 3.82), (-10, 0), (-9.23, -3.82), (-7.07, -7.07), (-3.82, -9.23), (0, -10),
                            (3.82, -9.23), (7.07, -7.07), (9.23, -3.82))
 
-        self.posiciones_2 = (0, 0, 2.5, 5, 7.5, 10)
+        self.posiciones_2 = (0, 0, 2.5, 5, 7.5, 10, 10)
         self.puntero = 2
         self.puntero_2 = 2
 
