@@ -31,7 +31,7 @@ class Renderizador(QOpenGLWidget):
                            (-9.23, 3.82), (-10, 0), (-9.23, -3.82), (-7.07, -7.07), (-3.82, -9.23), (0, -10),
                            (3.82, -9.23), (7.07, -7.07), (9.23, -3.82))
 
-        self.posiciones_2 = (0, 5, 10, 20, 50, 100)
+        self.posiciones_2 = (0, 0, 2.5, 5, 7.5, 10)
         self.puntero = 2
         self.puntero_2 = 2
 
@@ -61,9 +61,9 @@ class Renderizador(QOpenGLWidget):
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
 
-        gluLookAt(self.posiciones[self.puntero][0],
-                  self.posiciones_2[self.puntero_2],
-                  self.posiciones[self.puntero][1],
+        gluLookAt(self.posiciones[self.puntero][0],  # X
+                  self.posiciones_2[self.puntero_2],  # Y
+                  self.posiciones[self.puntero][1],  # Z
                   0, 0, 0, 0, 1, 0)
 
         glLineWidth(5)
@@ -115,7 +115,6 @@ class Renderizador(QOpenGLWidget):
         loop()
         glEnd()
 
-
     def keyPressEvent(self, event):
 
         if self.puntero == 15:
@@ -123,8 +122,8 @@ class Renderizador(QOpenGLWidget):
         if self.puntero == -15:
             self.puntero = 1
         if self.puntero_2 == len(self.posiciones_2) - 1:
-            self.puntero_2 = -1
-        if self.puntero_2 == -(len(self.posiciones_2) - 1):
+            self.puntero_2 = len(self.posiciones_2) - 2
+        if self.puntero_2 == 0:
             self.puntero_2 = 1
 
         if event.key() == QtCore.Qt.Key_Left:
@@ -144,10 +143,8 @@ class Renderizador(QOpenGLWidget):
         elif event.key() == QtCore.Qt.Key_D:
             self.puntero -= 1
         elif event.key() == QtCore.Qt.Key_E:
-            # self._rx -= 1
             pass
         elif event.key() == QtCore.Qt.Key_Q:
-            # self._rx += 1
             pass
 
         global x, y, z
@@ -262,7 +259,6 @@ class UiVentana:
         self.label_3.setText("Cuadrante:")
         self.label.setText("Coordenadas:")
         ventana.setCentralWidget(self.widget_central)
-
         ventana.setWindowTitle("Dibujo técnico")
 
         ventana.show()
