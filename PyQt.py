@@ -2,13 +2,11 @@
 
 from sys import argv, exit
 
-from OpenGL.GL import glClear, GL_COLOR_BUFFER_BIT, glEnable, GL_DEPTH_TEST, glMatrixMode, GL_PROJECTION, \
-    glLoadIdentity, glOrtho, glClearColor, GL_DEPTH_BUFFER_BIT, GL_MODELVIEW, glLineWidth, \
-    glBegin, glColor, glVertex, glEnd, glPointSize, GL_POINT_SMOOTH, GL_POINTS, GL_BLEND, glBlendFunc, GL_SRC_ALPHA, \
-    glBlendColor, GL_QUADS, glDisable, GL_LINES, GL_LINE_STRIP
+from OpenGL.GL import *
 from OpenGL.GLU import gluLookAt
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QOpenGLWidget
+from math import sin, cos, radians
 
 
 def ver_alzado():
@@ -27,23 +25,19 @@ class Renderizador(QOpenGLWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.posiciones = ((10, 0), (9.23, 3.82), (7.07, 7.07), (3.82, 9.23), (0, 10), (-3.82, 9.23), (-7.07, 7.07),
-                           (-9.23, 3.82), (-10, 0), (-9.23, -3.82), (-7.07, -7.07), (-3.82, -9.23), (0, -10),
-                           (3.82, -9.23), (7.07, -7.07), (9.23, -3.82))
-
-        self.posiciones_2 = (0, 5, 10, 20, 50, 100)
-        self.puntero = 2
-        self.puntero_2 = 2
-
-        self.x = self.posiciones[self.puntero][0]
-        self.y = self.posiciones_2[self.puntero_2]
-        self.z = self.posiciones[self.puntero][1]
-
+        self._z = 0
+        self._y = 0
+        self.at = 45
+        self.ap = 45
+        self.x = 0
+        self.y = 0
+        self.z = 0
         self.vertices_vertical = ((10, 10, 0), (-10, 10, 0), (-10, 0, 0), (10, 0, 0))
         self.vertices_vertical_debajo = ((10, 0, 0), (-10, 0, 0), (-10, -10, 0), (10, -10, 0))
-
         self.vertices_horizontal = ((10, 0, 0), (10, 0, 10), (-10, 0, 10), (-10, 0, 0))
         self.vertices_horizontal_detras = ((10, 0, 0), (10, 0, -10), (-10, 0, -10), (-10, 0, 0))
+        self.vertices_borde_v = ((10, 10, 0), (10, -10, 0), (-10, -10, 0), (-10, 10, 0))
+        self.vertices_borde_h = ((10, 0, 10), (-10, 0, 10), (-10, 0, -10), (10, 0, -10))
 
     def initializeGL(self):
         glClear(GL_COLOR_BUFFER_BIT)
@@ -53,18 +47,19 @@ class Renderizador(QOpenGLWidget):
         glOrtho(-10, 10, -10, 10, -150, 150)
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
-        # gluLookAt(10, 10, 10, 0, 0, 0, 0, 1, 0)
 
     def paintGL(self):
         glClearColor(1, 1, 1, 1)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
+        if self.at == 0:
+            self.at = 360
+        self.x = sin(radians(self.at)) * cos(radians(self.ap))
+        self.z = sin(radians(self.at)) * sin(radians(self.ap)) + self._z
+        self.y = cos(radians(self.at)) + self._y
 
-        gluLookAt(self.posiciones[self.puntero][0],
-                  self.posiciones_2[self.puntero_2],
-                  self.posiciones[self.puntero][1],
-                  0, 0, 0, 0, 1, 0)
+        gluLookAt(self.x, self.y, self.z, 0, self._y, self._z, 0, 1, 0)
 
         glLineWidth(5)
         glBegin(GL_LINES)
@@ -90,70 +85,60 @@ class Renderizador(QOpenGLWidget):
         glEnd()
 
         glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_SRC_ALPHA)
-        glBlendColor(0, 1, 0, 0.6)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glBlendColor(0, 1, 0, 0.5)
+        glDepthMask(GL_FALSE)
         glBegin(GL_QUADS)
-        glColor((0, 1, 0, 0.6))
-
-        def loop():
-            for vertex in range(4):
-                glVertex(self.vertices_vertical[vertex])
-            glColor((1, 0, 0, 0.6))
-            for vertex in range(4):
-                glVertex(self.vertices_horizontal[vertex])
-            for vertex in range(4):
-                glVertex(self.vertices_horizontal_detras[vertex])
-            glColor((0, 1, 0, 0.6))
-            for vertex in range(4):
-                glVertex(self.vertices_vertical_debajo[vertex])
-
-        loop()
+        glColor((0, 1, 0, 0.5))
+        for vertex in range(4):
+            glVertex(self.vertices_vertical[vertex])
+        glColor((1, 0, 0, 0.5))
+        for vertex in range(4):
+            glVertex(self.vertices_horizontal[vertex])
+        for vertex in range(4):
+            glVertex(self.vertices_horizontal_detras[vertex])
+        glColor((0, 1, 0, 0.5))
+        for vertex in range(4):
+            glVertex(self.vertices_vertical_debajo[vertex])
         glEnd()
+        glDepthMask(GL_TRUE)
         glDisable(GL_BLEND)
         glLineWidth(1)
-        glBegin(GL_LINE_STRIP)
-        loop()
+        glBegin(GL_LINE_LOOP)
+        for vertex in range(4):
+            glVertex(self.vertices_borde_v[vertex])
+        glColor((1, 0, 0, 0.5))
+        glEnd()
+        glBegin(GL_LINE_LOOP)
+        for vertex in range(4):
+            glVertex(self.vertices_borde_h[vertex])
         glEnd()
 
-
     def keyPressEvent(self, event):
-
-        if self.puntero == 15:
-            self.puntero = -1
-        if self.puntero == -15:
-            self.puntero = 1
-        if self.puntero_2 == len(self.posiciones_2) - 1:
-            self.puntero_2 = -1
-        if self.puntero_2 == -(len(self.posiciones_2) - 1):
-            self.puntero_2 = 1
-
-        if event.key() == QtCore.Qt.Key_Left:
-            pass
-        elif event.key() == QtCore.Qt.Key_Up:
-            pass
-        elif event.key() == QtCore.Qt.Key_Right:
-            pass
-        elif event.key() == QtCore.Qt.Key_Down:
-            pass
-        elif event.key() == QtCore.Qt.Key_W:
-            self.puntero_2 += 1
+        if event.key() == QtCore.Qt.Key_W:
+            self.at -= 15
         elif event.key() == QtCore.Qt.Key_A:
-            self.puntero += 1
+            self.ap += 15
         elif event.key() == QtCore.Qt.Key_S:
-            self.puntero_2 -= 1
+            self.at += 15
         elif event.key() == QtCore.Qt.Key_D:
-            self.puntero -= 1
-        elif event.key() == QtCore.Qt.Key_E:
-            # self._rx -= 1
-            pass
-        elif event.key() == QtCore.Qt.Key_Q:
-            # self._rx += 1
-            pass
+            self.ap -= 15
+        elif event.key() == QtCore.Qt.Key_Left:
+            self._z -= 1
+        elif event.key() == QtCore.Qt.Key_Up:
+            self._y += 1
+        elif event.key() == QtCore.Qt.Key_Right:
+            self._z += 1
+        elif event.key() == QtCore.Qt.Key_Down:
+            self._y -= 1
 
-        global x, y, z
-        x = self.posiciones[self.puntero][0]
-        y = self.posiciones_2[self.puntero_2]
-        z = self.posiciones[self.puntero][1]
+        global x, y, z, at, ap
+        x = round(self.x, 2)
+        y = round(self.y, 2)
+        z = round(self.z, 2)
+        at = self.at
+        ap = self.ap
+
         ui.update()
         self.update()
         super().keyPressEvent(event)
@@ -190,7 +175,7 @@ class UiVentana:
         self.Vistas.addWidget(self.boton_alzado, 1, 0, 1, 1)
 
         self.Visor = Renderizador(self.widget_central)
-        self.Visor.setGeometry(QtCore.QRect(0, 0, 1000, 750))
+        self.Visor.setGeometry(QtCore.QRect(0, 0, 1000, 1000))
         self.Visor.setFocusPolicy(QtCore.Qt.StrongFocus)
 
         self.gridLayoutWidget_2 = QtWidgets.QWidget(self.widget_central)
@@ -261,15 +246,13 @@ class UiVentana:
         self.cuadrante.setText("Primer cuadrante")
         self.label_3.setText("Cuadrante:")
         self.label.setText("Coordenadas:")
+
         ventana.setCentralWidget(self.widget_central)
-
         ventana.setWindowTitle("Dibujo técnico")
-
         ventana.show()
 
     def update(self):
-        global x, y, z
-        self.coordenadas.setText("X: {} Y: {} Z: {}".format(x, y, z))
+        self.coordenadas.setText("X: {} Y: {} Z: {} Ángulo vertical: {} Ángulo horizontal: {}".format(x, y, z, at, ap))
         if z == 0 and y == 0:  # puntoCuadrante en LT
             self.cuadrante.setText("Línea de tierra")
         elif z == 0:
@@ -298,6 +281,7 @@ def imprimir():
     # print(p_x)
     # print(p_y)
     # print(p_z)
+
     print("X: " + str(x))
     print("Y: " + str(y))
     print("Z: " + str(z))
