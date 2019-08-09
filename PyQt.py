@@ -2,7 +2,10 @@
 
 from sys import argv, exit
 
-from OpenGL.GL import *
+from OpenGL.GL import glClear, GL_COLOR_BUFFER_BIT, glEnable, GL_DEPTH_TEST, glMatrixMode, GL_PROJECTION, \
+    glLoadIdentity, glOrtho, glClearColor, GL_DEPTH_BUFFER_BIT, GL_MODELVIEW, glLineWidth, \
+    glBegin, glColor, glVertex, glEnd, glPointSize, GL_POINT_SMOOTH, GL_POINTS, GL_BLEND, glBlendFunc, GL_SRC_ALPHA, \
+    glBlendColor, GL_QUADS, glDisable, GL_LINES, GL_LINE_LOOP, glDepthMask, GL_FALSE, GL_TRUE, GL_ONE_MINUS_SRC_ALPHA
 from OpenGL.GLU import gluLookAt
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QOpenGLWidget
@@ -32,19 +35,19 @@ class Renderizador(QOpenGLWidget):
         self.x = 0
         self.y = 0
         self.z = 0
-        self.vertices_vertical = ((10, 10, 0), (-10, 10, 0), (-10, 0, 0), (10, 0, 0))
-        self.vertices_vertical_debajo = ((10, 0, 0), (-10, 0, 0), (-10, -10, 0), (10, -10, 0))
-        self.vertices_horizontal = ((10, 0, 0), (10, 0, 10), (-10, 0, 10), (-10, 0, 0))
-        self.vertices_horizontal_detras = ((10, 0, 0), (10, 0, -10), (-10, 0, -10), (-10, 0, 0))
-        self.vertices_borde_v = ((10, 10, 0), (10, -10, 0), (-10, -10, 0), (-10, 10, 0))
-        self.vertices_borde_h = ((10, 0, 10), (-10, 0, 10), (-10, 0, -10), (10, 0, -10))
+        self.vertices_vertical = ((100, 100, 0), (-100, 100, 0), (-100, 0, 0), (100, 0, 0))
+        self.vertices_vertical_debajo = ((100, 0, 0), (-100, 0, 0), (-100, -100, 0), (100, -100, 0))
+        self.vertices_horizontal = ((100, 0, 0), (100, 0, 100), (-100, 0, 100), (-100, 0, 0))
+        self.vertices_horizontal_detras = ((100, 0, 0), (100, 0, -100), (-100, 0, -100), (-100, 0, 0))
+        self.vertices_borde_v = ((100, 100, 0), (100, -100, 0), (-100, -100, 0), (-100, 100, 0))
+        self.vertices_borde_h = ((100, 0, 100), (-100, 0, 100), (-100, 0, -100), (100, 0, -100))
 
     def initializeGL(self):
         glClear(GL_COLOR_BUFFER_BIT)
         glEnable(GL_DEPTH_TEST)
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
-        glOrtho(-10, 10, -10, 10, -150, 150)
+        glOrtho(-100, 100, -100, 100, -150, 150)
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
 
@@ -66,15 +69,15 @@ class Renderizador(QOpenGLWidget):
         # X ROJO
         glColor(1, 0, 0)
         glVertex(0, 0, 0)
-        glVertex(1, 0, 0)
+        glVertex(10, 0, 0)
         # Y VERDE
         glColor(0, 1, 0)
         glVertex(0, 0, 0)
-        glVertex(0, 1, 0)
+        glVertex(0, 10, 0)
         # Z AZUL
         glColor(0, 0, 1)
         glVertex(0, 0, 0)
-        glVertex(0, 0, 1)
+        glVertex(0, 0, 10)
 
         glEnd()
 
