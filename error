@@ -18,11 +18,12 @@ class Renderizador(QOpenGLWidget):
         super().__init__(parent)
         self._x = 0
         self._y = 0
-        self.av = 405
-        self.ah = 45
-        self.x = sin(radians(self.av)) * cos(radians(self.ah)) + self._x
-        self.z = sin(radians(self.av)) * sin(radians(self.ah))
-        self.y = cos(radians(self.av)) + self._y
+        self._z = 0
+        self.theta = 405
+        self.phi = 45
+        self.x = sin(radians(self.theta)) * cos(radians(self.phi)) + self._x
+        self.z = sin(radians(self.theta)) * sin(radians(self.phi)) + self._z
+        self.y = cos(radians(self.theta)) + self._y
         self.vertices_vertical = ((100, 100, 0), (-100, 100, 0), (-100, 0, 0), (100, 0, 0))
         self.vertices_vertical_debajo = ((100, 0, 0), (-100, 0, 0), (-100, -100, 0), (100, -100, 0))
         self.vertices_horizontal = ((100, 0, 0), (100, 0, 100), (-100, 0, 100), (-100, 0, 0))
@@ -30,37 +31,41 @@ class Renderizador(QOpenGLWidget):
         self.vertices_borde_v = ((100, 100, 0), (100, -100, 0), (-100, -100, 0), (-100, 100, 0))
         self.vertices_borde_h = ((100, 0, 100), (-100, 0, 100), (-100, 0, -100), (100, 0, -100))
         self.puntos = []
+        self.num_elementos = 0
+        global x, y, z, av, ah
+        x = round(self.x, 2)
+        y = round(self.y, 2)
+        z = round(self.z, 2)
+        av = self.theta - 360
+        ah = self.phi
 
     def recalcular(self):
-        self.x = sin(radians(self.av)) * cos(radians(self.ah)) + self._x
-        self.z = sin(radians(self.av)) * sin(radians(self.ah))
-        self.y = cos(radians(self.av)) + self._y
-        gluLookAt(self.x, self.y, self.z, self._x, self._y, 0, 0, 1, 0)
+        self.x = sin(radians(self.theta)) * cos(radians(self.phi)) + self._x
+        self.z = sin(radians(self.theta)) * sin(radians(self.phi)) + self._z
+        self.y = cos(radians(self.theta)) + self._y
+        gluLookAt(self.x, self.y, self.z, self._x, self._y, self._z, 0, 1, 0)
+        ui.actualizar()
         self.update()
 
     def ver_alzado(self):
-        self.ah = 90
-        self.av = 450
+        self.phi = 90
+        self.theta = 450
         self.recalcular()
-        self.update()
 
     def ver_planta(self):
-        self.ah = 90
-        self.av = 360
+        self.phi = 90
+        self.theta = 360
         self.recalcular()
-        self.update()
 
     def ver_perfil(self):
-        self.ah = 180
-        self.av = 450
+        self.phi = 180
+        self.theta = 450
         self.recalcular()
-        self.update()
 
     def ver_reset(self):
-        self.av = 405
-        self.ah = 45
+        self.theta = 405
+        self.phi = 45
         self.recalcular()
-        self.update()
 
     def dibujar_planos(self):
         glEnable(GL_BLEND)
@@ -110,13 +115,23 @@ class Renderizador(QOpenGLWidget):
         glVertex(0, 0, 10)
         glEnd()
 
+    @staticmethod
+    def borrar():
+        print("Mialo")
+
     def crear_punto(self):
-        self.puntos.append((ui.nombre.toPlainText(), ui.valor_do.value(), ui.valor_cota.value(), ui.valor_alej.value()))
-
+        do = ui.valor_do.value()
+        cota = ui.valor_cota.value()
+        alejamiento = ui.valor_alej.value()
+        self.puntos.append((ui.nombre.toPlainText(), do, cota, alejamiento))
         name = QtWidgets.QLabel()
-        name.setText(str(ui.nombre.toPlainText))
-        ui.elementos.addWidget(name, 0, 0, 1, 1)
-
+        name.setText(str(ui.nombre.toPlainText()) + "({}, {}, {})".format(do, cota, alejamiento))
+        borrar = QtWidgets.QPushButton()
+        borrar.setText("X")
+        borrar.clicked.connect(self.borrar)
+        ui.elementos.addWidget(name, self.num_elementos, 0, 1, 1)
+        ui.elementos.addWidget(borrar, self.num_elementos, 1, 1, 1)
+        self.num_elementos += 1
         self.update()
         print(self.puntos)
 
@@ -142,8 +157,8 @@ class Renderizador(QOpenGLWidget):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glLoadIdentity()
         up = 1
-        if self.av % 360 == 0:
-            self.av = 360
+        if self.theta == 0 or self.theta == 360:
+            self.theta = 360
             up = -1
         gluLookAt(self.x, self.y, self.z, self._x, self._y, 0, 0, up, 0)
         self.dibujar_ejes()
@@ -154,13 +169,17 @@ class Renderizador(QOpenGLWidget):
 
     def keyPressEvent(self, event):
         if event.key() == QtCore.Qt.Key_W:
-            self.av -= 15
+            self.theta -= 15
         elif event.key() == QtCore.Qt.Key_A:
-            self.ah += 15
+            self.phi += 15
         elif event.key() == QtCore.Qt.Key_S:
-            self.av += 15
+            self.theta += 15
         elif event.key() == QtCore.Qt.Key_D:
-            self.ah -= 15
+            self.phi -= 15
+        elif event.key() == QtCore.Qt.Key_Q:
+            self._z += 1
+        elif event.key() == QtCore.Qt.Key_E:
+            self._z -= 1
         elif event.key() == QtCore.Qt.Key_Left:
             self._x -= 1
         elif event.key() == QtCore.Qt.Key_Up:
@@ -178,27 +197,27 @@ class Renderizador(QOpenGLWidget):
         elif event.key() == QtCore.Qt.Key_R:
             self.ver_reset()
 
-        if self.av < 360:
-            self.av = 360
-        if self.av > 540:
-            self.av = 540
-        if self.ah >= 360:
-            self.ah -= 360
-        if self.ah < 0:
-            self.ah += 360
+        if self.theta < 360:
+            self.theta = 360
+        if self.theta > 540:
+            self.theta = 540
+        if self.phi >= 360:
+            self.phi -= 360
+        if self.phi < 0:
+            self.phi += 360
 
-        self.x = sin(radians(self.av)) * cos(radians(self.ah)) + self._x
-        self.z = sin(radians(self.av)) * sin(radians(self.ah))
-        self.y = cos(radians(self.av)) + self._y
+        self.x = sin(radians(self.theta)) * cos(radians(self.phi)) + self._x
+        self.z = sin(radians(self.theta)) * sin(radians(self.phi)) + self._z
+        self.y = cos(radians(self.theta)) + self._y
 
         global x, y, z, av, ah
         x = round(self.x, 2)
         y = round(self.y, 2)
         z = round(self.z, 2)
-        av = self.av - 360
-        ah = self.ah
+        av = self.theta - 360
+        ah = self.phi
 
-        ui.update()
+        ui.actualizar()
         self.update()
         super().keyPressEvent(event)
 
@@ -207,7 +226,7 @@ class UiVentana:
     def __init__(self):
         ventana.resize(1500, 1000)
         ventana.setLayoutDirection(QtCore.Qt.LeftToRight)
-        ventana.setToolButtonStyle(QtCore.Qt.ToolButtonIconOnly)
+        # ventana.setToolButtonStyle(QtCore.Qt.ToolButtonIconOnly)
         ventana.setFixedSize(ventana.size())
         font = QtGui.QFont()
         font.setPointSize(10)
@@ -279,8 +298,11 @@ class UiVentana:
         self.Punto.addWidget(self.nombre, 3, 1, 1, 1)
 
         self.scroll = QtWidgets.QScrollArea(self.gridLayoutWidget_2)
+        self.scroll_widget = QtWidgets.QWidget()
+        self.scroll_widget.resize(200, 700)
         self.elementos = QtWidgets.QGridLayout()
-        self.elementos.setGeometry(QtCore.QRect(0, 0, 500, 400))
+        self.scroll_widget.setLayout(self.elementos)
+        self.scroll.setWidget(self.scroll_widget)
         self.Punto.addWidget(self.scroll, 4, 0, 1, 3)
 
         self.valor_do = QtWidgets.QSpinBox(self.gridLayoutWidget_2)
@@ -323,7 +345,14 @@ class UiVentana:
         ventana.setWindowTitle("Dibujo técnico")
         ventana.show()
 
-    def update(self):
+    def actualizar(self):
+        global x, y, z
+        if x == -0:
+            x = 0
+        if y == -0:
+            y = 0
+        if z == -0:
+            z = 0
         self.coordenadas.setText("X: {} Y: {} Z: {}".format(x, y, z))
         self.angulo.setText("Ángulo vertical: {} Ángulo horizontal: {}".format(av, ah))
         if z == 0 and y == 0:  # puntoCuadrante en LT
@@ -359,4 +388,5 @@ if __name__ == "__main__":
     ventana = QtWidgets.QMainWindow()
     ui = UiVentana()
     sys.excepthook = except_hook
+    ui.actualizar()
     exit(app.exec_())
