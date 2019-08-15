@@ -115,29 +115,34 @@ class Renderizador(QOpenGLWidget):
         glVertex(0, 0, 10)
         glEnd()
 
-    @staticmethod
-    def borrar():
-        print("Mialo")
+    # ERROR:
+    def borrar_punto(self):
+        self.puntos.pop()
+        ui.elementos.removeWidget(self.name)
+        ui.elementos.removeWidget(self.borrar)
+        self.name.deleteLater()
+        self.borrar.deleteLater()
+        self.num_elementos -= 1
 
     def crear_punto(self):
         do = ui.valor_do.value()
         cota = ui.valor_cota.value()
         alejamiento = ui.valor_alej.value()
         self.puntos.append((ui.nombre.toPlainText(), do, cota, alejamiento))
-        name = QtWidgets.QLabel()
-        name.setText(str(ui.nombre.toPlainText()) + "({}, {}, {})".format(do, cota, alejamiento))
-        borrar = QtWidgets.QPushButton()
-        borrar.setText("X")
-        borrar.clicked.connect(self.borrar)
-        ui.elementos.addWidget(name, self.num_elementos, 0, 1, 1)
-        ui.elementos.addWidget(borrar, self.num_elementos, 1, 1, 1)
+        self.name = QtWidgets.QLabel()
+        self.name.setText(str(ui.nombre.toPlainText()) + "({}, {}, {})".format(do, cota, alejamiento))
+        self.borrar = QtWidgets.QPushButton()
+        self.borrar.setText("X")
+        self.borrar.clicked.connect(lambda: self.borrar_punto())
+
+        ui.elementos.addWidget(self.name, self.num_elementos, 0, 1, 1)
+        ui.elementos.addWidget(self.borrar, self.num_elementos, 1, 1, 1)
         self.num_elementos += 1
         self.update()
-        print(self.puntos)
 
     def dibujar_punto(self):
         glColor(0, 0, 0, 0)
-        glPointSize(5)
+        glPointSize(6)
         glEnable(GL_POINT_SMOOTH)
         glBegin(GL_POINTS)
         for i in range(len(self.puntos)):
@@ -160,7 +165,7 @@ class Renderizador(QOpenGLWidget):
         if self.theta == 0 or self.theta == 360:
             self.theta = 360
             up = -1
-        gluLookAt(self.x, self.y, self.z, self._x, self._y, 0, 0, up, 0)
+        gluLookAt(self.x, self.y, self.z, self._x, self._y, self._z, 0, up, 0)
         self.dibujar_ejes()
         self.dibujar_planos()
 
@@ -275,6 +280,7 @@ class UiVentana:
         self.crear_punto = QtWidgets.QPushButton(self.gridLayoutWidget_2)
         self.crear_punto.setText("Crear")
         self.crear_punto.clicked.connect(self.Visor.crear_punto)
+
         self.Punto.addWidget(self.crear_punto, 3, 2, 1, 1)
         self.texto_cota = QtWidgets.QLabel(self.gridLayoutWidget_2)
         self.texto_cota.setLayoutDirection(QtCore.Qt.LeftToRight)
@@ -297,10 +303,18 @@ class UiVentana:
         self.nombre.setMaximumSize(QtCore.QSize(100, 24))
         self.Punto.addWidget(self.nombre, 3, 1, 1, 1)
 
-        self.scroll = QtWidgets.QScrollArea(self.gridLayoutWidget_2)
+        self.scroll = QtWidgets.QScrollArea()
+        self.scroll.setWidgetResizable(True)
         self.scroll_widget = QtWidgets.QWidget()
-        self.scroll_widget.resize(200, 700)
+        self.scroll_widget.resize(200, 300)
+        self.elementos_widget = QtWidgets.QWidget()
+        self.vbox = QtWidgets.QVBoxLayout(self.scroll_widget)
+        self.vbox.setContentsMargins(0, 0, 0, 0)
+        self.vbox.addWidget(self.elementos_widget)
+        self.vbox.addStretch()
         self.elementos = QtWidgets.QGridLayout()
+        self.elementos_widget.setLayout(self.elementos)
+        self.scroll.setWidget(self.scroll_widget)
         self.scroll_widget.setLayout(self.elementos)
         self.scroll.setWidget(self.scroll_widget)
         self.Punto.addWidget(self.scroll, 4, 0, 1, 3)
@@ -390,3 +404,4 @@ if __name__ == "__main__":
     sys.excepthook = except_hook
     ui.actualizar()
     exit(app.exec_())
+    
