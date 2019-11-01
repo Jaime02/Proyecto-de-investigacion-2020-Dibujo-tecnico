@@ -18,7 +18,7 @@ from sympy import Line, intersection, Point3D, Plane, Line3D, Segment3D
 
 class Punto(QWidget):
     def __init__(self, parent, internal_id, name, do, alejamiento, cota):
-        QWidget.__init__(self, parent)
+        QWidget.__init__(self)
 
         self.render = True
 
@@ -54,7 +54,6 @@ class Punto(QWidget):
     def toggle(self):
         self.render = self.ver.isChecked()
         main_app.diedrico.update()
-        main_app.renderizador.update()
 
     @property
     def itemid(self):
@@ -72,6 +71,11 @@ class Recta(QWidget):
         self.id = internal_id
         self.parent = parent
         self.recta = Line(Point3D(p1.coords), Point3D(p2.coords))
+        self.p1 = (p1.coords[0], p1.coords[2], p1.coords[1])
+        self.p2 = (p2.coords[0], p2.coords[2], p2.coords[1])
+        hbox = QHBoxLayout()
+        hbox.addWidget(QLabel(f"{name}({p1.name}, {p2.name})"))
+        self.setLayout(hbox)
         self.name = name
         self.contenida_pv = False
         self.contenida_ph = False
@@ -99,6 +103,12 @@ class Recta(QWidget):
         self.ver_traza_h.triggered.connect(main_app.diedrico.update)
         self.ver_traza_v.triggered.connect(main_app.diedrico.update)
 
+        self.infinita = QAction("Infinita")
+        self.infinita.setCheckable(True)
+        self.infinita.setChecked(True)
+        self.infinita.toggled.connect(main_app.diedrico.update)
+        self.menu.addAction(self.infinita)
+
         self.v = (Point3D(500, 500, 500), Point3D(-500, 500, 500), Point3D(-500, -500, 500),
                   Point3D(500, -500, 500), Point3D(500, 500, -500), Point3D(-500, 500, -500),
                   Point3D(-500, -500, -500), Point3D(500, -500, -500))
@@ -116,14 +126,22 @@ class Recta(QWidget):
         self.traza_v = self.calcular_traza_v()
         if self.traza_v:
             self.traza_v = (self.traza_v[0], self.traza_v[2], self.traza_v[1])
+            if self.traza_v[0] > 500 or self.traza_v[1] > 500:
+                self.ver_traza_v.setCheckable(False)
+                self.ver_traza_v.setDisabled(True)
+        else:
+            self.ver_traza_v.setCheckable(False)
+            self.ver_traza_v.setDisabled(True)
 
         self.traza_h = self.calcular_traza_h()
         if self.traza_h:
             self.traza_h = (self.traza_h[0], self.traza_h[2], self.traza_h[1])
-
-        hbox = QHBoxLayout()
-        hbox.addWidget(QLabel(f"{name}({p1.name}, {p2.name})"))
-        self.setLayout(hbox)
+            if self.traza_h[0] > 500 or self.traza_h[2] > 500:
+                self.ver_traza_h.setCheckable(False)
+                self.ver_traza_h.setDisabled(True)
+        else:
+            self.ver_traza_h.setCheckable(False)
+            self.ver_traza_h.setDisabled(True)
 
     def extremos(self):
         intersecciones = []
@@ -154,19 +172,21 @@ class Recta(QWidget):
         return buenos
 
     def calcular_traza_h(self):
-        h = intersection(self.recta, self.plano_h)
-        if h:
-            if not isinstance(h[0], Line3D):
-                return tuple(h[0])
+        traza_h = intersection(self.recta, self.plano_h)
+        if traza_h:
+            if not isinstance(traza_h[0], Line3D) and traza_h[0]:
+                traza_h = tuple(traza_h[0])
+                return traza_h
             else:
                 self.contenida_ph = True
         return False
 
     def calcular_traza_v(self):
-        v = intersection(self.recta, self.plano_v)
-        if v:
-            if not isinstance(v[0], Line3D):
-                return tuple(v[0])
+        traza_v = intersection(self.recta, self.plano_v)
+        if traza_v:
+            if not isinstance(traza_v[0], Line3D) and traza_v[0]:
+                traza_v = tuple(traza_v[0])
+                return traza_v
             else:
                 self.contenida_pv = True
         return False
@@ -307,19 +327,25 @@ class Renderizador(QOpenGLWidget):
                 glColor(0, 0, 0, 0)
                 glLineWidth(2)
                 glBegin(GL_LINES)
-                glVertex(recta.extremos[0])
-                glVertex(recta.extremos[1])
+                if recta.infinita.isChecked():
+                    glVertex(recta.extremos[0])
+                    glVertex(recta.extremos[1])
+                else:
+                    glVertex(recta.p1)
+                    glVertex(recta.p2)
                 glEnd()
                 if recta.traza_h and recta.ver_traza_h.isChecked():
-                    glColor(1, 0, 0, 0)
-                    glBegin(GL_POINTS)
-                    glVertex(recta.traza_h)
-                    glEnd()
+                    if recta.traza_h[0] < 500 and recta.traza_h[2] < 500:
+                        glColor(1, 0, 0, 0)
+                        glBegin(GL_POINTS)
+                        glVertex(recta.traza_h)
+                        glEnd()
                 if recta.traza_v and recta.ver_traza_v.isChecked():
-                    glColor(0, 1, 0, 0)
-                    glBegin(GL_POINTS)
-                    glVertex(recta.traza_v)
-                    glEnd()
+                    if recta.traza_v[0] < 500 and recta.traza_v[1] < 500:
+                        glColor(0, 1, 0, 0)
+                        glBegin(GL_POINTS)
+                        glVertex(recta.traza_v)
+                        glEnd()
 
     def dibujar_planos(self):
         glEnable(GL_BLEND)
@@ -501,10 +527,98 @@ class Diedrico(QWidget):
         for i in range(main_app.lista_rectas.count()):
             recta = main_app.lista_rectas.itemWidget(main_app.lista_rectas.item(i))
             if recta.render.isChecked():
-                extremos = recta.extremos
+
+                if recta.infinita.isChecked():
+                    extremos = recta.extremos
+                    # Ninguna traza
+                    if not recta.traza_v and not recta.traza_h and len(recta.extremos_I) == 2:
+                        # Recta en PH
+                        if recta.contenida_ph and not recta.contenida_pv:
+                            self.dibujar_continuo(qp, recta.extremos_I[0], recta.extremos_I[1])
+
+                        # Recta en PV
+                        elif not recta.contenida_ph and recta.contenida_pv:
+                            self.dibujar_continuo(qp, recta.extremos_I[0], recta.extremos_I[1])
+
+                        # Trazas en LT
+                        elif recta.extremos[0][1:] == recta.extremos[1][1:] == (0, 0):
+                            self.dibujar_continuo(qp, [500, 0, 0], [-500, 0, 0])
+
+                        # 1er cuadrante
+                        else:
+                            self.dibujar_continuo(qp, recta.extremos_I[0], recta.extremos_I[1])
+
+                    # Una traza en PH
+                    elif recta.traza_h and not recta.traza_v:
+                        # Trazas en PH
+                        if recta.extremos[0][2] == 0 and recta.extremos[1][2] == 0:
+                            inicio = recta.traza_h
+                            fin = recta.extremos_I[0]
+                            self.dibujar_continuo(qp, inicio, fin)
+                        else:
+                            inicio = recta.traza_h
+                            fin = recta.extremos_I[0]
+                            self.dibujar_continuo(qp, inicio, fin)
+
+                    # Una traza en PV
+                    elif not recta.traza_h and recta.traza_v:
+                        # Trazas en PV
+                        if recta.extremos[0][1] == 0 and recta.extremos[1][1] == 0:
+                            inicio = recta.traza_v
+                            fin = recta.extremos_I[0]
+                            self.dibujar_continuo(qp, inicio, fin)
+                        # elif recta.traza_v[2] > 0:
+                        else:
+                            inicio = recta.traza_v
+                            fin = recta.extremos_I[0]
+                            self.dibujar_continuo(qp, inicio, fin)
+
+                    # Dos trazas
+                    elif recta.traza_v and recta.traza_h:
+                        # Trazas en LT
+                        if recta.traza_h == recta.traza_v:
+                            inicio = recta.traza_h
+                            fin = recta.extremos_I[0]
+                            self.dibujar_continuo(qp, inicio, fin)
+                        # 010
+                        if recta.traza_h[2] > 0 and recta.traza_v[1] > 0:
+                            inicio = recta.traza_v
+                            fin = recta.traza_h
+                            self.dibujar_continuo(qp, inicio, fin)
+                        # 001
+                        elif recta.traza_h[2] < 0 < recta.traza_v[1]:
+                            inicio = recta.traza_v
+                            fin = recta.extremos_I[0]
+                            self.dibujar_continuo(qp, inicio, fin)
+                        # 100
+                        elif recta.traza_h[2] > 0 > recta.traza_v[1]:
+                            inicio = recta.traza_h
+                            fin = recta.extremos_I[0]
+                            self.dibujar_continuo(qp, inicio, fin)
+                else:
+                    extremos = (recta.p1, recta.p2)
+
+                    extremos_i = []
+                    if extremos[0][1] >= 0 and extremos[0][2] >= 0:
+                        extremos_i.append(extremos[0])
+                    if extremos[1][1] >= 0 and extremos[1][2] >= 0:
+                        extremos_i.append(extremos[1])
+
+                    if len(extremos_i) == 2:
+                        self.dibujar_continuo(qp, extremos[0], extremos[1])
+
+                    else:
+                        if recta.traza_v:
+                            if recta.traza_v[2] >= 0:
+                                self.dibujar_continuo(qp, extremos[0], recta.traza_v)
+
+                        elif recta.traza_h:
+                            if recta.traza_h[1] >= 0:
+                                self.dibujar_continuo(qp, extremos[0], recta.traza_h)
+
+                # Dibuja en discontínuo
                 qp.setPen(self.pen_rprima)
                 self.recta_prima(qp, extremos)
-
                 qp.setPen(self.pen_rprima2)
                 self.recta_prima2(qp, extremos)
 
@@ -512,72 +626,6 @@ class Diedrico(QWidget):
                 if main_app.tercera_proyeccion.checkState():
                     qp.setPen(self.pen_prima3)
                     self.recta_prima3(qp, extremos)
-
-                # Ninguna traza
-                if not recta.traza_v and not recta.traza_h and len(recta.extremos_I) == 2:
-                    # Recta en PH
-                    if recta.contenida_ph and not recta.contenida_pv:
-                        self.dibujar_continuo(qp, recta.extremos_I[0], recta.extremos_I[1])
-
-                    # Recta en PV
-                    elif not recta.contenida_ph and recta.contenida_pv:
-                        self.dibujar_continuo(qp, recta.extremos_I[0], recta.extremos_I[1])
-
-                    # Trazas en LT
-                    elif recta.extremos[0][1:] == recta.extremos[1][1:] == (0, 0):
-                        self.dibujar_continuo(qp, [500, 0, 0], [-500, 0, 0])
-
-                    # 1er cuadrante
-                    else:
-                        self.dibujar_continuo(qp, recta.extremos_I[0], recta.extremos_I[1])
-
-                # Una traza en PH
-                elif recta.traza_h and not recta.traza_v:
-                    # Trazas en PH
-                    if recta.extremos[0][2] == 0 and recta.extremos[1][2] == 0:
-                        inicio = recta.traza_h
-                        fin = recta.extremos_I[0]
-                        self.dibujar_continuo(qp, inicio, fin)
-                    else:
-                        inicio = recta.traza_h
-                        fin = recta.extremos_I[0]
-                        self.dibujar_continuo(qp, inicio, fin)
-
-                # Una traza en PV
-                elif not recta.traza_h and recta.traza_v:
-                    # Trazas en PV
-                    if recta.extremos[0][1] == 0 and recta.extremos[1][1] == 0:
-                        inicio = recta.traza_v
-                        fin = recta.extremos_I[0]
-                        self.dibujar_continuo(qp, inicio, fin)
-                    # elif recta.traza_v[2] > 0:
-                    else:
-                        inicio = recta.traza_v
-                        fin = recta.extremos_I[0]
-                        self.dibujar_continuo(qp, inicio, fin)
-
-                # Dos trazas
-                elif recta.traza_v and recta.traza_h:
-                    # Trazas en LT
-                    if recta.traza_h == recta.traza_v:
-                        inicio = recta.traza_h
-                        fin = recta.extremos_I[0]
-                        self.dibujar_continuo(qp, inicio, fin)
-                    # 010
-                    if recta.traza_h[2] > 0 and recta.traza_v[1] > 0:
-                        inicio = recta.traza_v
-                        fin = recta.traza_h
-                        self.dibujar_continuo(qp, inicio, fin)
-                    # 001
-                    elif recta.traza_h[2] < 0 < recta.traza_v[1]:
-                        inicio = recta.traza_v
-                        fin = recta.extremos_I[0]
-                        self.dibujar_continuo(qp, inicio, fin)
-                    # 100
-                    elif recta.traza_h[2] > 0 > recta.traza_v[1]:
-                        inicio = recta.traza_h
-                        fin = recta.extremos_I[0]
-                        self.dibujar_continuo(qp, inicio, fin)
 
                 self.dibujar_trazas(qp, recta)
 
@@ -616,12 +664,13 @@ class Diedrico(QWidget):
 
     def dibujar_trazas(self, qp, recta):
         qp.setPen(self.pen_trazas)
-        if recta.traza_h and recta.ver_traza_h.isChecked():
-            qp.drawPoint(int(recta.traza_h[0]), int(-recta.traza_h[2]))  # V "
-            qp.drawPoint(int(recta.traza_h[0]), 0)  # V '
-        if recta.traza_v and recta.ver_traza_v.isChecked():
-            qp.drawPoint(int(recta.traza_v[0]), int(recta.traza_v[1]))  # H '
-            qp.drawPoint(int(recta.traza_v[0]), 0)  # H "
+        if recta.infinita.isChecked():
+            if recta.traza_h and recta.ver_traza_h.isChecked():
+                qp.drawPoint(int(recta.traza_h[0]), int(-recta.traza_h[2]))  # V "
+                qp.drawPoint(int(recta.traza_h[0]), 0)  # V '
+            if recta.traza_v and recta.ver_traza_v.isChecked():
+                qp.drawPoint(int(recta.traza_v[0]), int(recta.traza_v[1]))  # H '
+                qp.drawPoint(int(recta.traza_v[0]), 0)  # H "
 
 
 class Ventana(QMainWindow):
@@ -961,7 +1010,6 @@ class Ventana(QMainWindow):
 
         self.elegir_puntos_recta()
         # self.elegir_puntos_plano()
-        self.renderizador.update()
         self.diedrico.update()
 
     def borrar_punto(self, idd):
@@ -1025,7 +1073,6 @@ class Ventana(QMainWindow):
 
             self.id_recta += 1
 
-            self.renderizador.update()
             self.diedrico.update()
 
     def crear_plano(self):
@@ -1079,7 +1126,6 @@ class Ventana(QMainWindow):
             self.elementos3.addWidget(borrar, row, 1)
             self.renderizador.planos.append(plano)
 
-            self.renderizador.update()
             self.diedrico.update()
 
     def plano_limites(self, punto1, punto2, punto3):
@@ -1096,7 +1142,6 @@ class Ventana(QMainWindow):
         name.deleteLater()
         borrar.deleteLater()
         self.renderizador.planos.remove(plano)
-        self.renderizador.update()
         self.diedrico.update()
 
 
