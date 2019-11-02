@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from math import sin, cos, radians
+from math import sin, cos, radians, atan2
 from string import ascii_uppercase, ascii_lowercase
 
 from OpenGL.GL import glClear, GL_COLOR_BUFFER_BIT, glEnable, GL_DEPTH_TEST, glMatrixMode, GL_PROJECTION, GL_TRUE, \
     glLoadIdentity, glOrtho, glClearColor, GL_DEPTH_BUFFER_BIT, GL_MODELVIEW, glLineWidth, glBegin, glColor, glVertex, \
-    glEnd, glPointSize, GL_POINT_SMOOTH, GL_POINTS, GL_BLEND, glBlendFunc, GL_SRC_ALPHA, GL_QUADS, glDisable, GL_LINES, \
-    GL_LINE_LOOP, glDepthMask, GL_FALSE, GL_ONE_MINUS_SRC_ALPHA
+    glEnd, glPointSize, GL_POINT_SMOOTH, GL_POINTS, GL_BLEND, glBlendFunc, GL_SRC_ALPHA, GL_QUADS, glDisable, GL_LINES,\
+    GL_LINE_LOOP, glDepthMask, GL_FALSE, GL_ONE_MINUS_SRC_ALPHA, GL_TRIANGLE_FAN
 from OpenGL.GLU import gluLookAt
 from PyQt5.QtCore import Qt, QRect, pyqtSlot, QSize, QTimer
 from PyQt5.QtGui import QPainter, QPen, QColor, QCursor, QTransform, QFont
@@ -54,10 +54,6 @@ class Punto(QWidget):
     def toggle(self):
         self.render = self.ver.isChecked()
         main_app.diedrico.update()
-
-    @property
-    def itemid(self):
-        return self.id
 
     @pyqtSlot()
     def delete(self):
@@ -194,13 +190,104 @@ class Recta(QWidget):
     def context_menu(self):
         self.menu.exec_(QCursor.pos())
 
-    @property
-    def itemid(self):
-        return self.id
-
-    @pyqtSlot()
     def delete(self):
         self.parent.borrar_recta(self.id)
+
+
+class Plano(QWidget):
+    def __init__(self, parent, internal_id, name, p1, p2, p3):
+        QWidget.__init__(self)
+        self.id = internal_id
+        self.parent = parent
+        self.plano = Plane(Point3D(p1.coords), Point3D(p2.coords), Point3D(p3.coords))
+        self.name = name
+        self.p1 = (p1.coords[0], p1.coords[2], p1.coords[1])
+        self.p2 = (p2.coords[0], p2.coords[2], p2.coords[1])
+        self.p3 = (p3.coords[0], p3.coords[2], p3.coords[1])
+
+        hbox = QHBoxLayout()
+        hbox.addWidget(QLabel(f"{name}({p1.name}, {p2.name}, {p3.name})"))
+        self.setLayout(hbox)
+        self.customContextMenuRequested.connect(self.context_menu)
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.menu = QMenu()
+        self.borrar = QAction("Borrar")
+        self.menu.addAction(self.borrar)
+        self.borrar.triggered.connect(self.delete)
+
+        self.vertices = (Point3D(500, 500, 500), Point3D(-500, 500, 500), Point3D(-500, -500, 500),
+                         Point3D(500, -500, 500), Point3D(500, 500, -500), Point3D(-500, 500, -500),
+                         Point3D(-500, -500, -500), Point3D(500, -500, -500))
+
+        # Cube´s edges
+        self.aristas = (Segment3D(self.vertices[0], self.vertices[1]), Segment3D(self.vertices[1], self.vertices[2]),
+                        Segment3D(self.vertices[2], self.vertices[3]), Segment3D(self.vertices[3], self.vertices[0]),
+                        Segment3D(self.vertices[0], self.vertices[4]), Segment3D(self.vertices[1], self.vertices[5]),
+                        Segment3D(self.vertices[2], self.vertices[6]), Segment3D(self.vertices[3], self.vertices[7]),
+                        Segment3D(self.vertices[4], self.vertices[5]), Segment3D(self.vertices[5], self.vertices[6]),
+                        Segment3D(self.vertices[6], self.vertices[7]), Segment3D(self.vertices[7], self.vertices[4]))
+
+        # Horizontal, vertical
+        self.planos = (Plane(self.vertices[0], self.vertices[1], self.vertices[4]),
+                       Plane(self.vertices[0], self.vertices[1], self.vertices[3]))
+
+        self.puntos = self.limites(self.p1, self.p2, self.p3)
+
+    def context_menu(self):
+        self.menu.exec_(QCursor.pos())
+
+    def limites(self, p1, p2, p3):
+        plano = Plane(Point3D(p1), Point3D(p2), Point3D(p3))
+        buenos = []
+
+        for i in range(12):
+            inter = intersection(plano, self.aristas[i])
+            if inter:
+                if not isinstance(inter[0], Segment3D):
+                    buenos.append((int(inter[0][0]), int(inter[0][1]), int(inter[0][2])))
+
+        for i in range(8):
+            inter = intersection(plano, self.vertices[i])
+            if inter:
+                buenos.append((int(inter[0][0]), int(inter[0][1]), int(inter[0][2])))
+
+        buenos = list(set(buenos))
+        if len(buenos) == 3:
+            return buenos
+
+        elif 4 <= len(buenos) <= 6:
+            vector = plano.normal_vector
+            proyectados = []
+            print(vector)
+            # Perfil
+            if vector[1] == vector[2] == 0:
+                for i in buenos:
+                    proyectados.append((i[1], i[2]))
+            # Vertical
+            elif vector[0] == vector[1] == 0:
+                proyectante = self.planos[1]
+                for i in buenos:
+                    proyectau = proyectante.projection(i)
+                    proyectados.append((proyectau[0], proyectau[1]))
+
+            # Horizontal
+            else:
+                proyectante = self.planos[0]
+                for i in buenos:
+                    proyectau = proyectante.projection(i)
+                    proyectados.append((proyectau[0], proyectau[2]))
+
+            angulos = []
+            for i in proyectados:
+                angulos.append(atan2(i[0], i[1]))
+
+            juntados = sorted(zip(angulos, buenos))
+            ordenados = [i[1] for i in juntados]
+
+            return ordenados
+
+    def delete(self):
+        self.parent.borrar_plano(self.id)
 
 
 class Renderizador(QOpenGLWidget):
@@ -347,18 +434,19 @@ class Renderizador(QOpenGLWidget):
                         glVertex(recta.traza_v)
                         glEnd()
 
-    def dibujar_planos(self):
+    @staticmethod
+    def dibujar_planos():
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glDepthMask(GL_FALSE)
-        glBegin(GL_QUADS)
-        glColor(0.6, 0.6, 0.15, 0.5)
-        for i in range(len(self.planos)):
-            glVertex(self.planos[i][1][0], self.planos[i][1][2], self.planos[i][1][1])
-            glVertex(self.planos[i][2][0], self.planos[i][2][2], self.planos[i][2][1])
-            glVertex(self.planos[i][3][0], self.planos[i][3][2], self.planos[i][3][1])
-            glVertex(self.planos[i][4][0], self.planos[i][4][2], self.planos[i][4][1])
-        glEnd()
+
+        for i in range(main_app.lista_planos.count()):
+            glBegin(GL_TRIANGLE_FAN)
+            glColor(0.6, 0.6, 0.15, 0.7)
+            plano = main_app.lista_planos.itemWidget(main_app.lista_planos.item(i))
+            for j in plano.puntos:
+                glVertex(j[0], j[1], j[2])
+            glEnd()
         glDepthMask(GL_TRUE)
         glDisable(GL_BLEND)
         # TODO traza del plano
@@ -381,8 +469,7 @@ class Renderizador(QOpenGLWidget):
         gluLookAt(self.x, self.y, self.z, self.dx, self.dy, self.dz, 0, up, 0)
         self.dibujar_puntos()
         self.dibujar_rectas()
-        if self.planos:
-            self.dibujar_planos()
+        self.dibujar_planos()
         self.planos_proyectantes()
         self.dibujar_ejes()
         self.update()
@@ -900,6 +987,11 @@ class Ventana(QMainWindow):
                   Segment3D(self.v[2], self.v[6]), Segment3D(self.v[3], self.v[7]),
                   Segment3D(self.v[4], self.v[5]), Segment3D(self.v[5], self.v[6]),
                   Segment3D(self.v[6], self.v[7]), Segment3D(self.v[7], self.v[4]))
+
+        self.greek_alphabet = (u'\u03B1', u'\u03B2', u'\u03B3', u'\u03B4', u'\u03B5', u'\u03B6', u'\u03B7', u'\u03B8',
+                               u'\u03B9', u'\u03BA', u'\u03BB', u'\u03BC', u'\u03BD', u'\u03BE', u'\u03BF', u'\u03C0',
+                               u'\u03C1', u'\u03C3', u'\u03C4', u'\u03C5', u'\u03C6', u'\u03C7', u'\u03C8', u'\u03C9')
+
         self.actualizar()
         self.setWindowTitle("Dibujo técnico")
         self.setCentralWidget(widget_central)
@@ -933,10 +1025,10 @@ class Ventana(QMainWindow):
         self.pplano1.clear()
         self.pplano2.clear()
         self.pplano3.clear()
-        for i in range(len(self.opciones)):
-            self.pplano1.addItem(self.opciones[i])
-            self.pplano2.addItem(self.opciones[i])
-            self.pplano3.addItem(self.opciones[i])
+        for i in range(self.lista_puntos.count()):
+            self.pplano1.addItem(self.lista_puntos.itemWidget(self.lista_puntos.item(i)).name)
+            self.pplano2.addItem(self.lista_puntos.itemWidget(self.lista_puntos.item(i)).name)
+            self.pplano3.addItem(self.lista_puntos.itemWidget(self.lista_puntos.item(i)).name)
 
     def actualizar(self):
         x = round(500 * (sin(radians(self.renderizador.theta)) * cos(radians(self.renderizador.phi)))
@@ -1009,7 +1101,7 @@ class Ventana(QMainWindow):
         self.lista_puntos.setItemWidget(item, punto)
 
         self.elegir_puntos_recta()
-        # self.elegir_puntos_plano()
+        self.elegir_puntos_plano()
         self.diedrico.update()
 
     def borrar_punto(self, idd):
@@ -1029,6 +1121,15 @@ class Ventana(QMainWindow):
             widget = self.lista_rectas.itemWidget(item)
             if widget.id == idd:
                 self.lista_rectas.takeItem(self.lista_rectas.row(item))
+                break
+        self.diedrico.update()
+
+    def borrar_plano(self, idd):
+        for indx in range(self.lista_planos.count()):
+            item = self.lista_planos.item(indx)
+            widget = self.lista_planos.itemWidget(item)
+            if widget.id == idd:
+                self.lista_planos.takeItem(self.lista_planos.row(item))
                 break
         self.diedrico.update()
 
@@ -1072,7 +1173,6 @@ class Ventana(QMainWindow):
             self.lista_rectas.setItemWidget(item, recta)
 
             self.id_recta += 1
-
             self.diedrico.update()
 
     def crear_plano(self):
@@ -1081,68 +1181,48 @@ class Ventana(QMainWindow):
         punto3 = self.pplano3.currentText()
         nombre = self.plano_nombre.toPlainText()
 
-        for i in range(len(self.renderizador.puntos)):
-            if self.renderizador.puntos[i][0] == punto1:
-                punto1 = self.renderizador.puntos[i]
-            if self.renderizador.puntos[i][0] == punto2:
-                punto2 = self.renderizador.puntos[i]
-            if self.renderizador.puntos[i][0] == punto3:
-                punto3 = self.renderizador.puntos[i]
+        for i in range(self.lista_puntos.count()):
+            if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).name == punto1:
+                punto1 = self.lista_puntos.itemWidget(self.lista_puntos.item(i))
+            if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).name == punto2:
+                punto2 = self.lista_puntos.itemWidget(self.lista_puntos.item(i))
+            if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).name == punto3:
+                punto3 = self.lista_puntos.itemWidget(self.lista_puntos.item(i))
 
-        if len({punto1[-3:], punto2[-3:], punto3[-3:]}) < 3:
+        if len({punto1.coords, punto2.coords, punto3.coords}) < 3:
             QMessageBox.about(self, "Error al crear el plano",
                               "Dos de los puntos proporcionados son coincidentes")
-        elif Point3D.is_collinear(Point3D(punto1[-3:]), Point3D(punto2[-3:]), Point3D(punto3[-3:])):
+        elif Point3D.is_collinear(Point3D(punto1.coords), Point3D(punto2.coords), Point3D(punto3.coords)):
             QMessageBox.about(self, "Error al crear el plano",
                               "El plano debe ser creado por tres puntos no alineados")
-        # TODO Plano en el límite del mal
+
         else:
-            if self.puntero_planos == len(ascii_uppercase):  # Evita que el puntero supere la longitud de la lista
+            # Evita que el puntero supere la longitud de la lista
+            if self.puntero_planos == len(self.greek_alphabet):
                 self.puntero_planos = 0
 
-            if nombre == "":  # Genera nombres genéricos si no se provee uno
-                nombre = ascii_uppercase[self.puntero_planos]
+            # Genera nombres genéricos si no se provee uno
+            if nombre == "":
+                nombre = self.greek_alphabet[self.puntero_planos]
                 self.puntero_planos += 1
 
-            for i in range(len(self.renderizador.planos)):  # Evita nombres duplicados
-                if self.renderizador.planos[i][0] == nombre:
-                    nombre = ascii_uppercase[self.puntero_planos]
+            for i in range(self.lista_planos.count()):  # Evita nombres duplicados
+                if self.lista_planos.itemWidget(self.lista_planos.item(i)).name == nombre:
+                    nombre = self.greek_alphabet[self.puntero_planos]
                     self.puntero_planos += 1
+                    break
 
-            name = QLabel("{}({}, {}, {})".format(nombre, punto1[0], punto2[0], punto3[0]))
+            # Add placeholder item to List
+            item = QListWidgetItem()
+            self.lista_planos.addItem(item)
+            # Create Custom Widget
+            plano = Plano(self, self.id_plano, nombre, punto1, punto2, punto3)
+            item.setSizeHint(plano.minimumSizeHint())
+            # Set the custom_row widget to be displayed within the placeholder Item
+            self.lista_planos.setItemWidget(item, plano)
 
-            vertices = self.plano_limites(punto1, punto2, punto3)
-            vertices = [tuple([p.x, p.y, p.z]) for p in vertices]
-            plano = (nombre, vertices[0], vertices[1], vertices[2], vertices[3])
-            borrar = QPushButton("X")
-            borrar.setMaximumWidth(20)
-
-            # wrapper = partial(self.borrar_plano, (name, borrar), plano)
-            # borrar.clicked.connect(wrapper)
-
-            row = self.elementos3.rowCount()
-
-            self.elementos3.addWidget(name, row, 0)
-            self.elementos3.addWidget(borrar, row, 1)
-            self.renderizador.planos.append(plano)
-
+            self.id_plano += 1
             self.diedrico.update()
-
-    def plano_limites(self, punto1, punto2, punto3):
-        plano = Plane(Point3D(punto1[-3:]), Point3D(punto2[-3:]), Point3D(punto3[-3:]))
-        buenos = []
-        for i in range(12):
-            interseccion = intersection(plano, self.a[i])
-            if interseccion:
-                buenos.append(interseccion[0])
-        return buenos
-
-    def borrar_plano(self, widgets, plano):
-        name, borrar = widgets
-        name.deleteLater()
-        borrar.deleteLater()
-        self.renderizador.planos.remove(plano)
-        self.diedrico.update()
 
 
 if __name__ == "__main__":
