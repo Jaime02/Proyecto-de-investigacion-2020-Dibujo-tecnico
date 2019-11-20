@@ -324,6 +324,11 @@ class Plano(EntidadGeometrica):
 class Renderizador(QOpenGLWidget):
     def __init__(self):
         QOpenGLWidget.__init__(self)
+
+        policy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        policy.setHeightForWidth(True)
+        self.setSizePolicy(policy)
+
         self.dx = 0
         self.dy = 0
         self.dz = 0
@@ -350,13 +355,13 @@ class Renderizador(QOpenGLWidget):
 
     # def sizeHint(self):
     #     return QSize(400, 400)
-        
+
     def heightForWidth(self, width):
         return width
-    
+
     def widthForHeight(self, height):
         return heigth
-    
+
     def recalcular(self):
         self.x = sin(radians(self.theta)) * cos(radians(self.phi)) + self.dx
         self.z = sin(radians(self.theta)) * sin(radians(self.phi)) + self.dz
@@ -622,7 +627,7 @@ class Diedrico(QWidget):
 
     def sizeHint(self):
         return QSize(400, 400)
-    
+
     def heightForWidth(self, width):
         return width
 
@@ -878,10 +883,10 @@ class Ventana(QMainWindow):
 
         self.renderizador = Renderizador()
         self.renderizador.setFocusPolicy(Qt.ClickFocus)
-        dock = QDockWidget("Renderizador")
-        dock.setFeatures(QDockWidget.DockWidgetMovable)
-        self.addDockWidget(Qt.LeftDockWidgetArea, dock)
-        dock.setWidget(self.renderizador)
+        dock_renderizador = QDockWidget("Renderizador")
+        dock_renderizador.setFeatures(QDockWidget.DockWidgetMovable)
+        self.addDockWidget(Qt.LeftDockWidgetArea, dock_renderizador)
+        dock_renderizador.setWidget(self.renderizador)
 
         self.diedrico = Diedrico()
         self.diedrico.setFocusPolicy(Qt.ClickFocus)
@@ -1135,7 +1140,6 @@ class Ventana(QMainWindow):
         self.label_6.setText("Ángulo vertical: " + str(self.renderizador.theta - 360))
         self.label_7.setText("Ángulo horizontal: " + str(self.renderizador.phi))
 
-        x = round(self.renderizador.x, 2)
         y = round(self.renderizador.y, 2)
         z = round(self.renderizador.z, 2)
 
