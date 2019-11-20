@@ -12,7 +12,7 @@ from PyQt5.QtCore import Qt, QRect, pyqtSlot, QSize, QTimer
 from PyQt5.QtGui import QPainter, QPen, QCursor, QTransform, QFont, QColor
 from PyQt5.QtWidgets import QOpenGLWidget, QWidget, QCheckBox, QPushButton, QHBoxLayout, QMainWindow, QLabel, QMenu, \
     QApplication, QVBoxLayout, QSpinBox, QPlainTextEdit, QComboBox, QMessageBox, QGraphicsScene, QGraphicsView, \
-    QListWidgetItem, QListWidget, QAction, QColorDialog, QDialog, QDockWidget, QFrame
+    QListWidgetItem, QListWidget, QAction, QColorDialog, QDialog, QDockWidget, QFrame, QSizePolicy
 from sympy import Line, intersection, Point3D, Plane, Line3D, Segment3D
 
 
@@ -342,6 +342,21 @@ class Renderizador(QOpenGLWidget):
         self.vertices_borde_h = ((500, 0, 500), (-500, 0, 500), (-500, 0, -500), (500, 0, -500))
         self.planos = []
 
+        # H,V
+        size = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        size.setHeightForWidth(True)
+        size.setWidthForHeight(True)
+        self.setSizePolicy(size)
+
+    # def sizeHint(self):
+    #     return QSize(400, 400)
+        
+    def heightForWidth(self, width):
+        return width
+    
+    def widthForHeight(self, height):
+        return heigth
+    
     def recalcular(self):
         self.x = sin(radians(self.theta)) * cos(radians(self.phi)) + self.dx
         self.z = sin(radians(self.theta)) * sin(radians(self.phi)) + self.dz
@@ -601,8 +616,15 @@ class Diedrico(QWidget):
         self.pen_plano_prima = QPen(azul, 4)
         self.pen_plano_prima2 = QPen(azul_oscuro, 4)
 
-    # def minimumSizeHint(self):
-    #     return QSize(2000, 2000)
+        size = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        size.setHeightForWidth(True)
+        self.setSizePolicy(size)
+
+    def sizeHint(self):
+        return QSize(400, 400)
+    
+    def heightForWidth(self, width):
+        return width
 
     def paintEvent(self, event):
         qp = QPainter(self)
@@ -855,11 +877,9 @@ class Ventana(QMainWindow):
         widget_central = QWidget(self)
 
         self.renderizador = Renderizador()
-        self.renderizador.setGeometry(QRect(0, 0, 1000, 1000))
         self.renderizador.setFocusPolicy(Qt.ClickFocus)
         dock = QDockWidget("Renderizador")
         dock.setFeatures(QDockWidget.DockWidgetMovable)
-        dock.resize(50, 50)
         self.addDockWidget(Qt.LeftDockWidgetArea, dock)
         dock.setWidget(self.renderizador)
 
@@ -963,8 +983,8 @@ class Ventana(QMainWindow):
         self.vista.setGeometry(1000, 500, 500, 500)
         self.vista.centerOn(500, 500)
 
-        self.valor_do = QSpinBox(widget_central)
-        self.valor_do.setGeometry(QRect(1110, 160, 51, 20))
+        self.valor_do = QSpinBox(frame)
+        self.valor_do.setGeometry(QRect(110, 160, 51, 20))
         self.valor_do.setRange(-500, 500)
         self.valor_a = QSpinBox(frame)
         self.valor_a.setGeometry(QRect(110, 180, 51, 20))
