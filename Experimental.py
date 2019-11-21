@@ -325,48 +325,50 @@ class Renderizador(QOpenGLWidget):
     def __init__(self):
         QOpenGLWidget.__init__(self)
 
-        policy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        policy.setHeightForWidth(True)
-        self.setSizePolicy(policy)
-
-        self.dx = 0
-        self.dy = 0
-        self.dz = 0
+        self.desviacion_x = 0
+        self.desviacion_y = 0
+        self.desviacion_z = 0
         self.theta = 405
         self.phi = 45
-        self.z1 = 150
-        self.z2 = -150
-        self.x = sin(radians(self.theta)) * cos(radians(self.phi)) + self.dx
-        self.z = sin(radians(self.theta)) * sin(radians(self.phi)) + self.dz
-        self.y = cos(radians(self.theta)) + self.dy
+        self.zoom_1 = 150
+        self.zoom_2 = -150
+        self.x = sin(radians(self.theta)) * cos(radians(self.phi)) + self.desviacion_x
+        self.z = sin(radians(self.theta)) * sin(radians(self.phi)) + self.desviacion_z
+        self.y = cos(radians(self.theta)) + self.desviacion_y
         self.vertices_vertical = ((500, 500, 0), (-500, 500, 0), (-500, 0, 0), (500, 0, 0))
         self.vertices_vertical_debajo = ((500, 0, 0), (-500, 0, 0), (-500, -500, 0), (500, -500, 0))
         self.vertices_horizontal = ((500, 0, 0), (500, 0, 500), (-500, 0, 500), (-500, 0, 0))
         self.vertices_horizontal_detras = ((500, 0, 0), (500, 0, -500), (-500, 0, -500), (-500, 0, 0))
-        self.vertices_borde_v = ((500, 500, 0), (500, -500, 0), (-500, -500, 0), (-500, 500, 0))
-        self.vertices_borde_h = ((500, 0, 500), (-500, 0, 500), (-500, 0, -500), (500, 0, -500))
+        self.vertices_borde_vertical = ((500, 500, 0), (500, -500, 0), (-500, -500, 0), (-500, 500, 0))
+        self.vertices_borde_horizontal = ((500, 0, 500), (-500, 0, 500), (-500, 0, -500), (500, 0, -500))
         self.planos = []
 
-        # H,V
-        size = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        size.setHeightForWidth(True)
-        size.setWidthForHeight(True)
-        self.setSizePolicy(size)
+        # # H,V
+        # policy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        # policy.setHeightForWidth(True)
+        # self.setSizePolicy(policy)
 
-    # def sizeHint(self):
-    #     return QSize(400, 400)
+        # size = QSizePolicy(Qt.KeepAspectRatio)
+        # size.setHeightForWidth(True)
+        # size.setWidthForHeight(True)
+        # self.setSizePolicy(size)
 
     def heightForWidth(self, width):
         return width
 
-    def widthForHeight(self, height):
-        return heigth
+    def sizeHint(self):
+        return QSize(400, 400)
+
+    def resizeEvent(self, event):
+        event.accept()
+
+        self.resize(event.size().width(), event.size().height())
 
     def recalcular(self):
-        self.x = sin(radians(self.theta)) * cos(radians(self.phi)) + self.dx
-        self.z = sin(radians(self.theta)) * sin(radians(self.phi)) + self.dz
-        self.y = cos(radians(self.theta)) + self.dy
-        gluLookAt(self.x, self.y, self.z, self.dx, self.dy, self.dz, 0, 1, 0)
+        self.x = sin(radians(self.theta)) * cos(radians(self.phi)) + self.desviacion_x
+        self.z = sin(radians(self.theta)) * sin(radians(self.phi)) + self.desviacion_z
+        self.y = cos(radians(self.theta)) + self.desviacion_y
+        gluLookAt(self.x, self.y, self.z, self.desviacion_x, self.desviacion_y, self.desviacion_z, 0, 1, 0)
         main_app.actualizar()
         self.update()
 
@@ -388,11 +390,11 @@ class Renderizador(QOpenGLWidget):
     def ver_reset(self):
         self.theta = 405
         self.phi = 45
-        self.z1 = 150
-        self.z2 = -150
-        self.dx = 0
-        self.dy = 0
-        self.dz = 0
+        self.zoom_1 = 150
+        self.zoom_2 = -150
+        self.desviacion_x = 0
+        self.desviacion_y = 0
+        self.desviacion_z = 0
         self.recalcular()
 
     def planos_proyectantes(self):
@@ -419,12 +421,12 @@ class Renderizador(QOpenGLWidget):
         glColor(0.2, 1, 0.2, 0.5)
         glBegin(GL_LINE_LOOP)
         for vertex in range(4):
-            glVertex(self.vertices_borde_v[vertex])
+            glVertex(self.vertices_borde_vertical[vertex])
         glColor(1, 0.2, 0.2, 0.5)
         glEnd()
         glBegin(GL_LINE_LOOP)
         for vertex in range(4):
-            glVertex(self.vertices_borde_h[vertex])
+            glVertex(self.vertices_borde_horizontal[vertex])
         glEnd()
 
     @staticmethod
@@ -519,16 +521,16 @@ class Renderizador(QOpenGLWidget):
     def paintGL(self):
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
-        glOrtho(self.z1, self.z2, self.z2, self.z1, -5000, 5000)
+        glOrtho(self.zoom_1, self.zoom_2, self.zoom_2, self.zoom_1, -5000, 5000)
         glMatrixMode(GL_MODELVIEW)
         glClearColor(1, 1, 1, 0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glLoadIdentity()
-        up = 1
+        arriba = 1
         if self.theta == 0 or self.theta == 360:
             self.theta = 360
-            up = -1
-        gluLookAt(self.x, self.y, self.z, self.dx, self.dy, self.dz, 0, up, 0)
+            arriba = -1
+        gluLookAt(self.x, self.y, self.z, self.desviacion_x, self.desviacion_y, self.desviacion_z, 0, arriba, 0)
         self.dibujar_puntos()
         self.dibujar_rectas()
         self.dibujar_planos()
@@ -546,17 +548,17 @@ class Renderizador(QOpenGLWidget):
         elif event.key() == Qt.Key_D:
             self.phi += 5
         elif event.key() == Qt.Key_Q:
-            self.dz += 1
+            self.desviacion_z += 1
         elif event.key() == Qt.Key_E:
-            self.dz -= 1
+            self.desviacion_z -= 1
         elif event.key() == Qt.Key_Left:
-            self.dx += 1
+            self.desviacion_x += 1
         elif event.key() == Qt.Key_Up:
-            self.dy += 1
+            self.desviacion_y += 1
         elif event.key() == Qt.Key_Right:
-            self.dx -= 1
+            self.desviacion_x -= 1
         elif event.key() == Qt.Key_Down:
-            self.dy -= 1
+            self.desviacion_y -= 1
         elif event.key() == Qt.Key_1:
             self.ver_alzado()
         elif event.key() == Qt.Key_2:
@@ -566,11 +568,11 @@ class Renderizador(QOpenGLWidget):
         elif event.key() == Qt.Key_R:
             self.ver_reset()
         elif event.key() == Qt.Key_Minus:
-            self.z1 += 10
-            self.z2 -= 10
+            self.zoom_1 += 10
+            self.zoom_2 -= 10
         elif event.key() == Qt.Key_Plus:
-            self.z1 -= 10
-            self.z2 += 10
+            self.zoom_1 -= 10
+            self.zoom_2 += 10
         if self.theta < 360:
             self.theta = 360
         if self.theta > 540:
@@ -579,13 +581,13 @@ class Renderizador(QOpenGLWidget):
             self.phi -= 360
         if self.phi < 0:
             self.phi += 360
-        if self.z1 < 10:
-            self.z1 = 10
-        if self.z2 > -10:
-            self.z2 = -10
-        self.x = sin(radians(self.theta)) * cos(radians(self.phi)) + self.dx
-        self.z = sin(radians(self.theta)) * sin(radians(self.phi)) + self.dz
-        self.y = cos(radians(self.theta)) + self.dy
+        if self.zoom_1 < 10:
+            self.zoom_1 = 10
+        if self.zoom_2 > -10:
+            self.zoom_2 = -10
+        self.x = sin(radians(self.theta)) * cos(radians(self.phi)) + self.desviacion_x
+        self.z = sin(radians(self.theta)) * sin(radians(self.phi)) + self.desviacion_z
+        self.y = cos(radians(self.theta)) + self.desviacion_y
 
         main_app.actualizar()
         self.update()
@@ -602,28 +604,29 @@ class Diedrico(QWidget):
         azul = QColor(50, 100, 255)
         azul_oscuro = QColor(10, 50, 140)
 
-        self.pen_lt = QPen(negro)
-        self.pen_lt.setWidth(1)
+        self.pen_linea_tierra = QPen(negro)
+        self.pen_linea_tierra.setWidth(1)
 
-        self.pen_pprima = QPen(QColor(201, 10, 0), 3)
-        self.pen_pprima2 = QPen(QColor(8, 207, 41), 3)
+        self.pen_punto_prima = QPen(QColor(201, 10, 0), 3)
+        self.pen_punto_prima2 = QPen(QColor(8, 207, 41), 3)
 
-        self.pen_rprima = QPen(rojo, 3, Qt.DotLine)
-        self.pen_rprima.setDashPattern([1, 3])
-        self.pen_rprima2 = QPen(verde, 3, Qt.DotLine)
-        self.pen_rprima2.setDashPattern([1, 3])
+        self.pen_recta_prima = QPen(rojo, 3, Qt.DotLine)
+        self.pen_recta_prima.setDashPattern([1, 3])
+        self.pen_recta_prima2 = QPen(verde, 3, Qt.DotLine)
+        self.pen_recta_prima2.setDashPattern([1, 3])
 
-        self.pen_rprimaC = QPen(rojo, 3)
-        self.pen_rprima2C = QPen(verde, 3)
+        self.pen_recta_prima_continuo = QPen(rojo, 3)
+        self.pen_recta_prima2_continuo = QPen(verde, 3)
         self.pen_trazas = QPen(Qt.black, 3)
+
         self.pen_prima3 = QPen(Qt.black, 3)
 
         self.pen_plano_prima = QPen(azul, 4)
         self.pen_plano_prima2 = QPen(azul_oscuro, 4)
 
-        size = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        size.setHeightForWidth(True)
-        self.setSizePolicy(size)
+        # size = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        # size.setHeightForWidth(True)
+        # self.setSizePolicy(size)
 
     def sizeHint(self):
         return QSize(400, 400)
@@ -670,7 +673,7 @@ class Diedrico(QWidget):
             main_app.vista.setTransform(tr)
 
     def elementos_estaticos(self, qp):
-        qp.setPen(self.pen_lt)
+        qp.setPen(self.pen_linea_tierra)
         qp.drawRect(0, 0, 1000, 1000)  # Marco
 
         qp.drawLine(5, 500, 995, 500)  # LT
@@ -689,11 +692,11 @@ class Diedrico(QWidget):
                     self.punto_prima3(qp, punto)
 
     def punto_prima(self, qp, punto):
-        qp.setPen(self.pen_pprima)
+        qp.setPen(self.pen_punto_prima)
         qp.drawPoint(punto.x, -punto.z)
 
     def punto_prima2(self, qp, punto):
-        qp.setPen(self.pen_pprima2)
+        qp.setPen(self.pen_punto_prima2)
         qp.drawPoint(punto.x, punto.y)
 
     def punto_prima3(self, qp, punto):
@@ -794,9 +797,9 @@ class Diedrico(QWidget):
                                 self.dibujar_continuo(qp, extremos[0], recta.traza_h)
 
                 # Dibuja en discontínuo
-                qp.setPen(self.pen_rprima)
+                qp.setPen(self.pen_recta_prima)
                 self.recta_prima(qp, extremos)
-                qp.setPen(self.pen_rprima2)
+                qp.setPen(self.pen_recta_prima2)
                 self.recta_prima2(qp, extremos)
 
                 # Tercera proyección
@@ -808,9 +811,9 @@ class Diedrico(QWidget):
 
     def dibujar_continuo(self, qp, inicio, fin):
         # Intercambio de ejes para arreglar sistema de coordenadas
-        qp.setPen(self.pen_rprimaC)
+        qp.setPen(self.pen_recta_prima_continuo)
         self.recta_prima(qp, (inicio, fin))
-        qp.setPen(self.pen_rprima2C)
+        qp.setPen(self.pen_recta_prima2_continuo)
         self.recta_prima2(qp, (inicio, fin))
 
     @staticmethod
