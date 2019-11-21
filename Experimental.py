@@ -873,15 +873,24 @@ class Ventana(QMainWindow):
         QMainWindow.__init__(self)
 
         self.resize(1500, 1025)
-
+    
         widget_central = QWidget(self)
 
+        container = QWidget()
+        
         self.renderizador = Renderizador()
         self.renderizador.setFocusPolicy(Qt.ClickFocus)
+        self.renderizador.setFixedSize(300, 300)
+
+        layout = QVBoxLayout(container)
+        layout.addWidget(self.renderizador)
+        
         dock = QDockWidget("Renderizador")
         dock.setFeatures(QDockWidget.DockWidgetMovable)
         self.addDockWidget(Qt.LeftDockWidgetArea, dock)
-        dock.setWidget(self.renderizador)
+        
+        dock.setWidget(container)
+
 
         self.diedrico = Diedrico()
         self.diedrico.setFocusPolicy(Qt.ClickFocus)
