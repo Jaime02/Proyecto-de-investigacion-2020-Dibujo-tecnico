@@ -341,7 +341,6 @@ class Renderizador(QOpenGLWidget):
         self.vertices_horizontal_detras = ((500, 0, 0), (500, 0, -500), (-500, 0, -500), (-500, 0, 0))
         self.vertices_borde_vertical = ((500, 500, 0), (500, -500, 0), (-500, -500, 0), (-500, 500, 0))
         self.vertices_borde_horizontal = ((500, 0, 500), (-500, 0, 500), (-500, 0, -500), (500, 0, -500))
-<<<<<<< HEAD
 
     def sizeHint(self):
         return QSize(600, 600)
@@ -353,31 +352,6 @@ class Renderizador(QOpenGLWidget):
             self.resize(self.width(), self.width())
         QOpenGLWidget.resizeEvent(self, event)
 
-=======
-        self.planos = []
-
-        # # H,V
-        # policy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        # policy.setHeightForWidth(True)
-        # self.setSizePolicy(policy)
-
-        # size = QSizePolicy(Qt.KeepAspectRatio)
-        # size.setHeightForWidth(True)
-        # size.setWidthForHeight(True)
-        # self.setSizePolicy(size)
-
-    def heightForWidth(self, width):
-        return width
-
-    def sizeHint(self):
-        return QSize(400, 400)
-
-    def resizeEvent(self, event):
-        event.accept()
-
-        self.resize(event.size().width(), event.size().height())
-
->>>>>>> f61c63dfa22f57cebf6e35cf9e82803b656586c0
     def recalcular(self):
         self.x = sin(radians(self.theta)) * cos(radians(self.phi)) + self.desviacion_x
         self.z = sin(radians(self.theta)) * sin(radians(self.phi)) + self.desviacion_z
@@ -412,7 +386,6 @@ class Renderizador(QOpenGLWidget):
         self.recalcular()
 
     def planos_proyectantes(self):
-<<<<<<< HEAD
         vertical = main_app.ajustes.ver_plano_vertical.isChecked()
         horizontal = main_app.ajustes.ver_plano_horizontal.isChecked()
         if vertical or horizontal:
@@ -451,38 +424,6 @@ class Renderizador(QOpenGLWidget):
                 for vertex in range(4):
                     glVertex(self.vertices_borde_horizontal[vertex])
                 glEnd()
-=======
-        glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        glDepthMask(GL_FALSE)
-        glBegin(GL_QUADS)
-        glColor(1, 0.1, 0.1, 0.5)
-        for vertex in range(4):
-            glVertex(self.vertices_horizontal_detras[vertex])
-        glColor(0.1, 1, 0.1, 0.5)
-        for vertex in range(4):
-            glVertex(self.vertices_vertical_debajo[vertex])
-        glColor(0.1, 1, 0.1, 0.5)
-        for vertex in range(4):
-            glVertex(self.vertices_vertical[vertex])
-        glColor(1, 0.1, 0.1, 0.5)
-        for vertex in range(4):
-            glVertex(self.vertices_horizontal[vertex])
-        glEnd()
-        glDepthMask(GL_TRUE)
-        glDisable(GL_BLEND)
-        glLineWidth(1)
-        glColor(0.2, 1, 0.2, 0.5)
-        glBegin(GL_LINE_LOOP)
-        for vertex in range(4):
-            glVertex(self.vertices_borde_vertical[vertex])
-        glColor(1, 0.2, 0.2, 0.5)
-        glEnd()
-        glBegin(GL_LINE_LOOP)
-        for vertex in range(4):
-            glVertex(self.vertices_borde_horizontal[vertex])
-        glEnd()
->>>>>>> f61c63dfa22f57cebf6e35cf9e82803b656586c0
 
     @staticmethod
     def dibujar_ejes():
@@ -679,20 +620,8 @@ class Diedrico(QWidget):
         self.pen_plano_prima = QPen(azul, 4)
         self.pen_plano_prima2 = QPen(azul_oscuro, 4)
 
-<<<<<<< HEAD
     # def sizeHint(self):
     #     return QSize(10, 10)
-=======
-        # size = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        # size.setHeightForWidth(True)
-        # self.setSizePolicy(size)
-
-    def sizeHint(self):
-        return QSize(400, 400)
-
-    def heightForWidth(self, width):
-        return width
->>>>>>> f61c63dfa22f57cebf6e35cf9e82803b656586c0
 
     def paintEvent(self, event):
         qp = QPainter(self)
@@ -954,7 +883,6 @@ class Ventana(QMainWindow):
 
         self.renderizador = Renderizador()
         self.renderizador.setFocusPolicy(Qt.ClickFocus)
-<<<<<<< HEAD
         dock_renderizador = QDockWidget("Renderizador")
         dock_renderizador.setWidget(self.renderizador)
         dock_renderizador.setFeatures(QDockWidget.DockWidgetMovable)
@@ -962,26 +890,6 @@ class Ventana(QMainWindow):
 
         scene = QGraphicsScene()
         self.vista = QGraphicsView(scene)
-=======
-<<<<<<< HEAD
-        dock_renderizador = QDockWidget("Renderizador")
-        dock_renderizador.setFeatures(QDockWidget.DockWidgetMovable)
-        self.addDockWidget(Qt.LeftDockWidgetArea, dock_renderizador)
-        dock_renderizador.setWidget(self.renderizador)
-=======
-        self.renderizador.setFixedSize(300, 300)
-
-        layout = QVBoxLayout(container)
-        layout.addWidget(self.renderizador)
-        
-        dock = QDockWidget("Renderizador")
-        dock.setFeatures(QDockWidget.DockWidgetMovable)
-        self.addDockWidget(Qt.LeftDockWidgetArea, dock)
-        
-        dock.setWidget(container)
-
->>>>>>> 6889d4eed35bb7497591e930fe64da2418ea91d2
->>>>>>> f61c63dfa22f57cebf6e35cf9e82803b656586c0
 
         self.diedrico = Diedrico()
         self.diedrico.setFocusPolicy(Qt.ClickFocus)
