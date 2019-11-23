@@ -112,14 +112,14 @@ class Recta(EntidadGeometrica):
 
         self.borrar.triggered.connect(lambda: main_app.borrar_recta(self.id))
 
-        self.ver_traza_h = QAction("Traza en PH")
-        self.ver_traza_v = QAction("Traza en PV")
-        self.ver_traza_h.setCheckable(True)
-        self.ver_traza_v.setCheckable(True)
-        self.ver_traza_h.setChecked(True)
-        self.ver_traza_v.setChecked(True)
-        self.menu.addAction(self.ver_traza_h)
-        self.menu.addAction(self.ver_traza_v)
+        self.ver_traza_horizontal = QAction("Traza en PH")
+        self.ver_traza_vertical = QAction("Traza en PV")
+        self.ver_traza_horizontal.setCheckable(True)
+        self.ver_traza_vertical.setCheckable(True)
+        self.ver_traza_horizontal.setChecked(True)
+        self.ver_traza_vertical.setChecked(True)
+        self.menu.addAction(self.ver_traza_horizontal)
+        self.menu.addAction(self.ver_traza_vertical)
 
         self.infinita = QAction("Infinita")
         self.infinita.setCheckable(True)
@@ -133,21 +133,21 @@ class Recta(EntidadGeometrica):
         if self.traza_v:
             self.traza_v = (self.traza_v[0], self.traza_v[2], self.traza_v[1])
             if self.traza_v[0] > 500 or self.traza_v[1] > 500:
-                self.ver_traza_v.setCheckable(False)
-                self.ver_traza_v.setDisabled(True)
+                self.ver_traza_vertical.setCheckable(False)
+                self.ver_traza_vertical.setDisabled(True)
         else:
-            self.ver_traza_v.setCheckable(False)
-            self.ver_traza_v.setDisabled(True)
+            self.ver_traza_vertical.setCheckable(False)
+            self.ver_traza_vertical.setDisabled(True)
 
         self.traza_h = self.calcular_traza_h()
         if self.traza_h:
             self.traza_h = (self.traza_h[0], self.traza_h[2], self.traza_h[1])
             if self.traza_h[0] > 500 or self.traza_h[2] > 500:
-                self.ver_traza_h.setCheckable(False)
-                self.ver_traza_h.setDisabled(True)
+                self.ver_traza_horizontal.setCheckable(False)
+                self.ver_traza_horizontal.setDisabled(True)
         else:
-            self.ver_traza_h.setCheckable(False)
-            self.ver_traza_h.setDisabled(True)
+            self.ver_traza_horizontal.setCheckable(False)
+            self.ver_traza_horizontal.setDisabled(True)
 
     def extremos(self):
         intersecciones = []
@@ -219,25 +219,25 @@ class Plano(EntidadGeometrica):
 
         self.puntos = self.limites(self.p1, self.p2, self.p3)
 
-        self.ver_traza_h = QAction("Traza en PH")
-        self.ver_traza_v = QAction("Traza en PV")
-        self.ver_traza_h.setCheckable(True)
-        self.ver_traza_v.setCheckable(True)
-        self.ver_traza_h.setChecked(True)
-        self.ver_traza_v.setChecked(True)
-        self.menu.addAction(self.ver_traza_h)
-        self.menu.addAction(self.ver_traza_v)
+        self.ver_traza_horizontal = QAction("Traza en PH")
+        self.ver_traza_vertical = QAction("Traza en PV")
+        self.ver_traza_horizontal.setCheckable(True)
+        self.ver_traza_vertical.setCheckable(True)
+        self.ver_traza_horizontal.setChecked(True)
+        self.ver_traza_vertical.setChecked(True)
+        self.menu.addAction(self.ver_traza_horizontal)
+        self.menu.addAction(self.ver_traza_vertical)
 
         self.traza_v = self.calcular_traza_v()
         self.traza_h = self.calcular_traza_h()
 
         if not self.traza_v:
-            self.ver_traza_v.setChecked(False)
-            self.ver_traza_v.setCheckable(False)
+            self.ver_traza_vertical.setChecked(False)
+            self.ver_traza_vertical.setCheckable(False)
 
         if not self.traza_h:
-            self.ver_traza_h.setChecked(False)
-            self.ver_traza_h.setCheckable(False)
+            self.ver_traza_horizontal.setChecked(False)
+            self.ver_traza_horizontal.setCheckable(False)
 
     def limites(self, p1, p2, p3):
         plano = Plane(Point3D(p1), Point3D(p2), Point3D(p3))
@@ -352,7 +352,7 @@ class Renderizador(QOpenGLWidget):
             self.resize(self.width(), self.width())
         QOpenGLWidget.resizeEvent(self, event)
 
-    def recalcular(self):
+    def recalcular_posicion(self):
         self.x = sin(radians(self.theta)) * cos(radians(self.phi)) + self.desviacion_x
         self.z = sin(radians(self.theta)) * sin(radians(self.phi)) + self.desviacion_z
         self.y = cos(radians(self.theta)) + self.desviacion_y
@@ -363,17 +363,17 @@ class Renderizador(QOpenGLWidget):
     def ver_alzado(self):
         self.phi = 90
         self.theta = 450
-        self.recalcular()
+        self.recalcular_posicion()
 
     def ver_planta(self):
         self.phi = 90
         self.theta = 360
-        self.recalcular()
+        self.recalcular_posicion()
 
     def ver_perfil(self):
         self.phi = 0
         self.theta = 450
-        self.recalcular()
+        self.recalcular_posicion()
 
     def ver_reset(self):
         self.theta = 405
@@ -383,7 +383,7 @@ class Renderizador(QOpenGLWidget):
         self.desviacion_x = 0
         self.desviacion_y = 0
         self.desviacion_z = 0
-        self.recalcular()
+        self.recalcular_posicion()
 
     def planos_proyectantes(self):
         vertical = main_app.ajustes.ver_plano_vertical.isChecked()
@@ -470,18 +470,20 @@ class Renderizador(QOpenGLWidget):
                     glVertex(recta.p1)
                     glVertex(recta.p2)
                 glEnd()
-                if recta.traza_h and recta.ver_traza_h.isChecked():
-                    if recta.traza_h[0] < 500 and recta.traza_h[2] < 500:
-                        glColor(1, 0, 0, 0)
-                        glBegin(GL_POINTS)
-                        glVertex(recta.traza_h)
-                        glEnd()
-                if recta.traza_v and recta.ver_traza_v.isChecked():
-                    if recta.traza_v[0] < 500 and recta.traza_v[1] < 500:
-                        glColor(0, 1, 0, 0)
-                        glBegin(GL_POINTS)
-                        glVertex(recta.traza_v)
-                        glEnd()
+                if main_app.ajustes.ver_rectas_trazas_horizontales.isChecked():
+                    if recta.traza_h and recta.ver_traza_horizontal.isChecked():
+                        if recta.traza_h[0] < 500 and recta.traza_h[2] < 500:
+                            glColor(1, 0, 0, 0)
+                            glBegin(GL_POINTS)
+                            glVertex(recta.traza_h)
+                            glEnd()
+                if main_app.ajustes.ver_rectas_trazas_verticales.isChecked():
+                    if recta.traza_v and recta.ver_traza_vertical.isChecked():
+                        if recta.traza_v[0] < 500 and recta.traza_v[1] < 500:
+                            glColor(0, 1, 0, 0)
+                            glBegin(GL_POINTS)
+                            glVertex(recta.traza_v)
+                            glEnd()
 
     @staticmethod
     def dibujar_planos():
@@ -489,7 +491,7 @@ class Renderizador(QOpenGLWidget):
             plano = main_app.lista_planos.itemWidget(main_app.lista_planos.item(i))
             if plano.render.isChecked():
                 glEnable(GL_BLEND)
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+                glBlendFunc(GL_SRC_ALPHA, GL_SRC_ALPHA)
                 glDepthMask(GL_FALSE)
 
                 if plano.render.isChecked():
@@ -501,12 +503,13 @@ class Renderizador(QOpenGLWidget):
                 glDepthMask(GL_TRUE)
                 glDisable(GL_BLEND)
                 glColor(0, 0, 0, 0)
-                if plano.ver_traza_v.isChecked():
+                if plano.ver_traza_vertical.isChecked():
                     glBegin(GL_LINES)
                     glVertex(plano.traza_v[0])
                     glVertex(plano.traza_v[1])
                     glEnd()
-                if plano.ver_traza_h.isChecked():
+                if plano.ver_traza_horizontal.isChecked():
+                    glBegin(GL_LINES)
                     glVertex(plano.traza_h[0])
                     glVertex(plano.traza_h[1])
                     glEnd()
@@ -527,11 +530,15 @@ class Renderizador(QOpenGLWidget):
             self.theta = 360
             arriba = -1
         gluLookAt(self.x, self.y, self.z, self.desviacion_x, self.desviacion_y, self.desviacion_z, 0, arriba, 0)
-        self.dibujar_puntos()
-        self.dibujar_rectas()
-        self.dibujar_planos()
         self.planos_proyectantes()
-        self.dibujar_ejes()
+        if main_app.ajustes.ver_puntos.isChecked():
+            self.dibujar_puntos()
+        if main_app.ajustes.ver_rectas.isChecked():
+            self.dibujar_rectas()
+        if main_app.ajustes.ver_planos.isChecked():
+            self.dibujar_planos()
+        if main_app.ajustes.ver_ejes.isChecked():
+            self.dibujar_ejes()
         self.update()
 
     def keyPressEvent(self, event):
@@ -834,10 +841,10 @@ class Diedrico(QWidget):
     def dibujar_trazas_recta(self, qp, recta):
         qp.setPen(self.pen_trazas)
         if recta.infinita.isChecked():
-            if recta.traza_h and recta.ver_traza_h.isChecked():
+            if recta.traza_h and recta.ver_traza_horizontal.isChecked():
                 qp.drawPoint(int(recta.traza_h[0]), int(-recta.traza_h[2]))  # V "
                 qp.drawPoint(int(recta.traza_h[0]), 0)  # V '
-            if recta.traza_v and recta.ver_traza_v.isChecked():
+            if recta.traza_v and recta.ver_traza_vertical.isChecked():
                 qp.drawPoint(int(recta.traza_v[0]), int(recta.traza_v[1]))  # H '
                 qp.drawPoint(int(recta.traza_v[0]), 0)  # H "
 
@@ -856,18 +863,73 @@ class Diedrico(QWidget):
 class Ajustes(QMainWindow):
     def __init__(self):
         QMainWindow.__init__(self)
-        self.resize(500, 500)
+        self.setFixedSize(420, 135)
         fuente = QFont()
         fuente.setPointSize(12)
         widget_central = QWidget(self)
 
+        ajustes = QLabel(widget_central)
+        ajustes.setGeometry(10, 10, 40, 16)
+        ajustes.setText("Ajustes:")
+
+        puntos = QLabel(widget_central)
+        puntos.setText("Puntos:")
+        puntos.setGeometry(10, 90, 37, 16)
+        rectas = QLabel(widget_central)
+        rectas.setText("Rectas")
+        rectas.setGeometry(140, 10, 41, 16)
+        planos = QLabel(widget_central)
+        planos.setText("Planos")
+        planos.setGeometry(280, 10, 35, 16)
+
         self.ver_plano_horizontal = QCheckBox(widget_central)
         self.ver_plano_horizontal.setText("Ver plano horizontal")
-        self.ver_plano_horizontal.setGeometry(10, 10, 120, 20)
+        self.ver_plano_horizontal.setChecked(True)
+        self.ver_plano_horizontal.setGeometry(10, 70, 118, 17)
 
         self.ver_plano_vertical = QCheckBox(widget_central)
         self.ver_plano_vertical.setText("Ver plano vertical")
-        self.ver_plano_vertical.setGeometry(130, 10, 240, 20)
+        self.ver_plano_vertical.setChecked(True)
+        self.ver_plano_vertical.setGeometry(10, 50, 106, 17)
+
+        self.ver_ejes = QCheckBox(widget_central)
+        self.ver_ejes.setText("Ver ejes")
+        self.ver_ejes.setChecked(True)
+        self.ver_ejes.setGeometry(10, 30, 62, 17)
+
+        self.ver_puntos = QCheckBox(widget_central)
+        self.ver_puntos.setText("Ver puntos")
+        self.ver_puntos.setChecked(True)
+        self.ver_puntos.setGeometry(10, 110, 75, 17)
+
+        self.ver_rectas = QCheckBox(widget_central)
+        self.ver_rectas.setText("Ver rectas")
+        self.ver_rectas.setChecked(True)
+        self.ver_rectas.setGeometry(140, 30, 133, 17)
+
+        self.ver_planos = QCheckBox(widget_central)
+        self.ver_planos.setText("Ver planos")
+        self.ver_planos.setChecked(True)
+        self.ver_planos.setGeometry(280, 30, 73, 17)
+
+        self.ver_rectas_trazas_verticales = QCheckBox(widget_central)
+        self.ver_rectas_trazas_verticales.setChecked(True)
+        self.ver_rectas_trazas_verticales.setText("Ver trazas verticales")
+        self.ver_rectas_trazas_verticales.setGeometry(140, 70, 121, 17)
+
+        self.ver_rectas_trazas_horizontales = QCheckBox(widget_central)
+        self.ver_rectas_trazas_horizontales.setChecked(True)
+        self.ver_rectas_trazas_horizontales.setGeometry(140, 50, 129, 17)
+        self.ver_rectas_trazas_horizontales.setText("Ver trazas horizontales")
+
+        self.ver_planos_trazas_verticales = QCheckBox(widget_central)
+        self.ver_planos_trazas_verticales.setChecked(True)
+        self.ver_planos_trazas_verticales.setGeometry(280, 70, 121, 17)
+        self.ver_planos_trazas_verticales.setText("Ver trazas verticales")
+        self.ver_planos_trazas_horizontales = QCheckBox(widget_central)
+        self.ver_planos_trazas_horizontales.setChecked(True)
+        self.ver_planos_trazas_horizontales.setText("Ver trazas horizontales")
+        self.ver_planos_trazas_horizontales.setGeometry(280, 50, 129, 17)
 
         self.setWindowTitle("Ajustes")
         self.setCentralWidget(widget_central)
