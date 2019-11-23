@@ -341,28 +341,16 @@ class Renderizador(QOpenGLWidget):
         self.vertices_horizontal_detras = ((500, 0, 0), (500, 0, -500), (-500, 0, -500), (-500, 0, 0))
         self.vertices_borde_vertical = ((500, 500, 0), (500, -500, 0), (-500, -500, 0), (-500, 500, 0))
         self.vertices_borde_horizontal = ((500, 0, 500), (-500, 0, 500), (-500, 0, -500), (500, 0, -500))
-        self.planos = []
-
-        # # H,V
-        # policy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        # policy.setHeightForWidth(True)
-        # self.setSizePolicy(policy)
-
-        # size = QSizePolicy(Qt.KeepAspectRatio)
-        # size.setHeightForWidth(True)
-        # size.setWidthForHeight(True)
-        # self.setSizePolicy(size)
-
-    def heightForWidth(self, width):
-        return width
 
     def sizeHint(self):
         return QSize(400, 400)
 
     def resizeEvent(self, event):
-        event.accept()
-
-        self.resize(event.size().width(), event.size().height())
+        if self.width() > self.height():
+            self.resize(self.height(), self.height())
+        elif self.height() > self.width():
+            self.resize(self.width(), self.width())
+        QOpenGLWidget.resizeEvent(self, event)
 
     def recalcular(self):
         self.x = sin(radians(self.theta)) * cos(radians(self.phi)) + self.desviacion_x
@@ -591,7 +579,7 @@ class Renderizador(QOpenGLWidget):
 
         main_app.actualizar()
         self.update()
-        super().keyPressEvent(event)
+        QOpenGLWidget.keyPressEvent(self, event)
 
 
 class Diedrico(QWidget):
@@ -624,15 +612,15 @@ class Diedrico(QWidget):
         self.pen_plano_prima = QPen(azul, 4)
         self.pen_plano_prima2 = QPen(azul_oscuro, 4)
 
-        # size = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        # size.setHeightForWidth(True)
-        # self.setSizePolicy(size)
-
     def sizeHint(self):
         return QSize(400, 400)
 
-    def heightForWidth(self, width):
-        return width
+    def resizeEvent(self, event):
+        if self.width() > self.height():
+            self.resize(self.height(), self.height())
+        elif self.height() > self.width():
+            self.resize(self.width(), self.width())
+        QWidget.resizeEvent(self, event)
 
     def paintEvent(self, event):
         qp = QPainter(self)
@@ -880,23 +868,23 @@ class Ventana(QMainWindow):
     def __init__(self):
         QMainWindow.__init__(self)
 
-        self.resize(1500, 1025)
+        self.showMaximized()
 
         widget_central = QWidget(self)
 
         self.renderizador = Renderizador()
         self.renderizador.setFocusPolicy(Qt.ClickFocus)
         dock_renderizador = QDockWidget("Renderizador")
+        dock_renderizador.setWidget(self.renderizador)
         dock_renderizador.setFeatures(QDockWidget.DockWidgetMovable)
         self.addDockWidget(Qt.LeftDockWidgetArea, dock_renderizador)
-        dock_renderizador.setWidget(self.renderizador)
 
         self.diedrico = Diedrico()
         self.diedrico.setFocusPolicy(Qt.ClickFocus)
-
         dock_diedrico = QDockWidget("Diédrico")
         dock_diedrico.setFeatures(QDockWidget.DockWidgetMovable)
         self.addDockWidget(Qt.RightDockWidgetArea, dock_diedrico)
+
         dock_diedrico.setWidget(self.diedrico)
 
         fuente = QFont()
@@ -955,8 +943,6 @@ class Ventana(QMainWindow):
         label_21.setGeometry(QRect(330, 220, 91, 21))
         label_22 = QLabel(frame)
         label_22.setGeometry(QRect(330, 200, 51, 16))
-        label_23 = QLabel(dock_diedrico)
-        label_23.setGeometry(QRect(0, 982, 21, 16))
 
         boton_r = QPushButton(frame)
         boton_r.setGeometry(QRect(10, 110, 81, 23))
@@ -1019,15 +1005,15 @@ class Ventana(QMainWindow):
         self.plano_nombre.setGeometry(QRect(330, 240, 151, 25))
 
         self.tercera_proyeccion = QCheckBox(dock_diedrico)
-        self.tercera_proyeccion.setGeometry(QRect(25, 992, 111, 17))
+        self.tercera_proyeccion.setGeometry(QRect(58, 3, 111, 17))
         self.ver_puntos = QCheckBox(dock_diedrico)
-        self.ver_puntos.setGeometry(QRect(145, 982, 61, 17))
+        self.ver_puntos.setGeometry(QRect(172, 3, 61, 17))
         self.ver_puntos.setChecked(True)
         self.ver_rectas = QCheckBox(dock_diedrico)
-        self.ver_rectas.setGeometry(QRect(202, 982, 61, 17))
+        self.ver_rectas.setGeometry(QRect(230, 3, 61, 17))
         self.ver_rectas.setChecked(True)
         self.ver_planos = QCheckBox(dock_diedrico)
-        self.ver_planos.setGeometry(QRect(266, 982, 70, 17))
+        self.ver_planos.setGeometry(QRect(288, 3, 70, 17))
         self.ver_planos.setChecked(True)
 
         label.setText("Información:")
@@ -1061,7 +1047,6 @@ class Ventana(QMainWindow):
         self.ver_puntos.setText("Puntos")
         self.ver_rectas.setText("Rectas")
         self.ver_planos.setText("Planos")
-        label_23.setText("Ver:")
 
         ajustes = QPushButton(frame)
         ajustes.setGeometry(QRect(300, 10, 60, 25))
