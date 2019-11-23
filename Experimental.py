@@ -343,7 +343,7 @@ class Renderizador(QOpenGLWidget):
         self.vertices_borde_horizontal = ((500, 0, 500), (-500, 0, 500), (-500, 0, -500), (500, 0, -500))
 
     def sizeHint(self):
-        return QSize(400, 400)
+        return QSize(600, 600)
 
     def resizeEvent(self, event):
         if self.width() > self.height():
@@ -386,36 +386,44 @@ class Renderizador(QOpenGLWidget):
         self.recalcular()
 
     def planos_proyectantes(self):
-        glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        glDepthMask(GL_FALSE)
-        glBegin(GL_QUADS)
-        glColor(1, 0.1, 0.1, 0.5)
-        for vertex in range(4):
-            glVertex(self.vertices_horizontal_detras[vertex])
-        glColor(0.1, 1, 0.1, 0.5)
-        for vertex in range(4):
-            glVertex(self.vertices_vertical_debajo[vertex])
-        glColor(0.1, 1, 0.1, 0.5)
-        for vertex in range(4):
-            glVertex(self.vertices_vertical[vertex])
-        glColor(1, 0.1, 0.1, 0.5)
-        for vertex in range(4):
-            glVertex(self.vertices_horizontal[vertex])
-        glEnd()
-        glDepthMask(GL_TRUE)
-        glDisable(GL_BLEND)
-        glLineWidth(1)
-        glColor(0.2, 1, 0.2, 0.5)
-        glBegin(GL_LINE_LOOP)
-        for vertex in range(4):
-            glVertex(self.vertices_borde_vertical[vertex])
-        glColor(1, 0.2, 0.2, 0.5)
-        glEnd()
-        glBegin(GL_LINE_LOOP)
-        for vertex in range(4):
-            glVertex(self.vertices_borde_horizontal[vertex])
-        glEnd()
+        vertical = main_app.ajustes.ver_plano_vertical.isChecked()
+        horizontal = main_app.ajustes.ver_plano_horizontal.isChecked()
+        if vertical or horizontal:
+            glEnable(GL_BLEND)
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+            glDepthMask(GL_FALSE)
+            glBegin(GL_QUADS)
+            if horizontal:
+                glColor(1, 0.1, 0.1, 0.5)
+                for vertex in range(4):
+                    glVertex(self.vertices_horizontal_detras[vertex])
+            if vertical:
+                glColor(0.1, 1, 0.1, 0.5)
+                for vertex in range(4):
+                    glVertex(self.vertices_vertical_debajo[vertex])
+                glColor(0.1, 1, 0.1, 0.5)
+                for vertex in range(4):
+                    glVertex(self.vertices_vertical[vertex])
+            if horizontal:
+                glColor(1, 0.1, 0.1, 0.5)
+                for vertex in range(4):
+                    glVertex(self.vertices_horizontal[vertex])
+            glEnd()
+            glDepthMask(GL_TRUE)
+            glDisable(GL_BLEND)
+            glLineWidth(1)
+            if vertical:
+                glColor(0.2, 1, 0.2, 0.5)
+                glBegin(GL_LINE_LOOP)
+                for vertex in range(4):
+                    glVertex(self.vertices_borde_vertical[vertex])
+                glEnd()
+            if horizontal:
+                glColor(1, 0.2, 0.2, 0.5)
+                glBegin(GL_LINE_LOOP)
+                for vertex in range(4):
+                    glVertex(self.vertices_borde_horizontal[vertex])
+                glEnd()
 
     @staticmethod
     def dibujar_ejes():
@@ -612,15 +620,8 @@ class Diedrico(QWidget):
         self.pen_plano_prima = QPen(azul, 4)
         self.pen_plano_prima2 = QPen(azul_oscuro, 4)
 
-    def sizeHint(self):
-        return QSize(400, 400)
-
-    def resizeEvent(self, event):
-        if self.width() > self.height():
-            self.resize(self.height(), self.height())
-        elif self.height() > self.width():
-            self.resize(self.width(), self.width())
-        QWidget.resizeEvent(self, event)
+    # def sizeHint(self):
+    #     return QSize(10, 10)
 
     def paintEvent(self, event):
         qp = QPainter(self)
@@ -852,16 +853,24 @@ class Diedrico(QWidget):
                     self.recta_prima2(qp, plano.traza_v)
 
 
-class Ajustes(QWidget):
+class Ajustes(QMainWindow):
     def __init__(self):
-        QWidget.__init__(self)
-        self.setWindowTitle("Ajustes")
-        self.setGeometry(500, 500, 300, 300)
-
+        QMainWindow.__init__(self)
+        self.resize(500, 500)
+        fuente = QFont()
+        fuente.setPointSize(12)
         widget_central = QWidget(self)
-        boton = QPushButton(widget_central)
-        boton.setText("Eo")
-        boton.setGeometry(10, 10, 50, 50)
+
+        self.ver_plano_horizontal = QCheckBox(widget_central)
+        self.ver_plano_horizontal.setText("Ver plano horizontal")
+        self.ver_plano_horizontal.setGeometry(10, 10, 120, 20)
+
+        self.ver_plano_vertical = QCheckBox(widget_central)
+        self.ver_plano_vertical.setText("Ver plano vertical")
+        self.ver_plano_vertical.setGeometry(130, 10, 240, 20)
+
+        self.setWindowTitle("Ajustes")
+        self.setCentralWidget(widget_central)
 
 
 class Ventana(QMainWindow):
@@ -870,7 +879,7 @@ class Ventana(QMainWindow):
 
         self.showMaximized()
 
-        widget_central = QWidget(self)
+        widget_central = QWidget()
 
         self.renderizador = Renderizador()
         self.renderizador.setFocusPolicy(Qt.ClickFocus)
@@ -879,15 +888,21 @@ class Ventana(QMainWindow):
         dock_renderizador.setFeatures(QDockWidget.DockWidgetMovable)
         self.addDockWidget(Qt.LeftDockWidgetArea, dock_renderizador)
 
+        scene = QGraphicsScene()
+        self.vista = QGraphicsView(scene)
+
         self.diedrico = Diedrico()
         self.diedrico.setFocusPolicy(Qt.ClickFocus)
+        self.diedrico.setFixedSize(1000, 1000)
+        scene.addWidget(self.diedrico)
+
         dock_diedrico = QDockWidget("Diédrico")
         dock_diedrico.setFeatures(QDockWidget.DockWidgetMovable)
         self.addDockWidget(Qt.RightDockWidgetArea, dock_diedrico)
 
-        dock_diedrico.setWidget(self.diedrico)
+        dock_diedrico.setWidget(self.vista)
 
-        fuente = QFont()
+        fuente = QFont("Arial")
         fuente.setPointSize(10)
 
         frame = QFrame(widget_central)
@@ -904,105 +919,94 @@ class Ventana(QMainWindow):
         self.label_3.setFont(fuente)
 
         self.label_6 = QLabel(frame)
-        self.label_6.setGeometry(QRect(10, 70, 111, 16))
+        self.label_6.setGeometry(QRect(10, 50, 111, 16))
         self.label_6.setFont(fuente)
         self.label_7 = QLabel(frame)
-        self.label_7.setGeometry(QRect(130, 70, 130, 16))
+        self.label_7.setGeometry(QRect(130, 50, 130, 16))
         self.label_7.setFont(fuente)
         label_8 = QLabel(frame)
-        label_8.setGeometry(QRect(10, 90, 91, 16))
+        label_8.setGeometry(QRect(10, 70, 91, 16))
         label_8.setFont(fuente)
         label_9 = QLabel(frame)
-        label_9.setGeometry(QRect(10, 140, 91, 16))
+        label_9.setGeometry(QRect(10, 120, 91, 16))
         label_9.setFont(fuente)
         label_10 = QLabel(frame)
-        label_10.setGeometry(QRect(170, 140, 91, 16))
+        label_10.setGeometry(QRect(170, 120, 91, 16))
         label_10.setFont(fuente)
         label_11 = QLabel(frame)
-        label_11.setGeometry(QRect(330, 140, 91, 16))
+        label_11.setGeometry(QRect(330, 120, 91, 16))
         label_11.setFont(fuente)
         label_12 = QLabel(frame)
-        label_12.setGeometry(QRect(10, 160, 91, 16))
+        label_12.setGeometry(QRect(10, 140, 91, 16))
         label_13 = QLabel(frame)
-        label_13.setGeometry(QRect(10, 180, 91, 16))
+        label_13.setGeometry(QRect(10, 160, 91, 16))
         label_14 = QLabel(frame)
-        label_14.setGeometry(QRect(10, 200, 91, 16))
+        label_14.setGeometry(QRect(10, 180, 91, 16))
         label_15 = QLabel(frame)
-        label_15.setGeometry(QRect(10, 220, 91, 16))
+        label_15.setGeometry(QRect(10, 200, 91, 16))
         label_16 = QLabel(frame)
-        label_16.setGeometry(QRect(170, 160, 51, 16))
+        label_16.setGeometry(QRect(170, 140, 51, 16))
         label_17 = QLabel(frame)
-        label_17.setGeometry(QRect(170, 180, 51, 16))
+        label_17.setGeometry(QRect(170, 160, 51, 16))
         label_18 = QLabel(frame)
-        label_18.setGeometry(QRect(170, 200, 91, 21))
+        label_18.setGeometry(QRect(170, 180, 91, 21))
         label_19 = QLabel(frame)
-        label_19.setGeometry(QRect(330, 160, 51, 16))
+        label_19.setGeometry(QRect(330, 140, 51, 16))
         label_20 = QLabel(frame)
-        label_20.setGeometry(QRect(330, 180, 51, 16))
+        label_20.setGeometry(QRect(330, 160, 51, 16))
         label_21 = QLabel(frame)
-        label_21.setGeometry(QRect(330, 220, 91, 21))
+        label_21.setGeometry(QRect(330, 200, 91, 21))
         label_22 = QLabel(frame)
-        label_22.setGeometry(QRect(330, 200, 51, 16))
+        label_22.setGeometry(QRect(330, 180, 51, 16))
 
         boton_r = QPushButton(frame)
-        boton_r.setGeometry(QRect(10, 110, 81, 23))
+        boton_r.setGeometry(QRect(10, 90, 81, 23))
         boton_r.clicked.connect(self.renderizador.ver_reset)
         boton_alzado = QPushButton(frame)
-        boton_alzado.setGeometry(QRect(100, 110, 81, 23))
+        boton_alzado.setGeometry(QRect(100, 90, 81, 23))
         boton_alzado.clicked.connect(self.renderizador.ver_alzado)
         boton_planta = QPushButton(frame)
-        boton_planta.setGeometry(QRect(190, 110, 81, 23))
+        boton_planta.setGeometry(QRect(190, 90, 81, 23))
         boton_planta.clicked.connect(self.renderizador.ver_planta)
         boton_perfil = QPushButton(frame)
-        boton_perfil.setGeometry(QRect(280, 110, 81, 23))
+        boton_perfil.setGeometry(QRect(280, 90, 81, 23))
         boton_perfil.clicked.connect(self.renderizador.ver_perfil)
         boton_punto = QPushButton(frame)
-        boton_punto.setGeometry(QRect(10, 270, 151, 21))
+        boton_punto.setGeometry(QRect(10, 250, 151, 21))
         boton_punto.clicked.connect(self.crear_punto)
         boton_recta = QPushButton(frame)
-        boton_recta.setGeometry(QRect(170, 249, 151, 21))
+        boton_recta.setGeometry(QRect(170, 229, 151, 21))
         boton_recta.clicked.connect(self.crear_recta)
         boton_plano = QPushButton(frame)
-        boton_plano.setGeometry(QRect(330, 270, 151, 21))
+        boton_plano.setGeometry(QRect(330, 250, 151, 21))
         boton_plano.clicked.connect(self.crear_plano)
 
-        scene = QGraphicsScene()
-        self.vista = QGraphicsView(scene, widget_central)
-
-        self.diedrico = Diedrico()
-        self.diedrico.setFixedSize(1000, 1000)
-        self.diedrico.setFocusPolicy(Qt.ClickFocus)
-        scene.addWidget(self.diedrico)
-
-        self.vista.setGeometry(1000, 500, 500, 500)
-        self.vista.centerOn(500, 500)
-
         self.valor_do = QSpinBox(frame)
-        self.valor_do.setGeometry(QRect(110, 160, 51, 20))
+        self.valor_do.setGeometry(QRect(110, 140, 51, 20))
         self.valor_do.setRange(-500, 500)
         self.valor_a = QSpinBox(frame)
-        self.valor_a.setGeometry(QRect(110, 180, 51, 20))
+        self.valor_a.setGeometry(QRect(110, 160, 51, 20))
         self.valor_a.setRange(-500, 500)
         self.valor_c = QSpinBox(frame)
-        self.valor_c.setGeometry(QRect(110, 200, 51, 20))
+        self.valor_c.setGeometry(QRect(110, 180, 51, 20))
         self.valor_c.setRange(-500, 500)
         self.punto_1 = QComboBox(frame)
-        self.punto_1.setGeometry(QRect(230, 160, 91, 22))
+        self.punto_1.setGeometry(QRect(230, 140, 91, 22))
         self.punto_2 = QComboBox(frame)
-        self.punto_2.setGeometry(QRect(230, 180, 91, 21))
+        self.punto_2.setGeometry(QRect(230, 160, 91, 21))
         self.punto_plano = QComboBox(frame)
-        self.punto_plano.setGeometry(QRect(380, 160, 91, 22))
+        self.punto_plano.setGeometry(QRect(380, 140, 91, 22))
         self.punto_plano2 = QComboBox(frame)
-        self.punto_plano2.setGeometry(QRect(380, 180, 91, 22))
+        self.punto_plano2.setGeometry(QRect(380, 160, 91, 22))
         self.punto_plano3 = QComboBox(frame)
-        self.punto_plano3.setGeometry(QRect(380, 200, 91, 22))
+        self.punto_plano3.setGeometry(QRect(380, 180, 91, 22))
 
         self.punto_nombre = QPlainTextEdit(frame)
-        self.punto_nombre.setGeometry(QRect(10, 240, 151, 25))
+        self.punto_nombre.setGeometry(QRect(10, 220, 151, 25))
         self.recta_nombre = QPlainTextEdit(frame)
-        self.recta_nombre.setGeometry(QRect(170, 220, 151, 25))
+        self.recta_nombre.setGeometry(QRect(170, 200, 151, 25))
         self.plano_nombre = QPlainTextEdit(frame)
-        self.plano_nombre.setGeometry(QRect(330, 240, 151, 25))
+        self.plano_nombre.setGeometry(QRect(330, 220, 151, 25))
 
         self.tercera_proyeccion = QCheckBox(dock_diedrico)
         self.tercera_proyeccion.setGeometry(QRect(58, 3, 111, 17))
@@ -1049,27 +1053,27 @@ class Ventana(QMainWindow):
         self.ver_planos.setText("Planos")
 
         ajustes = QPushButton(frame)
-        ajustes.setGeometry(QRect(300, 10, 60, 25))
+        ajustes.setGeometry(QRect(370, 90, 81, 23))
         ajustes.setText("Ajustes")
-        # ajustes.clicked.connect(self.ajustes)
+        self.ajustes = Ajustes()
+        ajustes.clicked.connect(self.ajustes.show)
 
         widget_punto = QWidget(frame)
-        widget_punto.setGeometry(QRect(10, 291, 151, 211))
+        widget_punto.setGeometry(QRect(10, 271, 151, 211))
         vertical_punto = QVBoxLayout(widget_punto)
         vertical_punto.setContentsMargins(0, 0, 0, 0)
         self.lista_puntos = QListWidget(widget_punto)
-
         vertical_punto.addWidget(self.lista_puntos)
 
         widget_recta = QWidget(frame)
-        widget_recta.setGeometry(QRect(170, 270, 151, 231))
+        widget_recta.setGeometry(QRect(170, 250, 151, 231))
         vertical_recta = QVBoxLayout(widget_recta)
         vertical_recta.setContentsMargins(0, 0, 0, 0)
         self.lista_rectas = QListWidget(widget_recta)
         vertical_recta.addWidget(self.lista_rectas)
 
         widget_planos = QWidget(frame)
-        widget_planos.setGeometry(QRect(330, 290, 151, 211))
+        widget_planos.setGeometry(QRect(330, 271, 151, 211))
         vertical_planos = QVBoxLayout(widget_planos)
         vertical_planos.setContentsMargins(0, 0, 0, 0)
         self.lista_planos = QListWidget(widget_planos)
@@ -1101,8 +1105,6 @@ class Ventana(QMainWindow):
         self.greek_alphabet = (u'\u03B1', u'\u03B2', u'\u03B3', u'\u03B4', u'\u03B5', u'\u03B6', u'\u03B7', u'\u03B8',
                                u'\u03B9', u'\u03BA', u'\u03BB', u'\u03BC', u'\u03BD', u'\u03BE', u'\u03BF', u'\u03C0',
                                u'\u03C1', u'\u03C3', u'\u03C4', u'\u03C5', u'\u03C6', u'\u03C7', u'\u03C8', u'\u03C9')
-
-        self.ajustes = Ajustes()
 
         self.actualizar()
         self.setWindowTitle("Dibujo técnico")
@@ -1240,7 +1242,7 @@ class Ventana(QMainWindow):
                 punto3 = self.lista_puntos.itemWidget(self.lista_puntos.item(i))
 
         if not punto1 and not punto2 and not punto3:
-            QMessageBox.about(self, "Error al crear la recta",
+            QMessageBox.about(self, "Error al crear el plano",
                               "Debes crear al menos tres puntos y seleccionarlos para crear el plano")
 
         elif len({punto1.coords, punto2.coords, punto3.coords}) < 3:
@@ -1302,9 +1304,6 @@ class Ventana(QMainWindow):
             if widget.id == idd:
                 self.lista_planos.takeItem(self.lista_planos.row(item))
                 break
-
-    def ajustes(self):
-        self.ajustes.show()
 
 
 if __name__ == "__main__":
