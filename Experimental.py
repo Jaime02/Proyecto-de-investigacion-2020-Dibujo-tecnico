@@ -6,18 +6,18 @@ from string import ascii_uppercase, ascii_lowercase
 from OpenGL.GL import glClear, GL_COLOR_BUFFER_BIT, glEnable, GL_DEPTH_TEST, glMatrixMode, GL_PROJECTION, GL_TRUE, \
     glLoadIdentity, glOrtho, glClearColor, GL_DEPTH_BUFFER_BIT, GL_MODELVIEW, glLineWidth, glBegin, glColor, glVertex, \
     glEnd, glPointSize, GL_POINT_SMOOTH, GL_POINTS, GL_BLEND, glBlendFunc, GL_SRC_ALPHA, GL_QUADS, glDisable, \
-    GL_LINES, GL_LINE_LOOP, glDepthMask, GL_FALSE, GL_ONE_MINUS_SRC_ALPHA, GL_TRIANGLE_FAN, GL_SRC_COLOR
+    GL_LINES, GL_LINE_LOOP, glDepthMask, GL_FALSE, GL_ONE_MINUS_SRC_ALPHA, GL_TRIANGLE_FAN
 from OpenGL.GLU import gluLookAt
-from PyQt5.QtCore import Qt, QRect, pyqtSlot, QSize, QTimer
+from PyQt5.QtCore import Qt, QRect, QSize
 from PyQt5.QtGui import QPainter, QPen, QCursor, QTransform, QFont, QColor
 from PyQt5.QtWidgets import QOpenGLWidget, QWidget, QCheckBox, QPushButton, QHBoxLayout, QMainWindow, QLabel, QMenu, \
     QApplication, QVBoxLayout, QSpinBox, QPlainTextEdit, QComboBox, QMessageBox, QGraphicsScene, QGraphicsView, \
-    QListWidgetItem, QListWidget, QAction, QColorDialog, QDialog, QDockWidget, QFrame, QSizePolicy
+    QListWidgetItem, QListWidget, QAction, QColorDialog, QDockWidget, QFrame
 from sympy import Line, intersection, Point3D, Plane, Line3D, Segment3D
 
 
 class EntidadGeometrica(QWidget):
-    def __init__(self, internal_id, nombre):
+    def __init__(self, internal_id: int, nombre: QLabel):
         QWidget.__init__(self)
         self.id = internal_id
         self.customContextMenuRequested.connect(self.context_menu)
@@ -85,28 +85,27 @@ class EntidadGeometrica(QWidget):
 
 
 class Punto(EntidadGeometrica):
-    def __init__(self, internal_id, name, do, alejamiento, cota):
-        super(Punto, self).__init__(internal_id, QLabel(f"{name}({do}, {alejamiento}, {cota})"))
+    def __init__(self, internal_id: int, nombre: str, do: int, alejamiento: int, cota: int):
+        EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}({do}, {alejamiento}, {cota})"))
 
         self.borrar.triggered.connect(lambda: main_app.borrar_punto(self.id))
-
         self.x = do
         self.y = cota
         self.z = alejamiento
-        self.name = name
+        self.nombre = nombre
         self.coords = (self.x, self.z, self.y)
 
 
 class Recta(EntidadGeometrica):
-    def __init__(self, internal_id, name, p1, p2):
-        nombre = QLabel(f"{name}({p1.name}, {p2.name})")
+    def __init__(self, internal_id: int, nombre: str, p1: Punto, p2: Punto):
+        nombre = QLabel(f"{nombre}({p1.nombre}, {p2.nombre})")
         EntidadGeometrica.__init__(self, internal_id, nombre)
 
         self.recta = Line(Point3D(p1.coords), Point3D(p2.coords))
         self.p1 = (p1.coords[0], p1.coords[2], p1.coords[1])
         self.p2 = (p2.coords[0], p2.coords[2], p2.coords[1])
 
-        self.name = name
+        self.nombre = nombre
         self.contenida_pv = False
         self.contenida_ph = False
 
@@ -199,20 +198,19 @@ class Recta(EntidadGeometrica):
 
 
 class Plano(EntidadGeometrica):
-    def __init__(self, internal_id, name, p1, p2, p3):
-        nombre = QLabel(f"{name}({p1.name}, {p2.name}, {p3.name})")
-        EntidadGeometrica.__init__(self, internal_id, nombre)
+    def __init__(self, internal_id: int, nombre: str, p1: Punto, p2: Punto, p3: Punto):
+        EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}({p1.nombre}, {p2.nombre}, {p3.nombre})"))
 
         self.plano = Plane(Point3D(p1.coords), Point3D(p2.coords), Point3D(p3.coords))
         self.vector_normal = self.plano.normal_vector
-        self.name = name
+        self.nombre = QLabel(f"{nombre}({p1.nombre}, {p2.nombre}, {p3.nombre})")
         self.p1 = (p1.coords[0], p1.coords[2], p1.coords[1])
         self.p2 = (p2.coords[0], p2.coords[2], p2.coords[1])
         self.p3 = (p3.coords[0], p3.coords[2], p3.coords[1])
 
         self.borrar.triggered.connect(lambda: main_app.borrar_plano(self.id))
 
-        self.color = (0.6, 0.6, 0.15, 0.7)
+        self.color = (0.6, 0.6, 0.15, 0.6)
         self.editar_color = QAction("Color")
         self.menu.addAction(self.editar_color)
         self.editar_color.triggered.connect(self.cambiar_color)
@@ -239,7 +237,7 @@ class Plano(EntidadGeometrica):
             self.ver_traza_horizontal.setChecked(False)
             self.ver_traza_horizontal.setCheckable(False)
 
-    def limites(self, p1, p2, p3):
+    def limites(self, p1: tuple, p2: tuple, p3: tuple):
         plano = Plane(Point3D(p1), Point3D(p2), Point3D(p3))
         buenos = []
 
@@ -324,7 +322,6 @@ class Plano(EntidadGeometrica):
 class Renderizador(QOpenGLWidget):
     def __init__(self):
         QOpenGLWidget.__init__(self)
-
         self.desviacion_x = 0
         self.desviacion_y = 0
         self.desviacion_z = 0
@@ -491,7 +488,7 @@ class Renderizador(QOpenGLWidget):
             plano = main_app.lista_planos.itemWidget(main_app.lista_planos.item(i))
             if plano.render.isChecked():
                 glEnable(GL_BLEND)
-                glBlendFunc(GL_SRC_ALPHA, GL_SRC_ALPHA)
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
                 glDepthMask(GL_FALSE)
 
                 if plano.render.isChecked():
@@ -526,8 +523,7 @@ class Renderizador(QOpenGLWidget):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glLoadIdentity()
         arriba = 1
-        if self.theta == 0 or self.theta == 360:
-            self.theta = 360
+        if self.theta == 360:
             arriba = -1
         gluLookAt(self.x, self.y, self.z, self.desviacion_x, self.desviacion_y, self.desviacion_z, 0, arriba, 0)
         self.planos_proyectantes()
@@ -627,8 +623,8 @@ class Diedrico(QWidget):
         self.pen_plano_prima = QPen(azul, 4)
         self.pen_plano_prima2 = QPen(azul_oscuro, 4)
 
-    # def sizeHint(self):
-    #     return QSize(10, 10)
+    def sizeHint(self):
+        return QSize(10, 10)
 
     def paintEvent(self, event):
         qp = QPainter(self)
@@ -938,9 +934,7 @@ class Ajustes(QMainWindow):
 class Ventana(QMainWindow):
     def __init__(self):
         QMainWindow.__init__(self)
-
         self.showMaximized()
-
         widget_central = QWidget()
 
         self.renderizador = Renderizador()
@@ -961,7 +955,6 @@ class Ventana(QMainWindow):
         dock_diedrico = QDockWidget("Diédrico")
         dock_diedrico.setFeatures(QDockWidget.DockWidgetMovable)
         self.addDockWidget(Qt.RightDockWidgetArea, dock_diedrico)
-
         dock_diedrico.setWidget(self.vista)
 
         fuente = QFont("Arial")
@@ -977,7 +970,7 @@ class Ventana(QMainWindow):
         label_2.setGeometry(QRect(10, 30, 71, 16))
         label_2.setFont(fuente)
         self.label_3 = QLabel(frame)
-        self.label_3.setGeometry(QRect(110, 30, 141, 20))
+        self.label_3.setGeometry(QRect(110, 30, 151, 20))
         self.label_3.setFont(fuente)
 
         self.label_6 = QLabel(frame)
@@ -1176,17 +1169,17 @@ class Ventana(QMainWindow):
         self.punto_1.clear()
         self.punto_2.clear()
         for i in range(self.lista_puntos.count()):
-            self.punto_1.addItem(self.lista_puntos.itemWidget(self.lista_puntos.item(i)).name)
-            self.punto_2.addItem(self.lista_puntos.itemWidget(self.lista_puntos.item(i)).name)
+            self.punto_1.addItem(self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre)
+            self.punto_2.addItem(self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre)
 
     def elegir_puntos_plano(self):
         self.punto_plano.clear()
         self.punto_plano2.clear()
         self.punto_plano3.clear()
         for i in range(self.lista_puntos.count()):
-            self.punto_plano.addItem(self.lista_puntos.itemWidget(self.lista_puntos.item(i)).name)
-            self.punto_plano2.addItem(self.lista_puntos.itemWidget(self.lista_puntos.item(i)).name)
-            self.punto_plano3.addItem(self.lista_puntos.itemWidget(self.lista_puntos.item(i)).name)
+            self.punto_plano.addItem(self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre)
+            self.punto_plano2.addItem(self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre)
+            self.punto_plano3.addItem(self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre)
 
     def actualizar(self):
         self.label_6.setText("Ángulo vertical: " + str(self.renderizador.theta - 360))
@@ -1219,19 +1212,19 @@ class Ventana(QMainWindow):
                 self.label_3.setText("Tercer cuadrante")
 
     def crear_punto(self):
-        name = self.punto_nombre.toPlainText()
+        nombre = self.punto_nombre.toPlainText()
 
         # Evita que el puntero supere la longitud de la lista
         if self.puntero_puntos == len(ascii_uppercase):
             self.puntero_puntos = 0
         # Genera nombres genéricos si no se provee uno
-        if name == "":
-            name = ascii_uppercase[self.puntero_puntos]
+        if nombre == "":
+            nombre = ascii_uppercase[self.puntero_puntos]
             self.puntero_puntos += 1
         # Evita nombres duplicados
         for i in range(self.lista_puntos.count()):
-            if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).name == name:
-                name = ascii_uppercase[self.puntero_puntos]
+            if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre == nombre:
+                nombre = ascii_uppercase[self.puntero_puntos]
                 self.puntero_puntos += 1
                 break
 
@@ -1239,7 +1232,7 @@ class Ventana(QMainWindow):
         item = QListWidgetItem()
         self.lista_puntos.addItem(item)
         # Create Custom Widget
-        punto = Punto(self.id_punto, name, self.valor_do.value(), self.valor_a.value(), self.valor_c.value())
+        punto = Punto(self.id_punto, nombre, self.valor_do.value(), self.valor_a.value(), self.valor_c.value())
         self.id_punto += 1
         item.setSizeHint(punto.minimumSizeHint())
         # Set the custom_row widget to be displayed within the placeholder Item
@@ -1251,11 +1244,11 @@ class Ventana(QMainWindow):
     def crear_recta(self):
         punto1 = self.punto_1.currentText()
         punto2 = self.punto_2.currentText()
-        name = self.recta_nombre.toPlainText()
+        nombre = self.recta_nombre.toPlainText()
         for i in range(self.lista_puntos.count()):
-            if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).name == punto1:
+            if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre == punto1:
                 punto1 = self.lista_puntos.itemWidget(self.lista_puntos.item(i))
-            if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).name == punto2:
+            if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre == punto2:
                 punto2 = self.lista_puntos.itemWidget(self.lista_puntos.item(i))
         if not punto1 and not punto2:
             QMessageBox.about(self, "Error al crear la recta",
@@ -1267,13 +1260,13 @@ class Ventana(QMainWindow):
             if self.puntero_rectas == len(ascii_lowercase):  # Evita que el puntero supere la longitud de la lista
                 self.puntero_rectas = 0
 
-            if name == "":  # Genera nombres genéricos si no se provee uno
-                name = ascii_lowercase[self.puntero_rectas]
+            if nombre == "":  # Genera nombres genéricos si no se provee uno
+                nombre = ascii_lowercase[self.puntero_rectas]
                 self.puntero_rectas += 1
 
             for i in range(self.lista_rectas.count()):  # Evita nombres duplicados
-                if self.lista_rectas.itemWidget(self.lista_rectas.item(i)).name == name:
-                    name = ascii_lowercase[self.puntero_rectas]
+                if self.lista_rectas.itemWidget(self.lista_rectas.item(i)).nombre == nombre:
+                    nombre = ascii_lowercase[self.puntero_rectas]
                     self.puntero_rectas += 1
                     break
 
@@ -1281,7 +1274,7 @@ class Ventana(QMainWindow):
             item = QListWidgetItem()
             self.lista_rectas.addItem(item)
             # Create Custom Widget
-            recta = Recta(self.id_recta, name, punto1, punto2)
+            recta = Recta(self.id_recta, nombre, punto1, punto2)
             self.id_recta += 1
             item.setSizeHint(recta.minimumSizeHint())
             # Set the custom_row widget to be displayed within the placeholder Item
@@ -1296,11 +1289,11 @@ class Ventana(QMainWindow):
         nombre = self.plano_nombre.toPlainText()
 
         for i in range(self.lista_puntos.count()):
-            if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).name == punto1:
+            if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre == punto1:
                 punto1 = self.lista_puntos.itemWidget(self.lista_puntos.item(i))
-            if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).name == punto2:
+            if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre == punto2:
                 punto2 = self.lista_puntos.itemWidget(self.lista_puntos.item(i))
-            if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).name == punto3:
+            if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre == punto3:
                 punto3 = self.lista_puntos.itemWidget(self.lista_puntos.item(i))
 
         if not punto1 and not punto2 and not punto3:
@@ -1325,7 +1318,7 @@ class Ventana(QMainWindow):
                 self.puntero_planos += 1
 
             for i in range(self.lista_planos.count()):  # Evita nombres duplicados
-                if self.lista_planos.itemWidget(self.lista_planos.item(i)).name == nombre:
+                if self.lista_planos.itemWidget(self.lista_planos.item(i)).nombre == nombre:
                     nombre = self.greek_alphabet[self.puntero_planos]
                     self.puntero_planos += 1
                     break
@@ -1371,5 +1364,7 @@ class Ventana(QMainWindow):
 if __name__ == "__main__":
     MainEvent = QApplication([])
     main_app = Ventana()
+    main_app.diedrico.zoom_out()
+    main_app.diedrico.zoom_out()
     main_app.show()
     MainEvent.exec()
