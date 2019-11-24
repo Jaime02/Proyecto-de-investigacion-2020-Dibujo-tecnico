@@ -332,9 +332,9 @@ class Renderizador(QOpenGLWidget):
         self.x = sin(radians(self.theta)) * cos(radians(self.phi)) + self.desviacion_x
         self.z = sin(radians(self.theta)) * sin(radians(self.phi)) + self.desviacion_z
         self.y = cos(radians(self.theta)) + self.desviacion_y
-        self.vertices_vertical = ((500, 500, 0), (-500, 500, 0), (-500, 0, 0), (500, 0, 0))
+        self.vertices_vertical_arriba = ((500, 500, 0), (-500, 500, 0), (-500, 0, 0), (500, 0, 0))
         self.vertices_vertical_debajo = ((500, 0, 0), (-500, 0, 0), (-500, -500, 0), (500, -500, 0))
-        self.vertices_horizontal = ((500, 0, 0), (500, 0, 500), (-500, 0, 500), (-500, 0, 0))
+        self.vertices_horizontal_delante = ((500, 0, 0), (500, 0, 500), (-500, 0, 500), (-500, 0, 0))
         self.vertices_horizontal_detras = ((500, 0, 0), (500, 0, -500), (-500, 0, -500), (-500, 0, 0))
         self.vertices_borde_vertical = ((500, 500, 0), (500, -500, 0), (-500, -500, 0), (-500, 500, 0))
         self.vertices_borde_horizontal = ((500, 0, 500), (-500, 0, 500), (-500, 0, -500), (500, 0, -500))
@@ -382,6 +382,44 @@ class Renderizador(QOpenGLWidget):
         self.desviacion_z = 0
         self.recalcular_posicion()
 
+    def plano_vertical_arriba(self):
+        glColor(0.1, 1, 0.1, 0.5)
+        for vertex in range(4):
+            glVertex(self.vertices_vertical_arriba[vertex])
+
+    def plano_vertical_debajo(self):
+        glColor(0.1, 1, 0.1, 0.5)
+        for vertex in range(4):
+            glVertex(self.vertices_vertical_debajo[vertex])
+
+    def plano_horizontal_delante(self):
+        glColor(1, 0.1, 0.1, 0.5)
+        for vertex in range(4):
+            glVertex(self.vertices_horizontal_delante[vertex])
+
+    def plano_horizontal_detras(self):
+        glColor(1, 0.1, 0.1, 0.5)
+        for vertex in range(4):
+            glVertex(self.vertices_horizontal_detras[vertex])
+
+    def bordes_vertical(self):
+        if main_app.ajustes.ver_plano_vertical.isChecked():
+            glLineWidth(1)
+            glColor(0.1, 1, 0.1, 0.5)
+            glBegin(GL_LINE_LOOP)
+            for vertex in range(4):
+                glVertex(self.vertices_borde_vertical[vertex])
+            glEnd()
+
+    def bordes_horizontal(self):
+        if main_app.ajustes.ver_plano_horizontal.isChecked():
+            glLineWidth(1)
+            glColor(1, 0.1, 0.1, 0.5)
+            glBegin(GL_LINE_LOOP)
+            for vertex in range(4):
+                glVertex(self.vertices_borde_horizontal[vertex])
+            glEnd()
+
     def planos_proyectantes(self):
         vertical = main_app.ajustes.ver_plano_vertical.isChecked()
         horizontal = main_app.ajustes.ver_plano_horizontal.isChecked()
@@ -390,37 +428,20 @@ class Renderizador(QOpenGLWidget):
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
             glDepthMask(GL_FALSE)
             glBegin(GL_QUADS)
-            if horizontal:
-                glColor(1, 0.1, 0.1, 0.5)
-                for vertex in range(4):
-                    glVertex(self.vertices_horizontal_detras[vertex])
-            if vertical:
-                glColor(0.1, 1, 0.1, 0.5)
-                for vertex in range(4):
-                    glVertex(self.vertices_vertical_debajo[vertex])
-                glColor(0.1, 1, 0.1, 0.5)
-                for vertex in range(4):
-                    glVertex(self.vertices_vertical[vertex])
-            if horizontal:
-                glColor(1, 0.1, 0.1, 0.5)
-                for vertex in range(4):
-                    glVertex(self.vertices_horizontal[vertex])
+            # TODO
+            if self.y == self.z == 0:
+                self.bordes_horizontal()
+                self.bordes_vertical()
+            elif y == 0:
+                pass
+            elif z == 0:
+                pass
+            else:
+                pass
+
             glEnd()
             glDepthMask(GL_TRUE)
             glDisable(GL_BLEND)
-            glLineWidth(1)
-            if vertical:
-                glColor(0.2, 1, 0.2, 0.5)
-                glBegin(GL_LINE_LOOP)
-                for vertex in range(4):
-                    glVertex(self.vertices_borde_vertical[vertex])
-                glEnd()
-            if horizontal:
-                glColor(1, 0.2, 0.2, 0.5)
-                glBegin(GL_LINE_LOOP)
-                for vertex in range(4):
-                    glVertex(self.vertices_borde_horizontal[vertex])
-                glEnd()
 
     @staticmethod
     def dibujar_ejes():
