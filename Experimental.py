@@ -429,19 +429,25 @@ class Renderizador(QOpenGLWidget):
             glDepthMask(GL_FALSE)
             glBegin(GL_QUADS)
             # TODO
-            if self.y == self.z == 0:
-                self.bordes_horizontal()
-                self.bordes_vertical()
-            elif y == 0:
+            if (self.phi == 0 or self.phi == 180) and self.theta == 0:
                 pass
-            elif z == 0:
-                pass
+            elif self.theta == 450:
+                self.plano_vertical_arriba()
+                self.plano_vertical_debajo()
+            elif self.phi == 0 or self.phi == 180 or self.theta == 360 or self.theta == 520:
+                self.plano_horizontal_delante()
+                self.plano_horizontal_detras()
             else:
-                pass
+                self.plano_vertical_arriba()
+                self.plano_vertical_debajo()
+                self.plano_horizontal_delante()
+                self.plano_horizontal_detras()
 
             glEnd()
             glDepthMask(GL_TRUE)
             glDisable(GL_BLEND)
+            self.bordes_horizontal()
+            self.bordes_vertical()
 
     @staticmethod
     def dibujar_ejes():
