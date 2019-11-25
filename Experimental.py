@@ -1136,13 +1136,13 @@ class Ventana(QMainWindow):
 
         self.valor_distancia_origen = QSpinBox(frame)
         self.valor_distancia_origen.setGeometry(QRect(110, 140, 51, 20))
-        self.valor_distancia_origen.setRange(-500, 500)
+        self.valor_distancia_origen.setRange(-499, 499)
         self.valor_alejamiento = QSpinBox(frame)
         self.valor_alejamiento.setGeometry(QRect(110, 160, 51, 20))
-        self.valor_alejamiento.setRange(-500, 500)
+        self.valor_alejamiento.setRange(-499, 499)
         self.valor_cota = QSpinBox(frame)
         self.valor_cota.setGeometry(QRect(110, 180, 51, 20))
-        self.valor_cota.setRange(-500, 500)
+        self.valor_cota.setRange(-499, 499)
 
         self.punto_recta_1 = QComboBox(frame)
         self.punto_recta_1.setGeometry(QRect(230, 140, 91, 22))
