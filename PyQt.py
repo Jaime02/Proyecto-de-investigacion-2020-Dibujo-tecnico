@@ -79,7 +79,8 @@ class EntidadGeometrica(QWidget):
         color_dialog = QColorDialog()
         color = color_dialog.getColor(options=QColorDialog.ShowAlphaChannel)
         if color.isValid():
-            self.color = color.getRgb()
+            color = color.getRgb()
+            self.color = tuple([i / 255 for i in color])
 
     def context_menu(self):
         self.menu.exec(QCursor.pos())
@@ -127,27 +128,32 @@ class Recta(EntidadGeometrica):
         self.menu.addAction(self.infinita)
 
         self.extremos = self.extremos()
-
         # Extremos de la recta que se encuentren en el primer cuadrante
         self.extremos_I = [i for i in self.extremos if i[1] >= 0 and i[2] >= 0]
 
         self.traza_v = self.calcular_traza_v()
+        self.traza_h = self.calcular_traza_h()
+
+        # Si la recta no tiene trazas, se desactivan estas opciones
         if self.traza_v:
             self.traza_v = (self.traza_v[0], self.traza_v[2], self.traza_v[1])
             if self.traza_v[0] > 500 or self.traza_v[1] > 500:
+                self.ver_traza_vertical.setChecked(False)
                 self.ver_traza_vertical.setCheckable(False)
                 self.ver_traza_vertical.setDisabled(True)
         else:
+            self.ver_traza_vertical.setChecked(False)
             self.ver_traza_vertical.setCheckable(False)
             self.ver_traza_vertical.setDisabled(True)
 
-        self.traza_h = self.calcular_traza_h()
         if self.traza_h:
             self.traza_h = (self.traza_h[0], self.traza_h[2], self.traza_h[1])
             if self.traza_h[0] > 500 or self.traza_h[2] > 500:
+                self.ver_traza_horizontal.setChecked(False)
                 self.ver_traza_horizontal.setCheckable(False)
                 self.ver_traza_horizontal.setDisabled(True)
         else:
+            self.ver_traza_horizontal.setChecked(False)
             self.ver_traza_horizontal.setCheckable(False)
             self.ver_traza_horizontal.setDisabled(True)
 
@@ -239,10 +245,12 @@ class Plano(EntidadGeometrica):
         if not self.traza_v:
             self.ver_traza_vertical.setChecked(False)
             self.ver_traza_vertical.setCheckable(False)
+            self.ver_traza_vertical.setDisabled(True)
 
         if not self.traza_h:
             self.ver_traza_horizontal.setChecked(False)
             self.ver_traza_horizontal.setCheckable(False)
+            self.ver_traza_horizontal.setDisabled(True)
 
     def limites(self, p1: tuple, p2: tuple, p3: tuple):
         plano = Plane(Point3D(p1), Point3D(p2), Point3D(p3))
@@ -356,7 +364,7 @@ class Renderizador(QOpenGLWidget):
         self.vertices_borde_plano_horizontal = ((500, 0, 500), (-500, 0, 500), (-500, 0, -500), (500, 0, -500))
 
     def sizeHint(self):
-        return QSize(600, 600)
+        return QSize(800, 800)
 
     def resizeEvent(self, event):
         if self.width() > self.height():
@@ -572,13 +580,15 @@ class Renderizador(QOpenGLWidget):
                     glEnd()
                 glDepthMask(GL_TRUE)
                 glDisable(GL_BLEND)
-                glColor(0, 0, 0, 0)
+                glColor(0, 0, 0, 0.2)
+                # Trazas:
+                glLineWidth(2)
                 if plano.ver_traza_vertical.isChecked():
                     glBegin(GL_LINES)
                     glVertex(plano.traza_v[0])
                     glVertex(plano.traza_v[1])
                     glEnd()
-                if plano.ver_traza_horizontal.isChecked():
+                if plano.ver_traza_horizontal.isEnabled():
                     glBegin(GL_LINES)
                     glVertex(plano.traza_h[0])
                     glVertex(plano.traza_h[1])
@@ -600,14 +610,14 @@ class Renderizador(QOpenGLWidget):
             arriba = -1
         gluLookAt(self.x, self.y, self.z, self.desviacion_x, self.desviacion_y, self.desviacion_z, 0, arriba, 0)
         self.planos_proyectantes()
+        if programa.ajustes.ver_ejes.isChecked():
+            self.dibujar_ejes()
         if programa.ajustes.ver_puntos.isChecked():
             self.dibujar_puntos()
         if programa.ajustes.ver_rectas.isChecked():
             self.dibujar_rectas()
         if programa.ajustes.ver_planos.isChecked():
             self.dibujar_planos()
-        if programa.ajustes.ver_ejes.isChecked():
-            self.dibujar_ejes()
         self.update()
 
     def keyPressEvent(self, event):
