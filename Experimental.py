@@ -2,7 +2,6 @@
 
 from math import sin, cos, radians, atan2
 from string import ascii_uppercase, ascii_lowercase
-
 from OpenGL.GL import glClear, GL_COLOR_BUFFER_BIT, glEnable, GL_DEPTH_TEST, glMatrixMode, GL_PROJECTION, GL_TRUE, \
     glLoadIdentity, glOrtho, glClearColor, GL_DEPTH_BUFFER_BIT, GL_MODELVIEW, glLineWidth, glBegin, glColor, glVertex, \
     glEnd, glPointSize, GL_POINT_SMOOTH, GL_POINTS, GL_BLEND, glBlendFunc, GL_SRC_ALPHA, GL_QUADS, glDisable, \
@@ -407,32 +406,32 @@ class Renderizador(QOpenGLWidget):
 
     def plano_vertical_arriba(self):
         if programa.ajustes.ver_plano_vertical.isChecked():
-            glColor(0.1, 1, 0.1, 0.5)
+            glColor(programa.ajustes.color_plano_vertical)
             for vertex in range(4):
                 glVertex(self.vertices_plano_vertical_arriba[vertex])
 
     def plano_vertical_debajo(self):
         if programa.ajustes.ver_plano_vertical.isChecked():
-            glColor(0.1, 1, 0.1, 0.5)
+            glColor(programa.ajustes.color_plano_vertical)
             for vertex in range(4):
                 glVertex(self.vertices_plano_vertical_debajo[vertex])
 
     def plano_horizontal_delante(self):
         if programa.ajustes.ver_plano_horizontal.isChecked():
-            glColor(1, 0.1, 0.1, 0.5)
+            glColor(programa.ajustes.color_plano_horizontal)
             for vertex in range(4):
                 glVertex(self.vertices_plano_horizontal_delante[vertex])
 
     def plano_horizontal_detras(self):
         if programa.ajustes.ver_plano_horizontal.isChecked():
-            glColor(1, 0.1, 0.1, 0.5)
+            glColor(programa.ajustes.color_plano_horizontal)
             for vertex in range(4):
                 glVertex(self.vertices_plano_horizontal_detras[vertex])
 
     def bordes_plano_vertical(self):
         if programa.ajustes.ver_plano_vertical.isChecked():
             glLineWidth(1)
-            glColor(0.1, 1, 0.1, 0.5)
+            glColor(programa.ajustes.color_plano_vertical)
             glBegin(GL_LINE_LOOP)
             for vertex in range(4):
                 glVertex(self.vertices_borde_plano_vertical[vertex])
@@ -441,7 +440,7 @@ class Renderizador(QOpenGLWidget):
     def bordes_plano_horizontal(self):
         if programa.ajustes.ver_plano_horizontal.isChecked():
             glLineWidth(1)
-            glColor(1, 0.1, 0.1, 0.5)
+            glColor(programa.ajustes.color_plano_horizontal)
             glBegin(GL_LINE_LOOP)
             for vertex in range(4):
                 glVertex(self.vertices_borde_plano_horizontal[vertex])
@@ -588,7 +587,7 @@ class Renderizador(QOpenGLWidget):
                     glVertex(plano.traza_v[0])
                     glVertex(plano.traza_v[1])
                     glEnd()
-                if plano.ver_traza_horizontal.isEnabled():
+                if plano.ver_traza_horizontal.isChecked():
                     glBegin(GL_LINES)
                     glVertex(plano.traza_h[0])
                     glVertex(plano.traza_h[1])
@@ -906,10 +905,10 @@ class Diedrico(QWidget):
         for i in range(programa.lista_planos.count()):
             plano = programa.lista_planos.itemWidget(programa.lista_planos.item(i))
             if plano.render.isChecked():
-                if plano.traza_h:
+                if plano.ver_traza_horizontal.isChecked():
                     qp.setPen(self.pen_plano_prima)
                     self.recta_prima(qp, plano.traza_h)
-                if plano.traza_v:
+                if plano.ver_traza_vertical.isChecked():
                     qp.setPen(self.pen_plano_prima2)
                     self.recta_prima2(qp, plano.traza_v)
 
@@ -917,7 +916,11 @@ class Diedrico(QWidget):
 class Ajustes(QMainWindow):
     def __init__(self):
         QMainWindow.__init__(self)
-        self.setFixedSize(420, 135)
+        self.setFixedSize(420, 180)
+
+        self.color_plano_vertical = (0.1, 1, 0.1, 0.5)
+        self.color_plano_horizontal = (1, 0.1, 0.1, 0.5)
+
         fuente = QFont()
         fuente.setPointSize(12)
         widget_central = QWidget(self)
@@ -985,8 +988,38 @@ class Ajustes(QMainWindow):
         self.ver_planos_trazas_horizontales.setText("Ver trazas horizontales")
         self.ver_planos_trazas_horizontales.setGeometry(280, 50, 129, 17)
 
+        boton_color_vertical = QPushButton(widget_central)
+        boton_color_vertical.setGeometry(QRect(10, 130, 101, 41))
+        boton_color_vertical.setText("Cambiar el color del\n plano vertical")
+        boton_color_vertical.clicked.connect(self.cambiar_color_plano_vertical)
+        reset_vertical = QPushButton(widget_central);
+        reset_vertical.setGeometry(QRect(120, 130, 75, 41))
+        reset_vertical.setText("Reestablecer")
+
+        boton_color_horizontal = QPushButton(widget_central)
+        boton_color_horizontal.setGeometry(QRect(200, 130, 101, 41))
+        boton_color_horizontal.setText("Cambiar el color del\n plano horizontal")
+        boton_color_horizontal.clicked.connect(self.cambiar_color_plano_horizontal)
+        reset_horizontal = QPushButton(widget_central)
+        reset_horizontal.setGeometry(QRect(310, 130, 75, 41))
+        reset_horizontal.setText("Reestablecer")
+
         self.setWindowTitle("Ajustes")
         self.setCentralWidget(widget_central)
+
+    def cambiar_color_plano_vertical(self):
+        color_dialog = QColorDialog()
+        color = color_dialog.getColor(options=QColorDialog.ShowAlphaChannel)
+        if color.isValid():
+            color = color.getRgb()
+            self.color_plano_vertical = tuple([i / 255 for i in color])
+
+    def cambiar_color_plano_horizontal(self):
+        color_dialog = QColorDialog()
+        color = color_dialog.getColor(options=QColorDialog.ShowAlphaChannel)
+        if color.isValid():
+            color = color.getRgb()
+            self.color_plano_horizontal = tuple([i / 255 for i in color])
 
 
 class Ventana(QMainWindow):
@@ -1296,9 +1329,6 @@ class Ventana(QMainWindow):
                 self.posicion.setText("Segundo cuadrante")
             else:
                 self.posicion.setText("Tercer cuadrante")
-
-    def sizeHint(self) -> QSize:
-        return QSize(1400, 800)
 
     def crear_punto(self):
         nombre = self.punto_nombre.toPlainText()
