@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from itertools import cycle
 from math import sin, cos, radians, atan2
 from string import ascii_uppercase, ascii_lowercase
 from OpenGL.GL import glClear, GL_COLOR_BUFFER_BIT, glEnable, GL_DEPTH_TEST, glMatrixMode, GL_PROJECTION, GL_TRUE, \
@@ -7,7 +8,7 @@ from OpenGL.GL import glClear, GL_COLOR_BUFFER_BIT, glEnable, GL_DEPTH_TEST, glM
     glEnd, glPointSize, GL_POINT_SMOOTH, GL_POINTS, GL_BLEND, glBlendFunc, GL_SRC_ALPHA, GL_QUADS, glDisable, \
     GL_LINES, GL_LINE_LOOP, glDepthMask, GL_FALSE, GL_ONE_MINUS_SRC_ALPHA, GL_TRIANGLE_FAN
 from OpenGL.GLU import gluLookAt
-from PyQt5.QtCore import Qt, QRect, QSize
+from PyQt5.QtCore import Qt, QSize, pyqtSlot
 from PyQt5.QtGui import QPainter, QPen, QCursor, QTransform, QFont, QColor
 from PyQt5.QtWidgets import QOpenGLWidget, QWidget, QCheckBox, QPushButton, QHBoxLayout, QMainWindow, QLabel, QMenu, \
     QApplication, QVBoxLayout, QSpinBox, QPlainTextEdit, QComboBox, QMessageBox, QGraphicsScene, QGraphicsView, \
@@ -94,7 +95,7 @@ class Punto(EntidadGeometrica):
         self.y = cota
         self.z = alejamiento
         self.nombre = nombre
-        self.coords = (self.x, self.z, self.y)
+        self.coords = (do, alejamiento, cota)
 
 
 class Recta(EntidadGeometrica):
@@ -103,8 +104,8 @@ class Recta(EntidadGeometrica):
         EntidadGeometrica.__init__(self, internal_id, nombre)
 
         self.recta = Line(Point3D(p1.coords), Point3D(p2.coords))
-        self.p1 = (p1.coords[0], p1.coords[2], p1.coords[1])
-        self.p2 = (p2.coords[0], p2.coords[2], p2.coords[1])
+        self.p1 = p1.coords
+        self.p2 = p2.coords
 
         self.nombre = nombre
         self.contenida_pv = False
@@ -209,24 +210,28 @@ class Recta(EntidadGeometrica):
 class Plano(EntidadGeometrica):
     def __init__(self, internal_id: int, nombre: str, p1: Punto, p2: Punto, p3: Punto):
         EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}({p1.nombre}, {p2.nombre}, {p3.nombre})"))
-
         self.plano = Plane(Point3D(p1.coords), Point3D(p2.coords), Point3D(p3.coords))
         self.vector_normal = self.plano.normal_vector
         self.nombre = QLabel(f"{nombre}({p1.nombre}, {p2.nombre}, {p3.nombre})")
+
         self.p1 = (p1.coords[0], p1.coords[2], p1.coords[1])
         self.p2 = (p2.coords[0], p2.coords[2], p2.coords[1])
         self.p3 = (p3.coords[0], p3.coords[2], p3.coords[1])
 
+        self.infinito = QAction("Infinito")
+        self.infinito.setCheckable(True)
+        self.infinito.setChecked(True)
+        self.menu.addAction(self.infinito)
+
+        self.puntos = self.limites()
+
         self.borrar.triggered.connect(lambda: programa.borrar_plano(self.id))
 
-        # Color por defecto del plano
-        self.color = (0.6, 0.6, 0.15, 0.6)
-
+        # Color por defecto del plano, azul
+        self.color = (0, 0, 200, 0.4)
         self.editar_color = QAction("Color")
         self.menu.addAction(self.editar_color)
         self.editar_color.triggered.connect(self.cambiar_color)
-
-        self.puntos = self.limites(self.p1, self.p2, self.p3)
 
         self.ver_traza_horizontal = QAction("Traza en PH")
         self.ver_traza_horizontal.setCheckable(True)
@@ -251,8 +256,8 @@ class Plano(EntidadGeometrica):
             self.ver_traza_horizontal.setCheckable(False)
             self.ver_traza_horizontal.setDisabled(True)
 
-    def limites(self, p1: tuple, p2: tuple, p3: tuple):
-        plano = Plane(Point3D(p1), Point3D(p2), Point3D(p3))
+    def limites(self):
+        plano = self.plano
         buenos = []
 
         for i in range(12):
@@ -277,6 +282,7 @@ class Plano(EntidadGeometrica):
             vector = plano.normal_vector
             proyectados = []
 
+            # Proyectar en:
             # Perfil
             if vector[1] == vector[2] == 0:
                 for i in buenos:
@@ -450,6 +456,8 @@ class Renderizador(QOpenGLWidget):
         if programa.ajustes.ver_plano_vertical.isChecked() or programa.ajustes.ver_plano_horizontal.isChecked():
             glEnable(GL_BLEND)
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+            self.bordes_plano_horizontal()
+            self.bordes_plano_vertical()
             glDepthMask(GL_FALSE)
             glBegin(GL_QUADS)
 
@@ -499,8 +507,6 @@ class Renderizador(QOpenGLWidget):
 
             glEnd()
             glDepthMask(GL_TRUE)
-            self.bordes_plano_horizontal()
-            self.bordes_plano_vertical()
             glDisable(GL_BLEND)
 
     @staticmethod
@@ -574,24 +580,30 @@ class Renderizador(QOpenGLWidget):
                 if plano.render.isChecked():
                     glBegin(GL_TRIANGLE_FAN)
                     glColor(plano.color)
-                    for j in plano.puntos:
-                        glVertex(j[0], j[1], j[2])
+                    if plano.infinito.isChecked():
+                        for j in plano.puntos:
+                            glVertex(j[0], j[2], j[1])
+                    else:
+                        glVertex(plano.p1)
+                        glVertex(plano.p2)
+                        glVertex(plano.p3)
                     glEnd()
                 glDepthMask(GL_TRUE)
                 glDisable(GL_BLEND)
-                glColor(0, 0, 0, 0.2)
-                # Trazas:
-                glLineWidth(2)
-                if plano.ver_traza_vertical.isChecked():
-                    glBegin(GL_LINES)
-                    glVertex(plano.traza_v[0])
-                    glVertex(plano.traza_v[1])
-                    glEnd()
-                if plano.ver_traza_horizontal.isChecked():
-                    glBegin(GL_LINES)
-                    glVertex(plano.traza_h[0])
-                    glVertex(plano.traza_h[1])
-                    glEnd()
+                if plano.infinito.isChecked():
+                    glColor(0, 0, 0, 0.2)
+                    # Trazas:
+                    glLineWidth(2)
+                    if plano.ver_traza_vertical.isChecked():
+                        glBegin(GL_LINES)
+                        glVertex(plano.traza_v[0])
+                        glVertex(plano.traza_v[1])
+                        glEnd()
+                    if plano.ver_traza_horizontal.isChecked():
+                        glBegin(GL_LINES)
+                        glVertex(plano.traza_h[0])
+                        glVertex(plano.traza_h[1])
+                        glEnd()
 
     def initializeGL(self):
         glEnable(GL_DEPTH_TEST)
@@ -904,7 +916,7 @@ class Diedrico(QWidget):
     def dibujar_planos(self, qp):
         for i in range(programa.lista_planos.count()):
             plano = programa.lista_planos.itemWidget(programa.lista_planos.item(i))
-            if plano.render.isChecked():
+            if plano.render.isChecked() and plano.infinito.isChecked():
                 if plano.ver_traza_horizontal.isChecked():
                     qp.setPen(self.pen_plano_prima)
                     self.recta_prima(qp, plano.traza_h)
@@ -989,19 +1001,19 @@ class Ajustes(QMainWindow):
         self.ver_planos_trazas_horizontales.setGeometry(280, 50, 129, 17)
 
         boton_color_vertical = QPushButton(widget_central)
-        boton_color_vertical.setGeometry(QRect(10, 130, 101, 41))
+        boton_color_vertical.setGeometry(10, 130, 101, 41)
         boton_color_vertical.setText("Cambiar el color del\n plano vertical")
         boton_color_vertical.clicked.connect(self.cambiar_color_plano_vertical)
-        reset_vertical = QPushButton(widget_central);
-        reset_vertical.setGeometry(QRect(120, 130, 75, 41))
+        reset_vertical = QPushButton(widget_central)
+        reset_vertical.setGeometry(120, 130, 75, 41)
         reset_vertical.setText("Reestablecer")
 
         boton_color_horizontal = QPushButton(widget_central)
-        boton_color_horizontal.setGeometry(QRect(200, 130, 101, 41))
+        boton_color_horizontal.setGeometry(200, 130, 101, 41)
         boton_color_horizontal.setText("Cambiar el color del\n plano horizontal")
         boton_color_horizontal.clicked.connect(self.cambiar_color_plano_horizontal)
         reset_horizontal = QPushButton(widget_central)
-        reset_horizontal.setGeometry(QRect(310, 130, 75, 41))
+        reset_horizontal.setGeometry(310, 130, 75, 41)
         reset_horizontal.setText("Reestablecer")
 
         self.setWindowTitle("Ajustes")
@@ -1020,6 +1032,47 @@ class Ajustes(QMainWindow):
         if color.isValid():
             color = color.getRgb()
             self.color_plano_horizontal = tuple([i / 255 for i in color])
+
+
+class RectaPerpendicularAPlano(QMainWindow):
+    def __init__(self):
+        QMainWindow.__init__(self)
+        self.setFixedSize(180, 140)
+        self.setWindowTitle("")
+        widget_central = QWidget(self)
+
+        label_2 = QLabel(widget_central)
+        label_2.setGeometry(10, 60, 47, 13)
+        label_2.setText("Plano:")
+
+        label = QLabel(widget_central)
+        label.setGeometry(10, 10, 47, 13)
+        label.setText("Recta: ")
+
+        self.elegir_punto = QComboBox(widget_central)
+        self.elegir_punto.setGeometry(10, 30, 161, 21)
+
+        comboBox_2 = QComboBox(widget_central)
+        comboBox_2.setGeometry(10, 80, 161, 21)
+
+        pushButton = QPushButton(widget_central)
+        pushButton.setGeometry(94, 110, 81, 23)
+        pushButton.setText("Crear")
+        pushButton.clicked.connect(self.crear_recta)
+
+        pushButton_2 = QPushButton(widget_central)
+        pushButton_2.setGeometry(10, 110, 81, 23)
+        pushButton_2.setText("Cancelar")
+        pushButton_2.clicked.connect(self.cerrar)
+
+        self.setCentralWidget(widget_central)
+
+    @pyqtSlot()
+    def cerrar(self):
+        self.close()
+
+    def crear_recta(self):
+        punto = self.elegir_punto.currentText()
 
 
 class Ventana(QMainWindow):
@@ -1056,204 +1109,233 @@ class Ventana(QMainWindow):
         frame.setLineWidth(3)
 
         informacion = QLabel(frame)
-        informacion.setGeometry(QRect(10, 10, 91, 16))
+        informacion.setGeometry(0, 10, 91, 16)
         informacion.setFont(fuente)
         informacion.setText("Información:")
 
         posicion = QLabel(frame)
-        posicion.setGeometry(QRect(10, 30, 71, 16))
+        posicion.setGeometry(0, 30, 71, 16)
         posicion.setFont(fuente)
         posicion.setText("Posición:")
 
         self.posicion = QLabel(frame)
-        self.posicion.setGeometry(QRect(80, 30, 151, 16))
+        self.posicion.setGeometry(70, 30, 151, 16)
         self.posicion.setFont(fuente)
         self.posicion.setText("Primer cuadrante")
 
         self.angulo_vertical = QLabel(frame)
-        self.angulo_vertical.setGeometry(QRect(10, 50, 121, 16))
+        self.angulo_vertical.setGeometry(0, 50, 121, 16)
         self.angulo_vertical.setFont(fuente)
 
         self.angulo_horizontal = QLabel(frame)
-        self.angulo_horizontal.setGeometry(QRect(130, 50, 130, 16))
+        self.angulo_horizontal.setGeometry(120, 50, 130, 16)
         self.angulo_horizontal.setFont(fuente)
 
         vista = QLabel(frame)
-        vista.setGeometry(QRect(10, 70, 91, 16))
+        vista.setGeometry(0, 70, 91, 16)
         vista.setFont(fuente)
         vista.setText("Vista:")
 
         crear_puntos = QLabel(frame)
-        crear_puntos.setGeometry(QRect(10, 120, 91, 16))
+        crear_puntos.setGeometry(0, 120, 91, 16)
         crear_puntos.setFont(fuente)
         crear_puntos.setText("Crear puntos:")
 
         nombre_punto = QLabel(frame)
-        nombre_punto.setGeometry(QRect(10, 200, 91, 16))
+        nombre_punto.setGeometry(0, 200, 91, 16)
         nombre_punto.setText("Nombre:")
 
         distancia_al_origen = QLabel(frame)
-        distancia_al_origen.setGeometry(QRect(10, 140, 91, 16))
+        distancia_al_origen.setGeometry(0, 140, 91, 16)
         distancia_al_origen.setText("Distancia al origen:")
 
         alejamiento = QLabel(frame)
-        alejamiento.setGeometry(QRect(10, 160, 91, 16))
+        alejamiento.setGeometry(0, 160, 91, 16)
         alejamiento.setText("Alejamiento:")
 
         cota = QLabel(frame)
-        cota.setGeometry(QRect(10, 180, 91, 16))
+        cota.setGeometry(0, 180, 91, 16)
         cota.setText("Cota:")
 
         nombre_recta = QLabel(frame)
-        nombre_recta.setGeometry(QRect(170, 180, 91, 21))
+        nombre_recta.setGeometry(160, 180, 91, 21)
         nombre_recta.setText("Nombre:")
 
         crear_rectas = QLabel(frame)
-        crear_rectas.setGeometry(QRect(170, 120, 91, 16))
+        crear_rectas.setGeometry(160, 120, 91, 16)
         crear_rectas.setFont(fuente)
         crear_rectas.setText("Crear rectas:")
 
         punto_1_recta = QLabel(frame)
-        punto_1_recta.setGeometry(QRect(170, 140, 51, 16))
+        punto_1_recta.setGeometry(160, 140, 51, 16)
         punto_1_recta.setText("Punto 1:")
 
         punto_2_recta = QLabel(frame)
-        punto_2_recta.setGeometry(QRect(170, 160, 51, 16))
+        punto_2_recta.setGeometry(160, 160, 51, 16)
         punto_2_recta.setText("Punto 2:")
 
         nombre_plano = QLabel(frame)
-        nombre_plano.setGeometry(QRect(330, 200, 91, 21))
+        nombre_plano.setGeometry(320, 200, 91, 21)
         nombre_plano.setText("Nombre:")
 
         crear_planos = QLabel(frame)
-        crear_planos.setGeometry(QRect(330, 120, 91, 16))
+        crear_planos.setGeometry(320, 120, 91, 16)
         crear_planos.setFont(fuente)
         crear_planos.setText("Crear planos:")
 
         punto_1_plano = QLabel(frame)
-        punto_1_plano.setGeometry(QRect(330, 140, 51, 16))
+        punto_1_plano.setGeometry(320, 140, 51, 16)
         punto_1_plano.setText("Punto 1:")
 
         punto_2_plano = QLabel(frame)
-        punto_2_plano.setGeometry(QRect(330, 160, 51, 16))
+        punto_2_plano.setGeometry(320, 160, 51, 16)
         punto_2_plano.setText("Punto 2:")
 
         punto_3_plano = QLabel(frame)
-        punto_3_plano.setGeometry(QRect(330, 180, 51, 16))
+        punto_3_plano.setGeometry(320, 180, 51, 16)
         punto_3_plano.setText("Punto 3:")
 
         boton_reset = QPushButton(frame)
-        boton_reset.setGeometry(QRect(10, 90, 81, 23))
+        boton_reset.setGeometry(0, 90, 81, 23)
         boton_reset.clicked.connect(self.renderizador.ver_reset)
         boton_reset.setText("Reset (R)")
 
         boton_alzado = QPushButton(frame)
-        boton_alzado.setGeometry(QRect(100, 90, 81, 23))
+        boton_alzado.setGeometry(90, 90, 81, 23)
         boton_alzado.clicked.connect(self.renderizador.ver_alzado)
         boton_alzado.setText("Alzado (1) ''")
 
         boton_planta = QPushButton(frame)
-        boton_planta.setGeometry(QRect(190, 90, 81, 23))
+        boton_planta.setGeometry(180, 90, 81, 23)
         boton_planta.clicked.connect(self.renderizador.ver_planta)
         boton_planta.setText("Planta (2) '")
 
         boton_perfil = QPushButton(frame)
-        boton_perfil.setGeometry(QRect(280, 90, 81, 23))
+        boton_perfil.setGeometry(270, 90, 81, 23)
         boton_perfil.clicked.connect(self.renderizador.ver_perfil)
         boton_perfil.setText("Perfil (3) '''")
 
         boton_punto = QPushButton(frame)
-        boton_punto.setGeometry(QRect(10, 250, 151, 21))
+        boton_punto.setGeometry(0, 250, 151, 21)
         boton_punto.clicked.connect(self.crear_punto)
         boton_punto.setText("Crear")
 
         boton_recta = QPushButton(frame)
-        boton_recta.setGeometry(QRect(170, 229, 151, 21))
+        boton_recta.setGeometry(160, 229, 151, 21)
         boton_recta.clicked.connect(self.crear_recta)
         boton_recta.setText("Crear")
 
         boton_plano = QPushButton(frame)
-        boton_plano.setGeometry(QRect(330, 250, 151, 21))
+        boton_plano.setGeometry(320, 250, 151, 21)
         boton_plano.clicked.connect(self.crear_plano)
         boton_plano.setText("Crear")
 
         self.valor_distancia_origen = QSpinBox(frame)
-        self.valor_distancia_origen.setGeometry(QRect(110, 140, 51, 20))
+        self.valor_distancia_origen.setGeometry(100, 140, 51, 20)
         self.valor_distancia_origen.setRange(-499, 499)
+
         self.valor_alejamiento = QSpinBox(frame)
-        self.valor_alejamiento.setGeometry(QRect(110, 160, 51, 20))
+        self.valor_alejamiento.setGeometry(100, 160, 51, 20)
         self.valor_alejamiento.setRange(-499, 499)
+
         self.valor_cota = QSpinBox(frame)
-        self.valor_cota.setGeometry(QRect(110, 180, 51, 20))
+        self.valor_cota.setGeometry(100, 180, 51, 20)
         self.valor_cota.setRange(-499, 499)
 
         self.punto_recta_1 = QComboBox(frame)
-        self.punto_recta_1.setGeometry(QRect(230, 140, 91, 22))
+        self.punto_recta_1.setGeometry(220, 140, 91, 22)
         self.punto_recta_2 = QComboBox(frame)
-        self.punto_recta_2.setGeometry(QRect(230, 160, 91, 21))
+        self.punto_recta_2.setGeometry(220, 160, 91, 21)
         self.punto_plano_1 = QComboBox(frame)
-        self.punto_plano_1.setGeometry(QRect(380, 140, 91, 22))
+        self.punto_plano_1.setGeometry(370, 140, 91, 22)
         self.punto_plano_2 = QComboBox(frame)
-        self.punto_plano_2.setGeometry(QRect(380, 160, 91, 22))
+        self.punto_plano_2.setGeometry(370, 160, 91, 22)
         self.punto_plano_3 = QComboBox(frame)
-        self.punto_plano_3.setGeometry(QRect(380, 180, 91, 22))
+        self.punto_plano_3.setGeometry(370, 180, 91, 22)
 
         self.punto_nombre = QPlainTextEdit(frame)
-        self.punto_nombre.setGeometry(QRect(10, 220, 151, 25))
+        self.punto_nombre.setGeometry(0, 220, 151, 25)
         self.recta_nombre = QPlainTextEdit(frame)
-        self.recta_nombre.setGeometry(QRect(170, 200, 151, 25))
+        self.recta_nombre.setGeometry(160, 200, 151, 25)
         self.plano_nombre = QPlainTextEdit(frame)
-        self.plano_nombre.setGeometry(QRect(330, 220, 151, 25))
+        self.plano_nombre.setGeometry(320, 220, 151, 25)
 
         self.tercera_proyeccion = QCheckBox(dock_diedrico)
-        self.tercera_proyeccion.setGeometry(QRect(58, 3, 111, 17))
+        self.tercera_proyeccion.setGeometry(58, 3, 111, 17)
         self.tercera_proyeccion.setText("Tercera proyección")
 
         self.ver_puntos = QCheckBox(dock_diedrico)
-        self.ver_puntos.setGeometry(QRect(172, 3, 61, 17))
+        self.ver_puntos.setGeometry(172, 3, 61, 17)
         self.ver_puntos.setChecked(True)
         self.ver_puntos.setText("Puntos")
 
         self.ver_rectas = QCheckBox(dock_diedrico)
-        self.ver_rectas.setGeometry(QRect(230, 3, 61, 17))
+        self.ver_rectas.setGeometry(230, 3, 61, 17)
         self.ver_rectas.setChecked(True)
         self.ver_rectas.setText("Rectas")
 
         self.ver_planos = QCheckBox(dock_diedrico)
-        self.ver_planos.setGeometry(QRect(288, 3, 70, 17))
+        self.ver_planos.setGeometry(288, 3, 70, 17)
         self.ver_planos.setChecked(True)
         self.ver_planos.setText("Planos")
 
         ajustes = QPushButton(frame)
-        ajustes.setGeometry(QRect(370, 90, 81, 23))
+        ajustes.setGeometry(235, 550, 236, 31)
         ajustes.setText("Ajustes")
         self.ajustes = Ajustes()
         ajustes.clicked.connect(self.ajustes.show)
 
         widget_punto = QWidget(frame)
-        widget_punto.setGeometry(QRect(10, 271, 151, 211))
+        widget_punto.setGeometry(0, 271, 151, 211)
         vertical_punto = QVBoxLayout(widget_punto)
         vertical_punto.setContentsMargins(0, 0, 0, 0)
         self.lista_puntos = QListWidget(widget_punto)
         vertical_punto.addWidget(self.lista_puntos)
 
         widget_recta = QWidget(frame)
-        widget_recta.setGeometry(QRect(170, 250, 151, 231))
+        widget_recta.setGeometry(160, 250, 150, 232)
         vertical_recta = QVBoxLayout(widget_recta)
         vertical_recta.setContentsMargins(0, 0, 0, 0)
         self.lista_rectas = QListWidget(widget_recta)
         vertical_recta.addWidget(self.lista_rectas)
 
         widget_planos = QWidget(frame)
-        widget_planos.setGeometry(QRect(330, 271, 151, 211))
+        widget_planos.setGeometry(320, 271, 151, 211)
         vertical_planos = QVBoxLayout(widget_planos)
         vertical_planos.setContentsMargins(0, 0, 0, 0)
         self.lista_planos = QListWidget(widget_planos)
         vertical_planos.addWidget(self.lista_planos)
 
-        self.puntero_puntos = 15
-        self.puntero_rectas = 17
-        self.puntero_planos = 0
+        a = QPushButton(frame)
+        a.setGeometry(160, 480, 151, 41)
+        self.recta_perpendicular_plano = RectaPerpendicularAPlano()
+        a.clicked.connect(self.recta_perpendicular_plano.show)
+        a.setText("Crear recta \nperpendicular a plano")
+
+        b = QPushButton(frame)
+        b.setGeometry(160, 520, 151, 31)
+        b.setText("Crear recta paralela a plano")
+
+        c = QPushButton(frame)
+        c.setGeometry(320, 480, 151, 41)
+        c.setText("Crear plano\nperpendicular a plano")
+
+        d = QPushButton(frame)
+        d.setGeometry(320, 520, 151, 31)
+        d.setText("Crear plano paralelo a plano")
+
+        e = QPushButton(frame)
+        e.setGeometry(0, 480, 151, 41)
+        e.setText("Crear recta \nperpendicular a recta")
+
+        f = QPushButton(frame)
+        f.setGeometry(0, 520, 151, 31)
+        f.setText("Crear recta paralela a recta")
+
+        g = QPushButton(frame)
+        g.setGeometry(0, 550, 236, 31)
+        g.setText("Calcular distancia entre elementos")
+
         self.id_punto = 1
         self.id_recta = 1
         self.id_plano = 1
@@ -1276,9 +1358,13 @@ class Ventana(QMainWindow):
                   Plane(self.v[0], self.v[4], self.v[7]), Plane(self.v[4], self.v[5], self.v[7]),
                   Plane(self.v[2], self.v[3], self.v[7]), Plane(self.v[1], self.v[2], self.v[5]))
 
-        self.alfabeto_griego = (u'\u03B1', u'\u03B2', u'\u03B3', u'\u03B4', u'\u03B5', u'\u03B6', u'\u03B7', u'\u03B8',
-                                u'\u03B9', u'\u03BA', u'\u03BB', u'\u03BC', u'\u03BD', u'\u03BE', u'\u03BF', u'\u03C0',
-                                u'\u03C1', u'\u03C3', u'\u03C4', u'\u03C5', u'\u03C6', u'\u03C7', u'\u03C8', u'\u03C9')
+        self.mayusculas = cycle("PQRSTUVWXYZABCDEFGHIJKLMNO")
+        self.minusculas = cycle("rstuvwxyzabcdefghijklmnopq")
+
+        alfabeto_griego = (u'\u03B1', u'\u03B2', u'\u03B3', u'\u03B4', u'\u03B5', u'\u03B6', u'\u03B7', u'\u03B8',
+                           u'\u03B9', u'\u03BA', u'\u03BB', u'\u03BC', u'\u03BD', u'\u03BE', u'\u03BF', u'\u03C0',
+                           u'\u03C1', u'\u03C3', u'\u03C4', u'\u03C5', u'\u03C6', u'\u03C7', u'\u03C8', u'\u03C9')
+        self.alfabeto_griego = cycle(alfabeto_griego)
 
         self.actualizar_texto()
         self.setWindowTitle("Dibujo técnico")
@@ -1333,30 +1419,24 @@ class Ventana(QMainWindow):
     def crear_punto(self):
         nombre = self.punto_nombre.toPlainText()
 
-        # Evita que el puntero supere la longitud de la lista
-        if self.puntero_puntos == len(ascii_uppercase):
-            self.puntero_puntos = 0
-
         # Genera nombres genéricos si no se provee uno
         if nombre == "":
-            nombre = ascii_uppercase[self.puntero_puntos]
-            self.puntero_puntos += 1
+            nombre = self.mayusculas.__next__()
 
         # Evita nombres duplicados
         for i in range(self.lista_puntos.count()):
             if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre == nombre:
-                nombre = ascii_uppercase[self.puntero_puntos]
-                self.puntero_puntos += 1
+                nombre = self.minusculas.__next__()
                 break
 
         item = QListWidgetItem()
         self.lista_puntos.addItem(item)
-        punto = Punto(self.id_punto, nombre, self.valor_distancia_origen.value(), self.valor_alejamiento.value(),
-                      self.valor_cota.value())
-        self.id_punto += 1
+        punto = Punto(self.id_punto, nombre, self.valor_distancia_origen.value(),
+                      self.valor_alejamiento.value(), self.valor_cota.value())
         item.setSizeHint(punto.minimumSizeHint())
         self.lista_puntos.setItemWidget(item, punto)
 
+        self.id_punto += 1
         self.elegir_puntos_recta()
         self.elegir_puntos_plano()
 
@@ -1376,20 +1456,14 @@ class Ventana(QMainWindow):
             QMessageBox.about(self, "Error al crear la recta",
                               "La recta debe ser creada a partir de dos puntos no coincidentes")
         else:
-            # Evita que el puntero supere la longitud de la lista
-            if self.puntero_rectas == len(ascii_lowercase):
-                self.puntero_rectas = 0
-
             # Genera nombres genéricos si no se provee uno
             if nombre == "":
-                nombre = ascii_lowercase[self.puntero_rectas]
-                self.puntero_rectas += 1
+                nombre = self.minusculas.__next__()
 
             # Evita nombres duplicados
             for i in range(self.lista_rectas.count()):
                 if self.lista_rectas.itemWidget(self.lista_rectas.item(i)).nombre == nombre:
-                    nombre = ascii_lowercase[self.puntero_rectas]
-                    self.puntero_rectas += 1
+                    nombre = self.minusculas.__next__()
                     break
 
             item = QListWidgetItem()
@@ -1427,20 +1501,14 @@ class Ventana(QMainWindow):
                               "El plano debe ser creado por tres puntos no alineados")
 
         else:
-            # Evita que el puntero supere la longitud de la lista
-            if self.puntero_planos == len(self.alfabeto_griego):
-                self.puntero_planos = 0
-
             # Genera nombres genéricos si no se provee uno
             if nombre == "":
-                nombre = self.alfabeto_griego[self.puntero_planos]
-                self.puntero_planos += 1
+                nombre = self.alfabeto_griego.__next__()
 
             # Evita nombres duplicados
             for i in range(self.lista_planos.count()):
                 if self.lista_planos.itemWidget(self.lista_planos.item(i)).nombre == nombre:
-                    nombre = self.alfabeto_griego[self.puntero_planos]
-                    self.puntero_planos += 1
+                    nombre = self.alfabeto_griego.__next__()
                     break
 
             item = QListWidgetItem()
