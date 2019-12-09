@@ -1052,8 +1052,8 @@ class RectaPerpendicularAPlano(QMainWindow):
         self.elegir_punto = QComboBox(widget_central)
         self.elegir_punto.setGeometry(10, 30, 161, 21)
 
-        comboBox_2 = QComboBox(widget_central)
-        comboBox_2.setGeometry(10, 80, 161, 21)
+        self.elegir_plano = QComboBox(widget_central)
+        self.elegir_plano.setGeometry(10, 80, 161, 21)
 
         pushButton = QPushButton(widget_central)
         pushButton.setGeometry(94, 110, 81, 23)
@@ -1063,7 +1063,7 @@ class RectaPerpendicularAPlano(QMainWindow):
         pushButton_2 = QPushButton(widget_central)
         pushButton_2.setGeometry(10, 110, 81, 23)
         pushButton_2.setText("Cancelar")
-        pushButton_2.clicked.connect(self.cerrar)
+        pushButton_2.clicked.connect(self.cerrar)           
 
         self.setCentralWidget(widget_central)
 
@@ -1071,8 +1071,31 @@ class RectaPerpendicularAPlano(QMainWindow):
     def cerrar(self):
         self.close()
 
+    def abrir(self):
+        for i in range(programa.lista_puntos.count()):
+            self.elegir_punto.addItem(programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre)
+            
+        for i in range(programa.lista_planos.count()):
+            print(programa.lista_planos.itemWidget(programa.lista_planos.item(i)))
+            print(programa.lista_planos.itemWidget(programa.lista_planos.item(i)).nombre)
+            self.elegir_plano.addItem(programa.lista_planos.itemWidget(programa.lista_planos.item(i)).nombre)
+
+        self.show()
+
     def crear_recta(self):
         punto = self.elegir_punto.currentText()
+        plano = self.elegir_plano.currentText()
+
+        for i in range(programa.lista_puntos.count()):
+            if programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre == punto:
+                punto = programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)) # TODO
+
+        for i in range(programa.lista_planos.count()):
+            if programa.lista_planos.itemWidget(programa.lista_planos.item(i)).nombre == plano:
+                plano = programa.lista_planos.itemWidget(programa.lista_planos.item(i))
+        print(punto)
+        print(plano)
+
 
 
 class Ventana(QMainWindow):
@@ -1309,7 +1332,7 @@ class Ventana(QMainWindow):
         a = QPushButton(frame)
         a.setGeometry(160, 480, 151, 41)
         self.recta_perpendicular_plano = RectaPerpendicularAPlano()
-        a.clicked.connect(self.recta_perpendicular_plano.show)
+        a.clicked.connect(self.recta_perpendicular_plano.abrir)
         a.setText("Crear recta \nperpendicular a plano")
 
         b = QPushButton(frame)
