@@ -100,6 +100,7 @@ class Punto(EntidadGeometrica):
 
 class Recta(EntidadGeometrica):
     def __init__(self, internal_id: int, nombre: str, p1: Punto, p2: Punto):
+        "⊥║"
         EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}({p1.nombre}, {p2.nombre})"))
 
         self.recta = Line(Point3D(p1.coords), Point3D(p2.coords))
@@ -1092,7 +1093,7 @@ class RectaPerpendicularAPlano(QMainWindow):
     def crear_recta(self):
         punto = self.elegir_punto.currentText()
         plano = self.elegir_plano.currentText()
-        nombre = self.nombre.get
+        nombre = self.nombre.toPlainText()
 
         for i in range(programa.lista_puntos.count()):
             if programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre == punto:
@@ -1102,7 +1103,9 @@ class RectaPerpendicularAPlano(QMainWindow):
             if programa.lista_planos.itemWidget(programa.lista_planos.item(i)).nombre == plano:
                 plano = programa.lista_planos.itemWidget(programa.lista_planos.item(i))
 
-        recta = plano.perpendicular_line(Point3D(punto.coords))
+        recta = plano.plano.perpendicular_line(Point3D(punto.coords))
+
+        programa.crear_recta(recta)
 
 
 class Ventana(QMainWindow):
@@ -1208,10 +1211,10 @@ class Ventana(QMainWindow):
         nombre_plano.setGeometry(320, 200, 91, 21)
         nombre_plano.setText("Nombre:")
 
-        crear_planos = QLabel(frame)
-        crear_planos.setGeometry(320, 120, 91, 16)
-        crear_planos.setFont(fuente)
-        crear_planos.setText("Crear planos:")
+        comprobar_planos = QLabel(frame)
+        comprobar_planos.setGeometry(320, 120, 91, 16)
+        comprobar_planos.setFont(fuente)
+        comprobar_planos.setText("Crear planos:")
 
         punto_1_plano = QLabel(frame)
         punto_1_plano.setGeometry(320, 140, 51, 16)
@@ -1257,7 +1260,7 @@ class Ventana(QMainWindow):
 
         boton_plano = QPushButton(frame)
         boton_plano.setGeometry(320, 250, 151, 21)
-        boton_plano.clicked.connect(self.crear_plano)
+        boton_plano.clicked.connect(self.comprobar_plano)
         boton_plano.setText("Crear")
 
         self.valor_distancia_origen = QSpinBox(frame)
@@ -1446,19 +1449,47 @@ class Ventana(QMainWindow):
             else:
                 self.posicion.setText("Tercer cuadrante")
 
-    def crear_punto(self):
+    def nombre_punto(self):
         nombre = self.punto_nombre.toPlainText()
-
         # Genera nombres genéricos si no se provee uno
         if nombre == "":
             nombre = self.mayusculas.__next__()
-
         # Evita nombres duplicados
         for i in range(self.lista_puntos.count()):
             if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre == nombre:
                 nombre = self.minusculas.__next__()
                 break
-
+        self.id_punto += 1
+        return nombre
+    
+    def nombre_recta(self):
+        nombre = self.recta_nombre.toPlainText()
+        # Genera nombres genéricos si no se provee uno
+        if nombre == "":
+            nombre = self.minusculas.__next__()
+        # Evita nombres duplicados
+        for i in range(self.lista_rectas.count()):
+            if self.lista_rectas.itemWidget(self.lista_rectas.item(i)).nombre == nombre:
+                nombre = self.minusculas.__next__()
+                break
+        self.id_recta += 1
+        return nombre
+    
+    def nombre_plano(self):
+        nombre = self.plano_nombre.toPlainText()
+        # Genera nombres genéricos si no se provee uno
+        if nombre == "":
+            nombre = self.alfabeto_griego.__next__()
+        # Evita nombres duplicados
+        for i in range(self.lista_planos.count()):
+            if self.lista_planos.itemWidget(self.lista_planos.item(i)).nombre == nombre:
+                nombre = self.alfabeto_griego.__next__()
+                break
+        self.id_plano += 1
+        return nombre
+        
+    def crear_punto(self):
+        nombre = self.nombre_punto()
         item = QListWidgetItem()
         self.lista_puntos.addItem(item)
         punto = Punto(self.id_punto, nombre, self.valor_distancia_origen.value(),
@@ -1466,14 +1497,12 @@ class Ventana(QMainWindow):
         item.setSizeHint(punto.minimumSizeHint())
         self.lista_puntos.setItemWidget(item, punto)
 
-        self.id_punto += 1
         self.elegir_puntos_recta()
         self.elegir_puntos_plano()
 
     def comprobar_recta(self):
         punto1 = self.punto_recta_1.currentText()
         punto2 = self.punto_recta_2.currentText()
-        nombre = self.recta_nombre.toPlainText()
         for i in range(self.lista_puntos.count()):
             if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre == punto1:
                 punto1 = self.lista_puntos.itemWidget(self.lista_puntos.item(i))
@@ -1486,33 +1515,21 @@ class Ventana(QMainWindow):
             QMessageBox.about(self, "Error al crear la recta",
                               "La recta debe ser creada a partir de dos puntos no coincidentes")
         else:
-            self.crear_recta(nombre, punto1, punto2)
+            nombre = self.nombre_recta()
+            recta = Recta(self.id_recta, nombre, punto1, punto2)
+            self.crear_recta(recta)
 
-    def crear_recta(self, nombre, punto1, punto2):
-        # Genera nombres genéricos si no se provee uno
-        if nombre == "":
-            nombre = self.minusculas.__next__()
-
-        # Evita nombres duplicados
-        for i in range(self.lista_rectas.count()):
-            if self.lista_rectas.itemWidget(self.lista_rectas.item(i)).nombre == nombre:
-                nombre = self.minusculas.__next__()
-                break
-
+    def crear_recta(self, recta):
         item = QListWidgetItem()
         self.lista_rectas.addItem(item)
-        recta = Recta(self.id_recta, nombre, punto1, punto2)
         self.id_recta += 1
         item.setSizeHint(recta.minimumSizeHint())
         self.lista_rectas.setItemWidget(item, recta)
 
-        self.id_recta += 1
-
-    def crear_plano(self):
+    def comprobar_plano(self):
         punto1 = self.punto_plano_1.currentText()
         punto2 = self.punto_plano_2.currentText()
         punto3 = self.punto_plano_3.currentText()
-        nombre = self.plano_nombre.toPlainText()
 
         for i in range(self.lista_puntos.count()):
             if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre == punto1:
@@ -1534,23 +1551,15 @@ class Ventana(QMainWindow):
                               "El plano debe ser creado por tres puntos no alineados")
 
         else:
-            # Genera nombres genéricos si no se provee uno
-            if nombre == "":
-                nombre = self.alfabeto_griego.__next__()
-
-            # Evita nombres duplicados
-            for i in range(self.lista_planos.count()):
-                if self.lista_planos.itemWidget(self.lista_planos.item(i)).nombre == nombre:
-                    nombre = self.alfabeto_griego.__next__()
-                    break
-
-            item = QListWidgetItem()
-            self.lista_planos.addItem(item)
+            nombre = self.nombre_plano()
             plano = Plano(self.id_plano, nombre, punto1, punto2, punto3)
-            item.setSizeHint(plano.minimumSizeHint())
-            self.lista_planos.setItemWidget(item, plano)
-
-            self.id_plano += 1
+            self.crear_plano(plano)
+            
+    def crear_plano(self, plano):
+        item = QListWidgetItem()
+        self.lista_planos.addItem(item)
+        item.setSizeHint(plano.minimumSizeHint())
+        self.lista_planos.setItemWidget(item, plano)
 
     def borrar_punto(self, idd):
         for indice in range(self.lista_puntos.count()):
