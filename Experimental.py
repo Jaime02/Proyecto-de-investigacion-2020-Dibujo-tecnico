@@ -99,13 +99,26 @@ class Punto(EntidadGeometrica):
 
 
 class Recta(EntidadGeometrica):
-    def __init__(self, internal_id: int, nombre: str, p1: Punto, p2: Punto):
+    def __init__(self, internal_id: int, nombre: str, entidad_1: EntidadGeometrica, entidad_2: EntidadGeometrica, perpendicular=None, paralela=None, recta=None):
         "⊥║"
-        EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}({p1.nombre}, {p2.nombre})"))
+        print(entidad_1)
+        print(entidad_2)
+        
+        if isinstance(entidad_1, Punto) and isinstance(entidad_2, Punto):
+            EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}({entidad_1.nombre}, {entidad_2.nombre})"))
+            self.recta = Line(Point3D(entidad_1.coords), Point3D(entidad_2.coords))
 
-        self.recta = Line(Point3D(p1.coords), Point3D(p2.coords))
-        self.p1 = p1.coords
-        self.p2 = p2.coords
+        elif isinstance(entidad_1, Recta) and isintance(entidad_2, Plano):
+            self.recta = recta
+            if perpendicular:
+                EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}({entidad_1.nombre}⊥{entidad_2.nombre})"))
+            elif paralela:
+                EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}({entidad_1.nombre}║{entidad_2.nombre})"))
+
+        # TODO RECTA PUNTO
+        
+        self.entidad_1 = entidad_1
+        self.entidad_2 = entidad_2
 
         self.nombre = nombre
         self.contenida_pv = False
@@ -1105,7 +1118,7 @@ class RectaPerpendicularAPlano(QMainWindow):
 
         recta = plano.plano.perpendicular_line(Point3D(punto.coords))
 
-        programa.crear_recta(recta)
+        programa.crear_recta(recta, plano, perpendicular=True) # TODO
 
 
 class Ventana(QMainWindow):
@@ -1516,10 +1529,10 @@ class Ventana(QMainWindow):
                               "La recta debe ser creada a partir de dos puntos no coincidentes")
         else:
             nombre = self.nombre_recta()
-            recta = Recta(self.id_recta, nombre, punto1, punto2)
-            self.crear_recta(recta)
+            self.crear_recta(nombre, punto1, punto2)
 
-    def crear_recta(self, recta):
+    def crear_recta(self, nombre, punto1=None, punto2=None, recta=None, plano=None, perpendicular=False, paralela=False):
+        recta = Recta(self.id_recta, nombre, punto1, punto2, recta, perpendicular, paralela)
         item = QListWidgetItem()
         self.lista_rectas.addItem(item)
         self.id_recta += 1
