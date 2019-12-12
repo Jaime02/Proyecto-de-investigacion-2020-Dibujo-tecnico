@@ -98,29 +98,19 @@ class Punto(EntidadGeometrica):
 
 
 class Recta(EntidadGeometrica):
-    def __init__(self, internal_id: int, nombre: str, entidad_1: EntidadGeometrica, entidad_2: EntidadGeometrica,
-                 perpendicular=None, paralela=None, recta=None):
-        "⊥║"
-        print(entidad_1)
-        print(entidad_2)
+    def __init__(self, internal_id: int, nombre: str,
+                 entidad_1: EntidadGeometrica, entidad_2: EntidadGeometrica, modo=None):
 
         if isinstance(entidad_1, Punto) and isinstance(entidad_2, Punto):
             EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}({entidad_1.nombre}, {entidad_2.nombre})"))
             self.recta = Line(Point3D(entidad_1.coords), Point3D(entidad_2.coords))
 
-        elif isinstance(entidad_1, Recta) and isinstance(entidad_2, Plano):
-            self.recta = recta
-            if perpendicular:
-                EntidadGeometrica.__init__(self, internal_id,
-                                           QLabel(f"{nombre}({entidad_1.nombre}⊥{entidad_2.nombre})"))
-            elif paralela:
-                EntidadGeometrica.__init__(self, internal_id,
-                                           QLabel(f"{nombre}({entidad_1.nombre}║{entidad_2.nombre})"))
-
-        # TODO RECTA PUNTO
-
-        self.entidad_1 = entidad_1
-        self.entidad_2 = entidad_2
+        elif isinstance(entidad_1, Line3D) and isinstance(entidad_2, Plano):
+            self.recta = entidad_1
+            if modo == "Perpendicular":
+                EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}⊥{entidad_2.nombre}"))
+            else:
+                EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}║{entidad_2.nombre}"))
 
         self.nombre = nombre
         self.contenida_pv = False
@@ -1100,8 +1090,8 @@ class RectaPerpendicularAPlano(VentanaBase):
     def __init__(self):
         VentanaBase.__init__(self)
 
-        self.etiqueta_1.setText("Plano:")
-        self.etiqueta_2.setText("Punto:")
+        self.etiqueta_1.setText("Punto:")
+        self.etiqueta_2.setText("Plano:")
 
         self.boton_crear.clicked.connect(self.crear_recta)
 
@@ -1114,8 +1104,8 @@ class RectaPerpendicularAPlano(VentanaBase):
         self.show()
 
     def crear_recta(self):
-        punto = self.elegir_punto.currentText()
-        plano = self.elegir_plano.currentText()
+        punto = self.elegir_entidad_1.currentText()
+        plano = self.elegir_entidad_2.currentText()
         nombre = self.nombre.toPlainText()
 
         for i in range(programa.lista_puntos.count()):
@@ -1128,7 +1118,7 @@ class RectaPerpendicularAPlano(VentanaBase):
 
         recta = plano.plano.perpendicular_line(Point3D(punto.coords))
 
-        programa.crear_recta(recta, plano, perpendicular=True)  # TODO
+        programa.crear_recta(nombre, recta, plano, modo="Perpendicular")
 
 
 class Ventana(QMainWindow):
@@ -1541,9 +1531,8 @@ class Ventana(QMainWindow):
             nombre = self.nombre_recta()
             self.crear_recta(nombre, punto1, punto2)
 
-    def crear_recta(self, nombre, punto1=None, punto2=None, recta=None, plano=None, perpendicular=False,
-                    paralela=False):
-        recta = Recta(self.id_recta, nombre, punto1, punto2, recta, perpendicular, paralela)
+    def crear_recta(self, nombre, entidad_1, entidad_2, modo=None):
+        recta = Recta(self.id_recta, nombre, entidad_1, entidad_2, modo)
         item = QListWidgetItem()
         self.lista_rectas.addItem(item)
         self.id_recta += 1
