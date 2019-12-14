@@ -88,29 +88,33 @@ class EntidadGeometrica(QWidget):
 class Punto(EntidadGeometrica):
     def __init__(self, internal_id: int, nombre: str, do: int, alejamiento: int, cota: int):
         EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}({do}, {alejamiento}, {cota})"))
-
         self.borrar.triggered.connect(lambda: programa.borrar_punto(self.id))
         self.x = do
         self.y = cota
         self.z = alejamiento
         self.nombre = nombre
         self.coords = (do, alejamiento, cota)
+        self.punto = Point3D(self.coords)
 
 
 class Recta(EntidadGeometrica):
     def __init__(self, internal_id: int, nombre: str,
-                 entidad_1: EntidadGeometrica, entidad_2: EntidadGeometrica, modo=None):
-
+                 entidad_1: EntidadGeometrica, entidad_2: EntidadGeometrica, modo=None, nombre_recta=None):
         if isinstance(entidad_1, Punto) and isinstance(entidad_2, Punto):
             EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}({entidad_1.nombre}, {entidad_2.nombre})"))
             self.recta = Line(Point3D(entidad_1.coords), Point3D(entidad_2.coords))
 
         elif isinstance(entidad_1, Line3D) and isinstance(entidad_2, Plano):
             self.recta = entidad_1
+            EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}⊥{entidad_2.nombre}"))
+            # No se pueden crear rectas paralelas a planos que pasen por un punto debido a limitaciones técnicas
+
+        elif isinstance(entidad_1, Punto) and isinstance(entidad_2, Line3D):
+            self.recta = entidad_2
             if modo == "Perpendicular":
-                EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}⊥{entidad_2.nombre}"))
+                EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}⊥{nombre_recta}"))
             else:
-                EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}║{entidad_2.nombre}"))
+                EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}║{nombre_recta}"))
 
         self.nombre = nombre
         self.contenida_pv = False
@@ -216,15 +220,22 @@ class Recta(EntidadGeometrica):
 
 
 class Plano(EntidadGeometrica):
-    def __init__(self, internal_id: int, nombre: str, p1: Punto, p2: Punto, p3: Punto):
-        EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}({p1.nombre}, {p2.nombre}, {p3.nombre})"))
-        self.plano = Plane(Point3D(p1.coords), Point3D(p2.coords), Point3D(p3.coords))
+    def __init__(self, internal_id: int, nombre: str, entidad_1, entidad_2, entidad_3, modo):
+
+        if isinstance(entidad_1, Punto) and isinstance(entidad_2, Punto) and isinstance(entidad_3, Punto):
+            EntidadGeometrica.__init__(self, internal_id,
+                                       QLabel(f"{nombre}({entidad_1.nombre}, {entidad_2.nombre}, {entidad_3.nombre})"))
+            self.plano = Plane(Point3D(entidad_1.coords), Point3D(entidad_2.coords), Point3D(entidad_3.coords))
+
+        elif isinstance(entidad_1, Plane) and isinstance(entidad_2, Plano):
+            self.plano = entidad_1
+            if modo == "Perpendicular":
+                EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}⊥{entidad_2.nombre}"))
+            else:
+                EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}║{entidad_2.nombre}"))
+
         self.vector_normal = self.plano.normal_vector
         self.nombre = nombre
-
-        self.p1 = (p1.coords[0], p1.coords[2], p1.coords[1])
-        self.p2 = (p2.coords[0], p2.coords[2], p2.coords[1])
-        self.p3 = (p3.coords[0], p3.coords[2], p3.coords[1])
 
         self.infinito = QAction("Infinito")
         self.infinito.setCheckable(True)
@@ -297,18 +308,18 @@ class Plano(EntidadGeometrica):
                     proyectados.append((i[1], i[2]))
 
             # Vertical
-            elif vector[0] == vector[1] == 0:
-                proyectante = self.planos[0]
-                for i in buenos:
-                    proyectau = proyectante.projection(i)
-                    proyectados.append((proyectau[0], proyectau[1]))
-
-            # Horizontal
-            else:
-                proyectante = self.planos[1]
+            elif vector[2] == 0:
+                proyectante = self.plano_vertical
                 for i in buenos:
                     proyectau = proyectante.projection(i)
                     proyectados.append((proyectau[0], proyectau[2]))
+
+            # Horizontal
+            else:
+                proyectante = self.plano_horizontal
+                for i in buenos:
+                    proyectau = proyectante.projection(i)
+                    proyectados.append((proyectau[0], proyectau[1]))
 
             angulos = []
             for i in proyectados:
@@ -602,12 +613,12 @@ class Renderizador(QOpenGLWidget):
                     glColor(0, 0, 0, 0.2)
                     # Trazas:
                     glLineWidth(2)
-                    if plano.ver_traza_vertical.isChecked():
+                    if plano.ver_traza_vertical.isChecked() and programa.ajustes.ver_planos_trazas_verticales:
                         glBegin(GL_LINES)
                         glVertex(plano.traza_v[0])
                         glVertex(plano.traza_v[1])
                         glEnd()
-                    if plano.ver_traza_horizontal.isChecked():
+                    if plano.ver_traza_horizontal.isChecked() and programa.ajustes.ver_planos_trazas_horizontales:
                         glBegin(GL_LINES)
                         glVertex(plano.traza_h[0])
                         glVertex(plano.traza_h[1])
@@ -1046,7 +1057,8 @@ class Ajustes(QMainWindow):
 class VentanaBase(QMainWindow):
     def __init__(self):
         QMainWindow.__init__(self)
-        self.setFixedSize(140, 190)
+        self.setFixedSize(140, 140)
+        self.setWindowFlags(Qt.WindowStaysOnTopHint)
         font = QFont()
         font.setPointSize(10)
         self.setFont(font)
@@ -1060,20 +1072,13 @@ class VentanaBase(QMainWindow):
         self.etiqueta_2.setGeometry(10, 60, 41, 16)
 
         self.boton_crear = QPushButton(self.widget_central)
-        self.boton_crear.setGeometry(10, 160, 61, 23)
+        self.boton_crear.setGeometry(10, 110, 61, 23)
         self.boton_crear.setText("Crear")
 
         self.boton_cerrar = QPushButton(self.widget_central)
-        self.boton_cerrar.setGeometry(70, 160, 61, 23)
+        self.boton_cerrar.setGeometry(70, 110, 61, 23)
         self.boton_cerrar.setText("Cancelar")
         self.boton_cerrar.clicked.connect(self.cerrar)
-
-        etiqueta_nombre = QLabel(self.widget_central)
-        etiqueta_nombre.setGeometry(10, 110, 51, 20)
-        etiqueta_nombre.setText("Nombre:")
-
-        self.nombre = QPlainTextEdit(self.widget_central)
-        self.nombre.setGeometry(10, 130, 121, 28)
 
         self.elegir_entidad_1 = QComboBox(self.widget_central)
         self.elegir_entidad_1.setGeometry(10, 30, 121, 21)
@@ -1086,9 +1091,24 @@ class VentanaBase(QMainWindow):
         self.close()
 
 
-class RectaPerpendicularAPlano(VentanaBase):
+class VentanaBaseConNombre(VentanaBase):
     def __init__(self):
         VentanaBase.__init__(self)
+        self.setFixedSize(140, 190)
+        self.etiqueta_nombre = QLabel(self.widget_central)
+        self.etiqueta_nombre.setGeometry(10, 110, 51, 20)
+        self.etiqueta_nombre.setText("Nombre:")
+
+        self.boton_crear.setGeometry(10, 160, 61, 23)
+        self.boton_cerrar.setGeometry(70, 160, 61, 23)
+
+        self.nombre = QPlainTextEdit(self.widget_central)
+        self.nombre.setGeometry(10, 130, 121, 28)
+
+
+class RectaPerpendicularAPlano(VentanaBaseConNombre):
+    def __init__(self):
+        VentanaBaseConNombre.__init__(self)
 
         self.etiqueta_1.setText("Punto:")
         self.etiqueta_2.setText("Plano:")
@@ -1096,6 +1116,8 @@ class RectaPerpendicularAPlano(VentanaBase):
         self.boton_crear.clicked.connect(self.crear_recta)
 
     def abrir(self):
+        self.elegir_entidad_1.clear()
+        self.elegir_entidad_2.clear()
         for i in range(programa.lista_puntos.count()):
             self.elegir_entidad_1.addItem(programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre)
 
@@ -1116,10 +1138,220 @@ class RectaPerpendicularAPlano(VentanaBase):
             if programa.lista_planos.itemWidget(programa.lista_planos.item(i)).nombre == plano:
                 plano = programa.lista_planos.itemWidget(programa.lista_planos.item(i))
 
-        recta = plano.plano.perpendicular_line(Point3D(punto.coords))
+        if punto == "" or plano == "":
+            QMessageBox.critical(self, "Error al crear la recta",
+                                 "Debes crear al menos un plano y un punto para crear una recta")
+        else:
+            recta = plano.plano.perpendicular_line(punto.punto)
+            programa.crear_recta(nombre, recta, plano, modo="Perpendicular")
+            self.cerrar()
 
-        programa.crear_recta(nombre, recta, plano, modo="Perpendicular")
-        self.cerrar()
+
+class PlanoPerpendicularAPlano(VentanaBaseConNombre):
+    def __init__(self):
+        VentanaBaseConNombre.__init__(self)
+        self.setFixedSize(140, 230)
+
+        self.etiqueta_1.setText("Punto:")
+        self.etiqueta_2.setText("Plano:")
+        self.etiqueta_2.setGeometry(10, 110, 41, 16)
+        self.etiqueta_3 = QLabel(self.widget_central)
+        self.etiqueta_3.setGeometry(10, 60, 41, 16)
+        self.etiqueta_3.setText("Punto")
+
+        self.elegir_entidad_3 = QComboBox(self.widget_central)
+        self.elegir_entidad_3.setGeometry(10, 130, 121, 21)
+
+        self.nombre.setGeometry(10, 170, 121, 28)
+        self.etiqueta_nombre.setGeometry(10, 150, 51, 20)
+
+        self.boton_crear.setGeometry(10, 200, 61, 23)
+        self.boton_cerrar.setGeometry(70, 200, 61, 23)
+
+        self.boton_crear.clicked.connect(self.crear_plano)
+
+    def abrir(self):
+        self.elegir_entidad_1.clear()
+        self.elegir_entidad_2.clear()
+        self.elegir_entidad_3.clear()
+        for i in range(programa.lista_puntos.count()):
+            self.elegir_entidad_1.addItem(programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre)
+            self.elegir_entidad_2.addItem(programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre)
+        for i in range(programa.lista_planos.count()):
+            self.elegir_entidad_3.addItem(programa.lista_planos.itemWidget(programa.lista_planos.item(i)).nombre)
+        self.show()
+
+    def crear_plano(self):
+        punto = self.elegir_entidad_1.currentText()
+        punto2 = self.elegir_entidad_2.currentText()
+        plano = self.elegir_entidad_3.currentText()
+        nombre = programa.asignar_nombre_plano(self.nombre.toPlainText())
+
+        for i in range(programa.lista_puntos.count()):
+            if programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre == punto:
+                punto = programa.lista_puntos.itemWidget(programa.lista_puntos.item(i))
+            if programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre == punto2:
+                punto2 = programa.lista_puntos.itemWidget(programa.lista_puntos.item(i))
+
+        for i in range(programa.lista_planos.count()):
+            if programa.lista_planos.itemWidget(programa.lista_planos.item(i)).nombre == plano:
+                plano = programa.lista_planos.itemWidget(programa.lista_planos.item(i))
+
+        if punto == "" or plano == "":
+            QMessageBox.critical(self, "Error al crear el plano",
+                                 "Debes crear al menos un plano y un punto para crear un plano perpendicular a este")
+        else:
+            plano_perpendicular = plano.plano.perpendicular_plane(punto.punto, punto2.punto)
+            programa.crear_plano(nombre, plano_perpendicular, plano, modo="Perpendicular")
+            self.cerrar()
+
+
+class PlanoParaleloAPlano(VentanaBaseConNombre):
+    def __init__(self):
+        VentanaBaseConNombre.__init__(self)
+
+        self.etiqueta_1.setText("Punto:")
+        self.etiqueta_2.setText("Plano:")
+
+        self.boton_crear.clicked.connect(self.crear_plano)
+
+    def abrir(self):
+        self.elegir_entidad_1.clear()
+        self.elegir_entidad_2.clear()
+        for i in range(programa.lista_puntos.count()):
+            self.elegir_entidad_1.addItem(programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre)
+        for i in range(programa.lista_planos.count()):
+            self.elegir_entidad_2.addItem(programa.lista_planos.itemWidget(programa.lista_planos.item(i)).nombre)
+        self.show()
+
+    def crear_plano(self):
+        punto = self.elegir_entidad_1.currentText()
+        plano = self.elegir_entidad_2.currentText()
+        nombre = programa.asignar_nombre_plano(self.nombre.toPlainText())
+
+        for i in range(programa.lista_puntos.count()):
+            if programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre == punto:
+                punto = programa.lista_puntos.itemWidget(programa.lista_puntos.item(i))
+
+        for i in range(programa.lista_planos.count()):
+            if programa.lista_planos.itemWidget(programa.lista_planos.item(i)).nombre == plano:
+                plano = programa.lista_planos.itemWidget(programa.lista_planos.item(i))
+
+        if punto == "" or plano == "":
+            QMessageBox.critical(self, "Error al crear el plano",
+                                 "Debes crear al menos un plano y un punto para crear un plano paralelo a este")
+        else:
+            plano_paralelo = plano.plano.parallel_plane(punto.punto)
+            programa.crear_plano(nombre, plano_paralelo, plano, modo="Paralelo")
+            self.cerrar()
+
+
+class RectaPerpendicularARecta(VentanaBaseConNombre):
+    def __init__(self):
+        VentanaBaseConNombre.__init__(self)
+        self.etiqueta_1.setText("Punto:")
+        self.etiqueta_2.setText("Recta:")
+
+        self.boton_crear.clicked.connect(self.crear_recta)
+
+    def abrir(self):
+        self.elegir_entidad_1.clear()
+        self.elegir_entidad_2.clear()
+        for i in range(programa.lista_puntos.count()):
+            self.elegir_entidad_1.addItem(programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre)
+        for i in range(programa.lista_rectas.count()):
+            self.elegir_entidad_2.addItem(programa.lista_rectas.itemWidget(programa.lista_rectas.item(i)).nombre)
+        self.show()
+
+    def crear_recta(self):
+        punto = self.elegir_entidad_1.currentText()
+        recta = self.elegir_entidad_2.currentText()
+        nombre = programa.asignar_nombre_recta(self.nombre.toPlainText())
+
+        for i in range(programa.lista_puntos.count()):
+            if programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre == punto:
+                punto = programa.lista_puntos.itemWidget(programa.lista_puntos.item(i))
+
+        for i in range(programa.lista_rectas.count()):
+            if programa.lista_rectas.itemWidget(programa.lista_rectas.item(i)).nombre == recta:
+                recta = programa.lista_rectas.itemWidget(programa.lista_rectas.item(i))
+        if punto == "" or recta == "":
+            QMessageBox.critical(self, "Error al crear la recta",
+                                 "Debes crear al menos una recta y un punto para crear una recta")
+        else:
+            recta_perpendicular = recta.recta.perpendicular_line(punto.punto)
+            programa.crear_recta(nombre, punto, recta_perpendicular, modo="Perpendicular", nombre_recta=recta.nombre)
+            self.cerrar()
+
+
+class RectaParalelaARecta(VentanaBaseConNombre):
+    def __init__(self):
+        VentanaBaseConNombre.__init__(self)
+
+        self.etiqueta_1.setText("Punto:")
+        self.etiqueta_2.setText("Recta:")
+
+        self.boton_crear.clicked.connect(self.crear_recta)
+
+    def abrir(self):
+        self.elegir_entidad_1.clear()
+        self.elegir_entidad_2.clear()
+        for i in range(programa.lista_puntos.count()):
+            self.elegir_entidad_1.addItem(programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre)
+
+        for i in range(programa.lista_rectas.count()):
+            self.elegir_entidad_2.addItem(programa.lista_rectas.itemWidget(programa.lista_rectas.item(i)).nombre)
+        self.show()
+
+    def crear_recta(self):
+        punto = self.elegir_entidad_1.currentText()
+        recta = self.elegir_entidad_2.currentText()
+        nombre = programa.asignar_nombre_recta(self.nombre.toPlainText())
+        for i in range(programa.lista_puntos.count()):
+            if programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre == punto:
+                punto = programa.lista_puntos.itemWidget(programa.lista_puntos.item(i))
+
+        for i in range(programa.lista_rectas.count()):
+            if programa.lista_rectas.itemWidget(programa.lista_rectas.item(i)).nombre == recta:
+                recta = programa.lista_rectas.itemWidget(programa.lista_rectas.item(i))
+
+        if punto == "" or recta == "":
+            QMessageBox.critical(self, "Error al crear la recta",
+                                 "Debes crear al menos una recta y un punto para crear una recta")
+        else:
+            recta_paralela = recta.recta.parallel_line(punto.punto)
+            programa.crear_recta(nombre, punto, recta_paralela, modo="Paralela", nombre_recta=recta.nombre)
+            self.cerrar()
+
+
+class Distancia(VentanaBase):
+    def __init__(self):
+        VentanaBase.__init__(self)
+
+        self.etiqueta_1.setText("Entidad geométrica 1:")
+        self.etiqueta_1.setText("Entidad geométrica 2:")
+
+    def abrir(self):
+        self.show()
+
+    def calcular_distancia(self):
+        entidad_1 = self.elegir_entidad_1.currentText()
+        entidad_2 = self.elegir_entidad_2.currentText()
+
+
+class Interseccion(VentanaBase):
+    def __init__(self):
+        VentanaBase.__init__(self)
+
+        self.etiqueta_1.setText("Entidad geométrica 1:")
+        self.etiqueta_1.setText("Entidad geométrica 2:")
+
+    def abrir(self):
+        self.show()
+
+    def calcular_interseccion(self):
+        entidad_1 = self.elegir_entidad_1.currentText()
+        entidad_2 = self.elegir_entidad_2.currentText()
 
 
 class Ventana(QMainWindow):
@@ -1166,7 +1398,7 @@ class Ventana(QMainWindow):
         posicion.setText("Posición:")
 
         self.posicion = QLabel(frame)
-        self.posicion.setGeometry(70, 30, 151, 16)
+        self.posicion.setGeometry(60, 30, 151, 16)
         self.posicion.setFont(fuente)
         self.posicion.setText("Primer cuadrante")
 
@@ -1327,7 +1559,7 @@ class Ventana(QMainWindow):
         self.ver_planos.setText("Planos")
 
         ajustes = QPushButton(frame)
-        ajustes.setGeometry(235, 550, 236, 31)
+        ajustes.setGeometry(290, 550, 181, 30)
         ajustes.setText("Ajustes")
         self.ajustes = Ajustes()
         ajustes.clicked.connect(self.ajustes.show)
@@ -1353,57 +1585,51 @@ class Ventana(QMainWindow):
         self.lista_planos = QListWidget(widget_planos)
         vertical_planos.addWidget(self.lista_planos)
 
-        a = QPushButton(frame)
-        a.setGeometry(160, 480, 151, 40)
+        recta_perpendicular_plano = QPushButton(frame)
+        recta_perpendicular_plano.setGeometry(160, 480, 151, 71)
         self.recta_perpendicular_plano = RectaPerpendicularAPlano()
-        a.clicked.connect(self.recta_perpendicular_plano.abrir)
-        a.setText("Crear recta \nperpendicular a plano")
+        recta_perpendicular_plano.clicked.connect(self.recta_perpendicular_plano.abrir)
+        recta_perpendicular_plano.setText("Crear recta \nperpendicular a plano")
 
-        b = QPushButton(frame)
-        b.setGeometry(160, 520, 151, 30)
-        b.setText("Crear recta paralela a plano")
+        plano_perpendicular_plano = QPushButton(frame)
+        plano_perpendicular_plano.setGeometry(320, 480, 151, 40)
+        self.plano_perpendicular_plano = PlanoPerpendicularAPlano()
+        plano_perpendicular_plano.clicked.connect(self.plano_perpendicular_plano.abrir)
+        plano_perpendicular_plano.setText("Crear plano\nperpendicular a plano")
 
-        c = QPushButton(frame)
-        c.setGeometry(320, 480, 151, 40)
-        c.setText("Crear plano\nperpendicular a plano")
+        plano_paralelo_plano = QPushButton(frame)
+        plano_paralelo_plano.setGeometry(320, 520, 151, 30)
+        self.plano_paralelo_plano = PlanoParaleloAPlano()
+        plano_paralelo_plano.clicked.connect(self.plano_paralelo_plano.abrir)
+        plano_paralelo_plano.setText("Crear plano paralelo a plano")
 
-        d = QPushButton(frame)
-        d.setGeometry(320, 520, 151, 30)
-        d.setText("Crear plano paralelo a plano")
+        recta_perpendicular_recta = QPushButton(frame)
+        recta_perpendicular_recta.setGeometry(0, 480, 151, 40)
+        self.recta_perpendicular_recta = RectaPerpendicularARecta()
+        recta_perpendicular_recta.clicked.connect(self.recta_perpendicular_recta.abrir)
+        recta_perpendicular_recta.setText("Crear recta \nperpendicular a recta")
 
-        e = QPushButton(frame)
-        e.setGeometry(0, 480, 151, 40) # TODO
-        e.setText("Crear recta \nperpendicular a recta")
+        recta_paralela_recta = QPushButton(frame)
+        recta_paralela_recta.setGeometry(0, 520, 151, 30)
+        self.recta_paralela_recta = RectaParalelaARecta()
+        recta_paralela_recta.clicked.connect(self.recta_paralela_recta.abrir)
+        recta_paralela_recta.setText("Crear recta paralela a recta")
 
-        f = QPushButton(frame)
-        f.setGeometry(0, 520, 151, 30)
-        f.setText("Crear recta paralela a recta")
+        distancia = QPushButton(frame)
+        distancia.setGeometry(0, 550, 181, 30)
+        self.distancia = Distancia()
+        distancia.clicked.connect(self.distancia.abrir)
+        distancia.setText("Calcular distancia entre elementos")
 
-        g = QPushButton(frame)
-        g.setGeometry(0, 550, 236, 30)
-        g.setText("Calcular distancia entre elementos")
+        interseccion = QPushButton(frame)
+        interseccion.setGeometry(180, 550, 111, 30)
+        self.interseccion = Interseccion()
+        interseccion.clicked.connect(self.interseccion.abrir)
+        interseccion.setText("Crear intersección")
 
         self.id_punto = 1
         self.id_recta = 1
         self.id_plano = 1
-
-        # Vértices del cubo
-        self.v = (Point3D(500, 500, 500), Point3D(-500, 500, 500), Point3D(-500, -500, 500),
-                  Point3D(500, -500, 500), Point3D(500, 500, -500), Point3D(-500, 500, -500),
-                  Point3D(-500, -500, -500), Point3D(500, -500, -500))
-
-        # Aristas del cubo
-        self.a = (Segment3D(self.v[0], self.v[1]), Segment3D(self.v[1], self.v[2]),
-                  Segment3D(self.v[2], self.v[3]), Segment3D(self.v[3], self.v[0]),
-                  Segment3D(self.v[0], self.v[4]), Segment3D(self.v[1], self.v[5]),
-                  Segment3D(self.v[2], self.v[6]), Segment3D(self.v[3], self.v[7]),
-                  Segment3D(self.v[4], self.v[5]), Segment3D(self.v[5], self.v[6]),
-                  Segment3D(self.v[6], self.v[7]), Segment3D(self.v[7], self.v[4]))
-
-        # Caras del cubo
-        self.p = (Plane(self.v[0], self.v[1], self.v[2]), Plane(self.v[0], self.v[1], self.v[5]),
-                  Plane(self.v[0], self.v[4], self.v[7]), Plane(self.v[4], self.v[5], self.v[7]),
-                  Plane(self.v[2], self.v[3], self.v[7]), Plane(self.v[1], self.v[2], self.v[5]))
 
         self.mayusculas = cycle("PQRSTUVWXYZABCDEFGHIJKLMNO")
         self.minusculas = cycle("rstuvwxyzabcdefghijklmnopq")
@@ -1487,8 +1713,7 @@ class Ventana(QMainWindow):
                 break
         return nombre
 
-    def nombre_plano(self):
-        nombre = self.plano_nombre.toPlainText()
+    def asignar_nombre_plano(self, nombre):
         # Genera nombres genéricos si no se provee uno
         if nombre == "":
             nombre = self.alfabeto_griego.__next__()
@@ -1497,7 +1722,6 @@ class Ventana(QMainWindow):
             if self.lista_planos.itemWidget(self.lista_planos.item(i)).nombre == nombre:
                 nombre = self.alfabeto_griego.__next__()
                 break
-        self.id_plano += 1
         return nombre
 
     def crear_punto(self):
@@ -1521,22 +1745,22 @@ class Ventana(QMainWindow):
             if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre == punto2:
                 punto2 = self.lista_puntos.itemWidget(self.lista_puntos.item(i))
         if not punto1 and not punto2:
-            QMessageBox.about(self, "Error al crear la recta",
-                              "Debes crear al menos dos puntos y seleccionarlos para crear la recta")
+            QMessageBox.critical(self, "Error al crear la recta",
+                                 "Debes crear al menos dos puntos y seleccionarlos para crear la recta")
         elif punto1.coords == punto2.coords:
-            QMessageBox.about(self, "Error al crear la recta",
-                              "La recta debe ser creada a partir de dos puntos no coincidentes")
+            QMessageBox.critical(self, "Error al crear la recta",
+                                 "La recta debe ser creada a partir de dos puntos no coincidentes")
         else:
             nombre = self.asignar_nombre_recta(self.recta_nombre.toPlainText())
             self.crear_recta(nombre, punto1, punto2)
 
-    def crear_recta(self, nombre, entidad_1, entidad_2, modo=None):
-        recta = Recta(self.id_recta, nombre, entidad_1, entidad_2, modo)
+    def crear_recta(self, nombre, entidad_1, entidad_2, modo=None, nombre_recta=None):
+        recta = Recta(self.id_recta, nombre, entidad_1, entidad_2, modo, nombre_recta)
         item = QListWidgetItem()
         self.lista_rectas.addItem(item)
-        self.id_recta += 1
         item.setSizeHint(recta.minimumSizeHint())
         self.lista_rectas.setItemWidget(item, recta)
+        self.id_recta += 1
 
     def comprobar_plano(self):
         punto1 = self.punto_plano_1.currentText()
@@ -1552,26 +1776,27 @@ class Ventana(QMainWindow):
                 punto3 = self.lista_puntos.itemWidget(self.lista_puntos.item(i))
 
         if not punto1 and not punto2 and not punto3:
-            QMessageBox.about(self, "Error al crear el plano",
-                              "Debes crear al menos tres puntos y seleccionarlos para crear el plano")
+            QMessageBox.critical(self, "Error al crear el plano",
+                                 "Debes crear al menos tres puntos y seleccionarlos para crear el plano")
 
         elif len({punto1.coords, punto2.coords, punto3.coords}) < 3:
-            QMessageBox.about(self, "Error al crear el plano",
-                              "Dos de los puntos proporcionados son coincidentes")
+            QMessageBox.critical(self, "Error al crear el plano",
+                                 "Dos de los puntos proporcionados son coincidentes")
         elif Point3D.is_collinear(Point3D(punto1.coords), Point3D(punto2.coords), Point3D(punto3.coords)):
-            QMessageBox.about(self, "Error al crear el plano",
-                              "El plano debe ser creado por tres puntos no alineados")
+            QMessageBox.critical(self, "Error al crear el plano",
+                                 "El plano debe ser creado por tres puntos no alineados")
 
         else:
-            nombre = self.nombre_plano()
-            plano = Plano(self.id_plano, nombre, punto1, punto2, punto3)
-            self.crear_plano(plano)
+            nombre = self.asignar_nombre_plano(self.plano_nombre.toPlainText())
+            self.crear_plano(nombre, punto1, punto2, punto3)
 
-    def crear_plano(self, plano):
+    def crear_plano(self, nombre, entidad_1, entidad_2, entidad_3=None, modo=None):
+        plano = Plano(self.id_plano, nombre, entidad_1, entidad_2, entidad_3, modo)
         item = QListWidgetItem()
         self.lista_planos.addItem(item)
         item.setSizeHint(plano.minimumSizeHint())
         self.lista_planos.setItemWidget(item, plano)
+        self.id_plano += 1
 
     def borrar_punto(self, borrar_id):
         for indice in range(self.lista_puntos.count()):
