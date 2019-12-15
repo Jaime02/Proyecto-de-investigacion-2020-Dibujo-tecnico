@@ -1032,6 +1032,7 @@ class Ajustes(QMainWindow):
         reset_vertical = QPushButton(widget_central)
         reset_vertical.setGeometry(120, 130, 75, 41)
         reset_vertical.setText("Reestablecer")
+        reset_vertical.clicked.connect(self.reset_color_vertical)
 
         boton_color_horizontal = QPushButton(widget_central)
         boton_color_horizontal.setGeometry(200, 130, 101, 41)
@@ -1043,6 +1044,12 @@ class Ajustes(QMainWindow):
 
         self.setWindowTitle("Ajustes")
         self.setCentralWidget(widget_central)
+
+    def reset_color_vertical(self):
+        self.color_plano_vertical = (0.1, 1, 0.1, 0.5)
+
+    def reset_color_horizontal(self):
+        self.color_plano_horizontal = (1, 0.1, 0.1, 0.5)
 
     def cambiar_color_plano_vertical(self):
         color_dialog = QColorDialog()
@@ -1162,7 +1169,7 @@ class PlanoPerpendicularAPlano(VentanaBaseConNombre):
         self.etiqueta_2.setGeometry(10, 110, 41, 16)
         self.etiqueta_3 = QLabel(self.widget_central)
         self.etiqueta_3.setGeometry(10, 60, 41, 16)
-        self.etiqueta_3.setText("Punto")
+        self.etiqueta_3.setText("Punto:")
 
         self.elegir_entidad_3 = QComboBox(self.widget_central)
         self.elegir_entidad_3.setGeometry(10, 130, 121, 21)
@@ -1395,7 +1402,7 @@ class Interseccion(VentanaBase):
         VentanaBase.__init__(self)
 
         self.etiqueta_1.setText("Entidad geométrica 1:")
-        self.etiqueta_1.setText("Entidad geométrica 2:")
+        self.etiqueta_2.setText("Entidad geométrica 2:")
 
         self.boton_crear.clicked.connect(self.calcular_interseccion)
 
