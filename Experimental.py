@@ -2,13 +2,14 @@
 
 from itertools import cycle
 from math import sin, cos, radians, atan2
+
 from OpenGL.GL import glClear, GL_COLOR_BUFFER_BIT, glEnable, GL_DEPTH_TEST, glMatrixMode, GL_PROJECTION, GL_TRUE, \
     glLoadIdentity, glOrtho, glClearColor, GL_DEPTH_BUFFER_BIT, GL_MODELVIEW, glLineWidth, glBegin, glColor, glVertex, \
     glEnd, glPointSize, GL_POINT_SMOOTH, GL_POINTS, GL_BLEND, glBlendFunc, GL_SRC_ALPHA, GL_QUADS, glDisable, \
-    GL_LINES, GL_LINE_LOOP, glDepthMask, GL_FALSE, GL_ONE_MINUS_SRC_ALPHA, GL_TRIANGLE_FAN
+    GL_LINES, GL_LINE_LOOP, glDepthMask, GL_FALSE, GL_ONE_MINUS_SRC_ALPHA, GL_TRIANGLE_FAN, glMultMatrixf
 from OpenGL.GLU import gluLookAt
-from PyQt5.QtCore import Qt, QSize, pyqtSlot
-from PyQt5.QtGui import QPainter, QPen, QCursor, QTransform, QFont, QColor, QIcon
+from PyQt5.QtCore import Qt, pyqtSlot, QSize
+from PyQt5.QtGui import QPainter, QPen, QCursor, QTransform, QFont, QColor
 from PyQt5.QtWidgets import QOpenGLWidget, QWidget, QCheckBox, QPushButton, QHBoxLayout, QMainWindow, QLabel, QMenu, \
     QApplication, QVBoxLayout, QSpinBox, QPlainTextEdit, QComboBox, QMessageBox, QGraphicsScene, QGraphicsView, \
     QListWidgetItem, QListWidget, QAction, QColorDialog, QDockWidget, QFrame
@@ -145,16 +146,19 @@ class Recta(EntidadGeometrica):
         self.menu.addAction(self.infinita)
 
         self.extremos = self.extremos(self.sympy)
-        # Extremos de la recta que se encuentren en el primer cuadrante
+
+        # Extremos de la recta separados por cuadrantes
         self.extremos_I = [i for i in self.extremos if i[1] >= 0 and i[2] >= 0]
+        self.extremos_II = [i for i in self.extremos if i[1] < 0 < i[2]]
+        self.extremos_III = [i for i in self.extremos if i[1] < 0 and i[2] < 0]
+        self.extremos_IV = [i for i in self.extremos if i[1] > 0 > i[2]]
 
         self.traza_v = self.calcular_traza_v()
         self.traza_h = self.calcular_traza_h()
 
         # Si la recta no tiene trazas, se desactivan estas opciones
         if self.traza_v:
-            self.traza_v = (self.traza_v[0], self.traza_v[2], self.traza_v[1])
-            if self.traza_v[0] > 500 or self.traza_v[1] > 500:
+            if -500 < self.traza_v[0] > 500 or -500 < self.traza_v[2] > 500:
                 self.ver_traza_vertical.setChecked(False)
                 self.ver_traza_vertical.setCheckable(False)
                 self.ver_traza_vertical.setDisabled(True)
@@ -164,8 +168,7 @@ class Recta(EntidadGeometrica):
             self.ver_traza_vertical.setDisabled(True)
 
         if self.traza_h:
-            self.traza_h = (self.traza_h[0], self.traza_h[2], self.traza_h[1])
-            if self.traza_h[0] > 500 or self.traza_h[2] > 500:
+            if -500 < self.traza_h[0] > 500 or -500 < self.traza_h[1] > 500:
                 self.ver_traza_horizontal.setChecked(False)
                 self.ver_traza_horizontal.setCheckable(False)
                 self.ver_traza_horizontal.setDisabled(True)
@@ -174,7 +177,9 @@ class Recta(EntidadGeometrica):
             self.ver_traza_horizontal.setCheckable(False)
             self.ver_traza_horizontal.setDisabled(True)
 
-    def extremos(self, recta):
+        self.partes = self.calcular_partes()
+
+    def extremos(self, recta: Line3D):
         intersecciones = []
         for i in range(6):
             interseccion = intersection(recta, self.planos[i])
@@ -200,7 +205,7 @@ class Recta(EntidadGeometrica):
             buenos.append(intersecciones[2])
         if 500 == abs(intersecciones[5][1]):
             buenos.append(intersecciones[5])
-        buenos = [tuple([punto.x, punto.z, punto.y]) for punto in buenos]
+        buenos = [tuple([punto.x, punto.y, punto.z]) for punto in buenos]
         return buenos
 
     def calcular_traza_h(self):
@@ -222,6 +227,77 @@ class Recta(EntidadGeometrica):
             else:
                 self.contenida_pv = True
         return False
+
+    def calcular_partes(self):
+        extremos_I = self.extremos_I
+        extremos_II = self.extremos_II
+        extremos_III = self.extremos_III
+        extremos_IV = self.extremos_IV
+
+        traza_v = self.traza_v
+        traza_h = self.traza_h
+
+        partes = [[], [], [], []]
+
+        if len(extremos_I) == 2:
+            # La recta no sale del primer cuadrante, puede estar en LT o contenida en los planos de proyección
+            partes[0].append(extremos_I[0])
+            partes[0].append(extremos_I[1])
+        elif len(extremos_II) == 2:
+            partes[1].append(extremos_II[0])
+            partes[1].append(extremos_II[1])
+        elif len(extremos_III) == 2:
+            partes[2].append(extremos_III[0])
+            partes[2].append(extremos_III[1])
+        elif len(extremos_IV) == 2:
+            partes[3].append(extremos_IV[0])
+            partes[3].append(extremos_IV[1])
+        elif not traza_h and traza_v:
+            if traza_v[2] > 0:
+                partes[0].append(traza_v)
+                partes[0].append(extremos_I[0])
+                partes[1].append(traza_v)
+                partes[1].append(extremos_II[0])
+            else:
+                partes[2].append(traza_v)
+                partes[2].append(extremos_III[0])
+                partes[3].append(traza_v)
+                partes[3].append(extremos_IV[0])
+        elif not traza_v and traza_h:
+            if traza_h[1] > 0:
+                partes[0].append(traza_h)
+                partes[0].append(extremos_I[0])
+                partes[3].append(traza_h)
+                partes[3].append(extremos_IV[0])
+            else:
+                partes[1].append(traza_h)
+                partes[1].append(extremos_II[0])
+                partes[2].append(traza_h)
+                partes[2].append(extremos_III[0])
+        else:
+            # Traza V y H
+            if traza_v[2] > 0 and traza_h[1] > 0:
+                partes[0].append(traza_v)
+                partes[0].append(traza_h)
+                partes[1].append(traza_h)
+                partes[1].append(extremos_II[0])
+                partes[3].append(traza_h)
+                partes[3].append(extremos_IV[0])
+            elif traza[2] < 0:
+                partes[0].append(extremos_I)
+                partes[0].append(traza_h)
+                partes[3].append(traza_h)
+                partes[3].append(traza_v)
+                partes[2].append(traza_v)
+                partes[2].append(extremos_III[0])
+            else:
+                partes[0].append(extremos_I)
+                partes[0].append(traza_v)
+                partes[1].append(traza_v)
+                partes[1].append(traza_h)
+                partes[2].append(traza_h)
+                partes[2].append(extremos_III[0])
+        return partes
 
 
 class Plano(EntidadGeometrica):
@@ -391,6 +467,11 @@ class Renderizador(QOpenGLWidget):
         self.vertices_plano_horizontal_detras = ((500, 0, 0), (500, 0, -500), (-500, 0, -500), (-500, 0, 0))
         self.vertices_borde_plano_vertical = ((500, 500, 0), (500, -500, 0), (-500, -500, 0), (-500, 500, 0))
         self.vertices_borde_plano_horizontal = ((500, 0, 500), (-500, 0, 500), (-500, 0, -500), (500, 0, -500))
+
+        self.m = [[1, 0, 0, 0],
+                  [0, 0, 1, 0],
+                  [0, 1, 0, 0],
+                  [0, 0, 0, 1]]
 
     def sizeHint(self):
         return QSize(800, 800)
@@ -578,6 +659,8 @@ class Renderizador(QOpenGLWidget):
                     glVertex(recta.p1)
                     glVertex(recta.p2)
                 glEnd()
+                glDisable(GL_BLEND)
+                glDepthMask(GL_TRUE)
                 if programa.ajustes.ver_rectas_trazas_horizontales.isChecked():
                     if recta.traza_h and recta.ver_traza_horizontal.isChecked():
                         if recta.traza_h[0] < 500 and recta.traza_h[2] < 500:
@@ -635,11 +718,12 @@ class Renderizador(QOpenGLWidget):
     def paintGL(self):
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
-        glOrtho(self.zoom, -self.zoom, -self.zoom, self.zoom, -5000, 5000)
+        glOrtho(-self.zoom, self.zoom, -self.zoom, self.zoom, -5000, 5000)
         glMatrixMode(GL_MODELVIEW)
         glClearColor(1, 1, 1, 0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glLoadIdentity()
+        glMultMatrixf(self.m)
         arriba = 1
         if self.theta == 360:
             arriba = -1
@@ -811,25 +895,10 @@ class Diedrico(QWidget):
         for i in range(programa.lista_rectas.count()):
             recta = programa.lista_rectas.itemWidget(programa.lista_rectas.item(i))
             if recta.render.isChecked():
-
                 if recta.infinita.isChecked():
                     # Ninguna traza
                     if not recta.traza_v and not recta.traza_h and len(recta.extremos_I) == 2:
-                        # Recta en PH
-                        if recta.contenida_ph and not recta.contenida_pv:
-                            self.dibujar_continuo(qp, recta.extremos_I[0], recta.extremos_I[1])
-
-                        # Recta en PV
-                        elif not recta.contenida_ph and recta.contenida_pv:
-                            self.dibujar_continuo(qp, recta.extremos_I[0], recta.extremos_I[1])
-
-                        # Trazas en LT
-                        elif recta.extremos[0][1:] == recta.extremos[1][1:] == (0, 0):
-                            self.dibujar_continuo(qp, [500, 0, 0], [-500, 0, 0])
-
-                        # 1er cuadrante
-                        else:
-                            self.dibujar_continuo(qp, recta.extremos_I[0], recta.extremos_I[1])
+                        self.dibujar_continuo(qp, recta.extremos_I[0], recta.extremos_I[1])
 
                     # Una traza en PH
                     elif recta.traza_h and not recta.traza_v:
@@ -1710,21 +1779,21 @@ class Ventana(QMainWindow):
         ajustes.clicked.connect(self.ajustes.show)
 
         widget_punto = QWidget(frame)
-        widget_punto.setGeometry(0, 271, 150, 210)
+        widget_punto.setGeometry(0, 270, 150, 210)
         vertical_punto = QVBoxLayout(widget_punto)
         vertical_punto.setContentsMargins(0, 0, 0, 0)
         self.lista_puntos = QListWidget(widget_punto)
         vertical_punto.addWidget(self.lista_puntos)
 
         widget_recta = QWidget(frame)
-        widget_recta.setGeometry(160, 250, 150, 232)
+        widget_recta.setGeometry(160, 250, 150, 230)
         vertical_recta = QVBoxLayout(widget_recta)
         vertical_recta.setContentsMargins(0, 0, 0, 0)
         self.lista_rectas = QListWidget(widget_recta)
         vertical_recta.addWidget(self.lista_rectas)
 
         widget_planos = QWidget(frame)
-        widget_planos.setGeometry(320, 271, 151, 211)
+        widget_planos.setGeometry(320, 270, 151, 210)
         vertical_planos = QVBoxLayout(widget_planos)
         vertical_planos.setContentsMargins(0, 0, 0, 0)
         self.lista_planos = QListWidget(widget_planos)
@@ -1787,6 +1856,9 @@ class Ventana(QMainWindow):
         self.actualizar_texto()
         self.setWindowTitle("Dibujo técnico")
         self.setCentralWidget(frame)
+
+    def sizeHint(self):
+        return QSize(1200, 800)
 
     def elegir_puntos_recta(self):
         self.punto_recta_1.clear()
