@@ -6,7 +6,7 @@ from math import sin, cos, radians, atan2
 from OpenGL.GL import glClear, GL_COLOR_BUFFER_BIT, glEnable, GL_DEPTH_TEST, glMatrixMode, GL_PROJECTION, GL_TRUE, \
     glLoadIdentity, glOrtho, glClearColor, GL_DEPTH_BUFFER_BIT, GL_MODELVIEW, glLineWidth, glBegin, glColor, glVertex, \
     glEnd, glPointSize, GL_POINT_SMOOTH, GL_POINTS, GL_BLEND, glBlendFunc, GL_SRC_ALPHA, GL_QUADS, glDisable, \
-    GL_LINES, GL_LINE_LOOP, glDepthMask, GL_FALSE, GL_ONE_MINUS_SRC_ALPHA, GL_TRIANGLE_FAN, glMultMatrixf
+    GL_LINES, GL_LINE_LOOP, glDepthMask, GL_FALSE, GL_ONE_MINUS_SRC_ALPHA, GL_TRIANGLE_FAN, glMultMatrixf, glLoadMatrixf
 from OpenGL.GLU import gluLookAt
 from PyQt5.QtCore import Qt, pyqtSlot, QSize
 from PyQt5.QtGui import QPainter, QPen, QCursor, QTransform, QFont, QColor
@@ -718,12 +718,11 @@ class Renderizador(QOpenGLWidget):
     def paintGL(self):
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
-        glOrtho(-self.zoom, self.zoom, -self.zoom, self.zoom, -5000, 5000)
+        glOrtho(self.zoom, -self.zoom, -self.zoom, self.zoom, -5000, 5000)
         glMatrixMode(GL_MODELVIEW)
         glClearColor(1, 1, 1, 0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        glLoadIdentity()
-        glMultMatrixf(self.m)
+        glLoadMatrixf(self.m)
         arriba = 1
         if self.theta == 360:
             arriba = -1
