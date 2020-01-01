@@ -3,10 +3,10 @@
 from itertools import cycle
 from math import sin, cos, radians, atan2
 
-from OpenGL.GL import glClear, GL_COLOR_BUFFER_BIT, glEnable, GL_DEPTH_TEST, glMatrixMode, GL_PROJECTION, GL_TRUE, \
-    glLoadIdentity, glOrtho, glClearColor, GL_DEPTH_BUFFER_BIT, GL_MODELVIEW, glLineWidth, glBegin, glColor, glVertex, \
-    glEnd, glPointSize, GL_POINT_SMOOTH, GL_POINTS, GL_BLEND, glBlendFunc, GL_SRC_ALPHA, GL_QUADS, glDisable, \
-    GL_LINES, GL_LINE_LOOP, glDepthMask, GL_FALSE, GL_ONE_MINUS_SRC_ALPHA, GL_TRIANGLE_FAN, glMultMatrixf, glLoadMatrixf
+from OpenGL.GL import glClear, GL_COLOR_BUFFER_BIT, glEnable, glMatrixMode, GL_PROJECTION, glLoadIdentity, glOrtho, \
+    glClearColor, GL_DEPTH_BUFFER_BIT, GL_MODELVIEW, glLineWidth, glBegin, glColor, glVertex, glEnd, glPointSize, \
+    GL_POINT_SMOOTH, GL_POINTS, GL_BLEND, glBlendFunc, GL_SRC_ALPHA, GL_QUADS, GL_LINES, GL_LINE_LOOP, \
+    GL_ONE_MINUS_SRC_ALPHA, GL_TRIANGLE_FAN, glLoadMatrixf
 from OpenGL.GLU import gluLookAt
 from PyQt5.QtCore import Qt, pyqtSlot, QSize
 from PyQt5.QtGui import QPainter, QPen, QCursor, QTransform, QFont, QColor
@@ -87,7 +87,14 @@ class EntidadGeometrica(QWidget):
 
 
 class Punto(EntidadGeometrica):
-    def __init__(self, internal_id: int, nombre: str, do: int, alejamiento: int, cota: int, interseccion):
+    def __init__(self,
+                 internal_id: int,
+                 nombre: str,
+                 do: int,
+                 alejamiento: int,
+                 cota: int,
+                 interseccion):
+
         if interseccion is None:
             EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}({do}, {alejamiento}, {cota})"))
         else:
@@ -99,6 +106,19 @@ class Punto(EntidadGeometrica):
         self.nombre = nombre
         self.coords = (do, alejamiento, cota)
         self.sympy = Point3D(self.coords)
+        self.cuadrante = self.calcular_cuadrante()
+        self.contenido_en_plano = False
+
+    def calcular_cuadrante(self):
+        coords = self.coords
+        if coords[1] >= 0 and coords[2] >= 0:
+            return "I"
+        elif coords[1] < 0 and coords[2] >= 0:
+            return "II"
+        elif coords[1] >= 0 and coords[2] < 0:
+            return "IV"
+        else:
+            return "III"
 
 
 class Recta(EntidadGeometrica):
@@ -149,91 +169,65 @@ class Recta(EntidadGeometrica):
         self.menu.addAction(self.ver_traza_vertical)
 
         self.infinita = QAction("Infinita")
-        self.infinita.setCheckable(True)
-        self.infinita.setChecked(True)
         self.menu.addAction(self.infinita)
 
-        self.extremos = self.extremos(self.sympy)
+        # Solo se pueden utilizar segmentos cuando la recta ha sido definida por dos puntos, podría ser mejorado
+        if isinstance(entidad_1, Punto) and isinstance(entidad_2, Punto):
+            self.infinita.setCheckable(True)
+            self.infinita.setChecked(True)
+        else:
+            self.infinita.setCheckable(False)
+            self.infinita.setChecked(False)
 
+        self.extremos = self.extremos(self.sympy)
         # Extremos de la recta separados por cuadrantes
-        self.extremos_I = [i for i in self.extremos if i[1] >= 0 and i[2] >= 0]
-        self.extremos_II = [i for i in self.extremos if i[1] < 0 < i[2]]
-        self.extremos_III = [i for i in self.extremos if i[1] < 0 and i[2] < 0]
-        self.extremos_IV = [i for i in self.extremos if i[1] > 0 > i[2]]
+        self.extremos_I = tuple([i for i in self.extremos if i[1] >= 0 and i[2] >= 0])
+        self.extremos_II = tuple([i for i in self.extremos if (i[1] < 0 and i[2] > 0) or (i[1] < 0 and i[2] == 0)])
+        self.extremos_III = tuple([i for i in self.extremos if i[1] < 0 and i[2] < 0])
+        self.extremos_IV = tuple([i for i in self.extremos if (i[1] > 0 and i[2] < 0) or (i[1] == 0 and i[2] < 0)])
 
         self.traza_v = self.calcular_traza_v()
         self.traza_h = self.calcular_traza_h()
 
         # Si la recta no tiene trazas, se desactivan estas opciones
-        if self.traza_v:
-            if -500 < self.traza_v[0] > 500 or -500 < self.traza_v[2] > 500:
-                self.ver_traza_vertical.setChecked(False)
-                self.ver_traza_vertical.setCheckable(False)
-                self.ver_traza_vertical.setDisabled(True)
-        else:
+        if not self.traza_v:
             self.ver_traza_vertical.setChecked(False)
             self.ver_traza_vertical.setCheckable(False)
             self.ver_traza_vertical.setDisabled(True)
 
-        if self.traza_h:
-            if -500 < self.traza_h[0] > 500 or -500 < self.traza_h[1] > 500:
-                self.ver_traza_horizontal.setChecked(False)
-                self.ver_traza_horizontal.setCheckable(False)
-                self.ver_traza_horizontal.setDisabled(True)
-        else:
+        if not self.traza_h:
             self.ver_traza_horizontal.setChecked(False)
             self.ver_traza_horizontal.setCheckable(False)
             self.ver_traza_horizontal.setDisabled(True)
 
-        # self.partes = self.calcular_partes()
+        self.partes = self.calcular_partes()
 
     def extremos(self, recta: Line3D):
         intersecciones = []
         for i in range(6):
             interseccion = intersection(recta, self.planos[i])
             if interseccion:
-                intersecciones.append(interseccion[0])
-            else:
-                # Valores inventados para que no sirva la interseccion
-                intersecciones.append((501, 501, 501))
-        buenos = []
-        if -500 < intersecciones[1][0] < 500 and -500 < intersecciones[1][2] < 500:
-            buenos.append(intersecciones[1])
-        if -500 < intersecciones[4][0] < 500 and -500 < intersecciones[4][2] < 500:
-            buenos.append(intersecciones[4])
-        if -500 <= intersecciones[0][0] <= 500 and -500 <= intersecciones[0][1] <= 500:
-            buenos.append(intersecciones[0])
-        if -500 < intersecciones[2][1] < 500 and -500 < intersecciones[2][2] < 500:
-            buenos.append(intersecciones[2])
-        if -500 <= intersecciones[3][0] <= 500 and -500 <= intersecciones[3][1] <= 500:
-            buenos.append(intersecciones[3])
-        if -500 < intersecciones[5][1] < 500 and -500 < intersecciones[5][2] < 500:
-            buenos.append(intersecciones[5])
-        if 500 == abs(intersecciones[2][1]):
-            buenos.append(intersecciones[2])
-        if 500 == abs(intersecciones[5][1]):
-            buenos.append(intersecciones[5])
-        buenos = [tuple([punto.x, punto.y, punto.z]) for punto in buenos]
-        return buenos
+                interseccion = interseccion[0]
+                if abs(interseccion.x) <= 500 and abs(interseccion.y) <= 500 and abs(interseccion.z) <= 500:
+                    intersecciones.append((interseccion.x, interseccion.y, interseccion.z))
+        return tuple(set(intersecciones))
 
     def calcular_traza_h(self):
         traza_h = intersection(self.sympy, self.plano_horizontal)
         if traza_h:
-            if not isinstance(traza_h[0], Line3D) and traza_h[0]:
+            if not isinstance(traza_h[0], Line3D):
                 traza_h = tuple(traza_h[0])
-                return traza_h
-            else:
-                self.contenida_ph = True
+                if -500 <= traza_h[0] <= 500 and -500 <= traza_h[1] <= 500 and -500 <= traza_h[2] <= 500:
+                    return traza_h
         return False
 
     def calcular_traza_v(self):
         traza_v = intersection(self.sympy, self.plano_vertical)
         if traza_v:
-            if not isinstance(traza_v[0], Line3D) and traza_v[0]:
+            if not isinstance(traza_v[0], Line3D):
                 traza_v = tuple(traza_v[0])
-                return traza_v
-            else:
-                self.contenida_pv = True
+                if -500 <= traza_v[0] <= 500 and -500 <= traza_v[1] <= 500 and -500 <= traza_v[2] <= 500:
+                    return traza_v
         return False
 
     def calcular_partes(self):
@@ -245,71 +239,68 @@ class Recta(EntidadGeometrica):
         traza_v = self.traza_v
         traza_h = self.traza_h
 
-        partes = [[], [], [], []]
+        partes = {}
 
         if len(extremos_I) == 2:
             # La recta no sale del primer cuadrante, puede estar en LT o contenida en los planos de proyección
-            partes[0].append(extremos_I[0])
-            partes[0].append(extremos_I[1])
+            partes['I'] = extremos_I
         elif len(extremos_II) == 2:
-            partes[1].append(extremos_II[0])
-            partes[1].append(extremos_II[1])
+            partes['II'] = extremos_II
         elif len(extremos_III) == 2:
-            partes[2].append(extremos_III[0])
-            partes[2].append(extremos_III[1])
+            partes['III'] = extremos_III
         elif len(extremos_IV) == 2:
-            partes[3].append(extremos_IV[0])
-            partes[3].append(extremos_IV[1])
+            partes['IV'] = extremos_IV
         elif not traza_h and traza_v:
-            if traza_v[2] > 0:
-                partes[0].append(traza_v)
-                partes[0].append(extremos_I[0])
-                partes[1].append(traza_v)
-                partes[1].append(extremos_II[0])
+            if traza_v[2] >= 0:
+                partes['I'] = traza_v, extremos_I[0]
+                partes['II'] = traza_v, extremos_II[0]
             else:
-                partes[2].append(traza_v)
-                partes[2].append(extremos_III[0])
-                partes[3].append(traza_v)
-                partes[3].append(extremos_IV[0])
+                partes['III'] = traza_v, extremos_III[0]
+                partes['IV'] = traza_v, extremos_IV[0]
         elif not traza_v and traza_h:
-            if traza_h[1] > 0:
-                partes[0].append(traza_h)
-                partes[0].append(extremos_I[0])
-                partes[3].append(traza_h)
-                partes[3].append(extremos_IV[0])
+            if traza_h[1] >= 0:
+                partes['I'] = traza_h, extremos_I[0]
+                partes['IV'] = traza_h, extremos_IV[0]
             else:
-                partes[1].append(traza_h)
-                partes[1].append(extremos_II[0])
-                partes[2].append(traza_h)
-                partes[2].append(extremos_III[0])
+                partes['II'] = traza_h, extremos_II[0]
+                partes['III'] = traza_h, extremos_III[0]
         else:
             # Traza V y H
-            if traza_v[2] > 0 and traza_h[1] > 0:
-                partes[0].append(traza_v)
-                partes[0].append(traza_h)
-                partes[1].append(traza_h)
-                partes[1].append(extremos_II[0])
-                partes[3].append(traza_h)
-                partes[3].append(extremos_IV[0])
-            elif traza_v[2] < 0:
-                partes[0].append(extremos_I)
-                partes[0].append(traza_h)
-                partes[3].append(traza_h)
-                partes[3].append(traza_v)
-                partes[2].append(traza_v)
-                partes[2].append(extremos_III[0])
+            # LT:
+            if traza_v == traza_h:
+                if self.p1.cuadrante == "I" or self.p1.cuadrante == "III":
+                    partes['I'] = traza_h, extremos_I[0]
+                    partes['III'] = traza_h, extremos_III[0]
+                else:
+                    partes['II'] = traza_h, extremos_II[0]
+                    partes['IV'] = traza_h, extremos_IV[0]
+            elif traza_v[2] > 0 and traza_h[1] > 0:
+                partes['I'] = traza_v, traza_h
+                partes['II'] = traza_h, extremos_II[0]
+                partes['IV'] = traza_h, extremos_IV[0]
+            elif traza_v[2] < 0 and traza_h[1] < 0:
+                partes['II'] = extremos_II[0], traza_h
+                partes['III'] = traza_h, traza_v
+                partes['IV'] = traza_v, extremos_IV[0]
+            elif traza_v[2] > 0 and traza_h[1] < 0:
+                partes['I'] = extremos_I[0], traza_v
+                partes['II'] = traza_v, traza_h
+                partes['III'] = traza_h, extremos_III[0]
             else:
-                partes[0].append(extremos_I)
-                partes[0].append(traza_v)
-                partes[1].append(traza_v)
-                partes[1].append(traza_h)
-                partes[2].append(traza_h)
-                partes[2].append(extremos_III[0])
+                partes['I'] = extremos_I[0], traza_v
+                partes['IV'] = traza_v, traza_h
+                partes['III'] = traza_h, extremos_III[0]
         return partes
 
 
 class Plano(EntidadGeometrica):
-    def __init__(self, internal_id: int, nombre: str, entidad_1, entidad_2, entidad_3, modo):
+    def __init__(self,
+                 internal_id: int,
+                 nombre: str,
+                 entidad_1,
+                 entidad_2,
+                 entidad_3,
+                 modo):
 
         if isinstance(entidad_1, Punto) and isinstance(entidad_2, Punto) and isinstance(entidad_3, Punto):
             EntidadGeometrica.__init__(self, internal_id,
@@ -469,12 +460,12 @@ class Renderizador(QOpenGLWidget):
         self.y = cos(radians(self.theta)) + self.desviacion_y
 
         # Vértices de los planos
-        self.vertices_plano_vertical_arriba = ((500, 500, 0), (-500, 500, 0), (-500, 0, 0), (500, 0, 0))
-        self.vertices_plano_vertical_debajo = ((500, 0, 0), (-500, 0, 0), (-500, -500, 0), (500, -500, 0))
-        self.vertices_plano_horizontal_delante = ((500, 0, 0), (500, 0, 500), (-500, 0, 500), (-500, 0, 0))
-        self.vertices_plano_horizontal_detras = ((500, 0, 0), (500, 0, -500), (-500, 0, -500), (-500, 0, 0))
-        self.vertices_borde_plano_vertical = ((500, 500, 0), (500, -500, 0), (-500, -500, 0), (-500, 500, 0))
-        self.vertices_borde_plano_horizontal = ((500, 0, 500), (-500, 0, 500), (-500, 0, -500), (500, 0, -500))
+        self.vertices_plano_vertical_arriba = ((500, 0, 500), (500, 0, 0), (-500, 0, 0), (-500, 0, 500))
+        self.vertices_plano_vertical_debajo = ((500, 0, 0), (-500, 0, 0), (-500, 0, -500), (500, 0, -500))
+        self.vertices_plano_horizontal_delante = ((500, 0, 0), (500, 500, 0), (-500, 500, 0), (-500, 0, 0))
+        self.vertices_plano_horizontal_detras = ((500, 0, 0), (500, -500, 0), (-500, -500, 0), (-500, 0, 0))
+        self.vertices_borde_plano_vertical = ((500, 0, 500), (-500, 0, 500), (-500, 0, -500), (500, 0, -500))
+        self.vertices_borde_plano_horizontal = ((500, 500, 0), (500, -500, 0), (-500, -500, 0), (-500, 500, 0))
 
         self.m = [[1, 0, 0, 0],
                   [0, 0, 1, 0],
@@ -525,27 +516,35 @@ class Renderizador(QOpenGLWidget):
 
     def plano_vertical_arriba(self):
         if programa.ajustes.ver_plano_vertical.isChecked():
+            glBegin(GL_QUADS)
             glColor(programa.ajustes.color_plano_vertical)
             for vertex in range(4):
                 glVertex(self.vertices_plano_vertical_arriba[vertex])
+            glEnd()
 
     def plano_vertical_debajo(self):
         if programa.ajustes.ver_plano_vertical.isChecked():
+            glBegin(GL_QUADS)
             glColor(programa.ajustes.color_plano_vertical)
             for vertex in range(4):
                 glVertex(self.vertices_plano_vertical_debajo[vertex])
+            glEnd()
 
     def plano_horizontal_delante(self):
         if programa.ajustes.ver_plano_horizontal.isChecked():
+            glBegin(GL_QUADS)
             glColor(programa.ajustes.color_plano_horizontal)
             for vertex in range(4):
                 glVertex(self.vertices_plano_horizontal_delante[vertex])
+            glEnd()
 
     def plano_horizontal_detras(self):
         if programa.ajustes.ver_plano_horizontal.isChecked():
+            glBegin(GL_QUADS)
             glColor(programa.ajustes.color_plano_horizontal)
             for vertex in range(4):
                 glVertex(self.vertices_plano_horizontal_detras[vertex])
+            glEnd()
 
     def bordes_plano_vertical(self):
         if programa.ajustes.ver_plano_vertical.isChecked():
@@ -565,133 +564,159 @@ class Renderizador(QOpenGLWidget):
                 glVertex(self.vertices_borde_plano_horizontal[vertex])
             glEnd()
 
-    def planos_proyectantes(self):
-        if programa.ajustes.ver_plano_vertical.isChecked() or programa.ajustes.ver_plano_horizontal.isChecked():
-            glEnable(GL_BLEND)
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-            self.bordes_plano_horizontal()
-            self.bordes_plano_vertical()
-            glDepthMask(GL_FALSE)
-            glBegin(GL_QUADS)
-
-            # Observador en:
-            # Línea de tierra:
-            if (self.phi == 0 or self.phi == 180) and self.theta == 0:
-                # Desde la línea de tierra no se ven los planos
-                pass
-
-            # Plano horizontal:
-            elif self.theta == 450:
-                self.plano_vertical_arriba()
-                self.plano_vertical_debajo()
-
-            # Plano vertical:
-            elif self.phi == 0 or self.phi == 180 or self.theta == 360 or self.theta == 520:
-                self.plano_horizontal_delante()
-                self.plano_horizontal_detras()
-
-            # Primer cuadrante:
-            elif self.theta < 450 and self.phi < 180:
-                self.plano_vertical_debajo()
-                self.plano_horizontal_detras()
-                self.plano_vertical_arriba()
-                self.plano_horizontal_delante()
-
-            # Segundo cuadrante:
-            elif self.theta < 450 and self.phi > 180:
-                self.plano_vertical_debajo()
-                self.plano_horizontal_delante()
-                self.plano_vertical_arriba()
-                self.plano_horizontal_detras()
-
-            # Tercer cuadrante:
-            elif self.theta > 450 and self.phi > 180:
-                self.plano_vertical_arriba()
-                self.plano_horizontal_delante()
-                self.plano_vertical_debajo()
-                self.plano_horizontal_detras()
-
-            # Cuarto cuadrante:
-            else:
-                self.plano_vertical_arriba()
-                self.plano_horizontal_detras()
-                self.plano_horizontal_delante()
-                self.plano_vertical_debajo()
-
-            glEnd()
-            glDepthMask(GL_TRUE)
-            glDisable(GL_BLEND)
-
     @staticmethod
     def dibujar_ejes():
-        glLineWidth(3)
-        glBegin(GL_LINES)
-        # Eje X, color rojo
-        glColor(1, 0, 0)
-        glVertex(0, 0, 0)
-        glVertex(10, 0, 0)
-        # Eje Y, color verde
-        glColor(0, 1, 0)
-        glVertex(0, 0, 0)
-        glVertex(0, 10, 0)
-        # Eje Z, color azul
-        glColor(0, 0, 1)
-        glVertex(0, 0, 0)
-        glVertex(0, 0, 10)
-        glEnd()
+        if programa.ajustes.ver_ejes.isChecked():
+            glLineWidth(3)
+            glBegin(GL_LINES)
+            # Eje X, color rojo
+            glColor(1, 0, 0)
+            glVertex(0, 0, 0)
+            glVertex(10, 0, 0)
+            # Eje Y, color verde
+            glColor(0, 1, 0)
+            glVertex(0, 0, 0)
+            glVertex(0, 10, 0)
+            # Eje Z, color azul
+            glColor(0, 0, 1)
+            glVertex(0, 0, 0)
+            glVertex(0, 0, 10)
+            glEnd()
 
     @staticmethod
-    def dibujar_puntos():
+    def dibujar_puntos(cuadrante: str):
         for i in range(programa.lista_puntos.count()):
             punto = programa.lista_puntos.itemWidget(programa.lista_puntos.item(i))
-            if punto.render.isChecked():
+            if punto.render.isChecked() and punto.cuadrante == cuadrante:
                 glColor(punto.color)
-                glPointSize(4)
+                glPointSize(5)
                 glEnable(GL_POINT_SMOOTH)
                 glBegin(GL_POINTS)
                 glVertex(punto.x, punto.y, punto.z)
                 glEnd()
 
-    @staticmethod
-    def dibujar_rectas():
+    def dibujar_rectas(self, cuadrante: str):
         for i in range(programa.lista_rectas.count()):
             recta = programa.lista_rectas.itemWidget(programa.lista_rectas.item(i))
             if recta.render.isChecked():
                 glColor(recta.color)
                 glLineWidth(2)
-                glBegin(GL_LINES)
                 if recta.infinita.isChecked():
-                    glVertex(recta.extremos[0])
-                    glVertex(recta.extremos[1])
+                    glBegin(GL_LINES)
+                    if "I" in recta.partes and cuadrante == "I":
+                        glVertex(recta.partes["I"][0])
+                        glVertex(recta.partes["I"][1])
+                    if "II" in recta.partes and cuadrante == "II":
+                        glVertex(recta.partes["II"][0])
+                        glVertex(recta.partes["II"][1])
+                    if "III" in recta.partes and cuadrante == "III":
+                        glVertex(recta.partes["III"][0])
+                        glVertex(recta.partes["III"][1])
+                    if "IV" in recta.partes and cuadrante == "IV":
+                        glVertex(recta.partes["IV"][0])
+                        glVertex(recta.partes["IV"][1])
+                    glEnd()
+                    self.traza_v_recta(recta)
+                    self.traza_h_recta(recta)
                 else:
-                    glVertex(recta.p1.coords)
-                    glVertex(recta.p2.coords)
-                glEnd()
-                glDisable(GL_BLEND)
-                glDepthMask(GL_TRUE)
-                if programa.ajustes.ver_rectas_trazas_horizontales.isChecked():
-                    if recta.traza_h and recta.ver_traza_horizontal.isChecked() and recta.infinita.isChecked():
-                        if recta.traza_h[0] < 500 and recta.traza_h[2] < 500:
-                            glColor(0, 1, 0, 0)
-                            glBegin(GL_POINTS)
-                            glVertex(recta.traza_h)
+                    if recta.p1.cuadrante == recta.p2.cuadrante == cuadrante == "I":
+                        glBegin(GL_LINES)
+                        glVertex(recta.p1.coords)
+                        glVertex(recta.p2.coords)
+                        glEnd()
+                    elif recta.p1.cuadrante == recta.p2.cuadrante == cuadrante == "II":
+                        glBegin(GL_LINES)
+                        glVertex(recta.p1.coords)
+                        glVertex(recta.p2.coords)
+                        glEnd()
+                    elif recta.p1.cuadrante == recta.p2.cuadrante == cuadrante == "III":
+                        glBegin(GL_LINES)
+                        glVertex(recta.p1.coords)
+                        glVertex(recta.p2.coords)
+                        glEnd()
+                    elif recta.p1.cuadrante == recta.p2.cuadrante == cuadrante == "IV":
+                        glBegin(GL_LINES)
+                        glVertex(recta.p1.coords)
+                        glVertex(recta.p2.coords)
+                        glEnd()
+                    elif not recta.p1.cuadrante == recta.p2.cuadrante:
+                        if recta.traza_v:
+                            glBegin(GL_LINES)
+                            if recta.p1.coords[1] > 0:
+                                if recta.p1.coords[2] > 0 and cuadrante == "I":
+                                    glVertex(recta.p1.coords)
+                                    glVertex(recta.traza_v)
+                                elif recta.p1.coords[2] < 0 and cuadrante == "IV":
+                                    glVertex(recta.p1.coords)
+                                    glVertex(recta.traza_v)
+                                if cuadrante == "II" or cuadrante == "III":
+                                    glVertex(recta.p2.coords)
+                                    glVertex(recta.traza_v)
+                            else:
+                                if recta.p2.coords[2] > 0 and cuadrante == "I":
+                                    glVertex(recta.p2.coords)
+                                    glVertex(recta.traza_v)
+                                elif recta.p2.coords[2] < 0 and cuadrante == "IV":
+                                    glVertex(recta.p2.coords)
+                                    glVertex(recta.traza_h)
+                                if (cuadrante == "II" or cuadrante == "III") and recta.p2.coords[2] > 0:
+                                    glVertex(recta.p1.coords)
+                                    glVertex(recta.traza_v)
                             glEnd()
-                if programa.ajustes.ver_rectas_trazas_verticales.isChecked():
-                    if recta.traza_v and recta.ver_traza_vertical.isChecked() and recta.infinita.isChecked():
-                        if recta.traza_v[0] < 500 and recta.traza_v[1] < 500:
-                            glColor(1, 0, 0, 0)
-                            glBegin(GL_POINTS)
-                            glVertex(recta.traza_v)
+                        self.traza_v_recta(recta)
+
+                        if recta.traza_h:
+                            glBegin(GL_LINES)
+                            if recta.p1.coords[2] > 0:
+                                if recta.p1.coords[1] > 0 and cuadrante == "I":
+                                    glVertex(recta.p1.coords)
+                                    glVertex(recta.traza_h)
+                                elif recta.p1.coords[1] < 0 and cuadrante == "II":
+                                    glVertex(recta.p1.coords)
+                                    glVertex(recta.traza_h)
+                                if cuadrante == "III" or cuadrante == "IV":
+                                    glVertex(recta.p2.coords)
+                                    glVertex(recta.traza_h)
+                            else:
+                                if recta.p2.coords[1] > 0 and cuadrante == "I":
+                                    glVertex(recta.p2.coords)
+                                    glVertex(recta.traza_h)
+                                elif recta.p2.coords[1] < 0 and cuadrante == "II":
+                                    glVertex(recta.p2.coords)
+                                    glVertex(recta.traza_v)
+                                if (cuadrante == "III" or cuadrante == "IV") and recta.p2.coords[1] > 0:
+                                    glVertex(recta.p1.coords)
+                                    glVertex(recta.traza_h)
                             glEnd()
+                        self.traza_h_recta(recta)
 
     @staticmethod
-    def dibujar_planos():
+    def traza_v_recta(recta):
+        if programa.ajustes.ver_rectas_trazas_verticales.isChecked():
+            if recta.traza_v and recta.ver_traza_vertical.isChecked():
+                if recta.traza_v[0] < 500 and recta.traza_v[1] < 500:
+                    glColor(0, 1, 0, 1)
+                    glBegin(GL_POINTS)
+                    glVertex(recta.traza_v)
+                    glEnd()
+                    glColor(recta.color)
+
+    @staticmethod
+    def traza_h_recta(recta):
+        if programa.ajustes.ver_rectas_trazas_horizontales.isChecked():
+            if recta.traza_h and recta.ver_traza_horizontal.isChecked():
+                if recta.traza_h[0] < 500 and recta.traza_h[2] < 500:
+                    glColor(1, 0, 0, 1)
+                    glBegin(GL_POINTS)
+                    glVertex(recta.traza_h)
+                    glEnd()
+                    glColor(recta.color)
+
+    @staticmethod
+    def dibujar_planos(cuadrante: str):
         for i in range(programa.lista_planos.count()):
             plano = programa.lista_planos.itemWidget(programa.lista_planos.item(i))
             if plano.render.isChecked():
-                glEnable(GL_BLEND)
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-                glDepthMask(GL_FALSE)
                 if plano.render.isChecked():
                     glBegin(GL_TRIANGLE_FAN)
                     glColor(plano.color)
@@ -703,8 +728,6 @@ class Renderizador(QOpenGLWidget):
                         glVertex(plano.p2)
                         glVertex(plano.p3)
                     glEnd()
-                glDepthMask(GL_TRUE)
-                glDisable(GL_BLEND)
                 if plano.infinito.isChecked():
                     glColor(0, 0, 0, 0.2)
                     # Trazas:
@@ -720,14 +743,10 @@ class Renderizador(QOpenGLWidget):
                         glVertex(plano.traza_h[1])
                         glEnd()
 
-    def initializeGL(self):
-        glEnable(GL_DEPTH_TEST)
-
     def paintGL(self):
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
         glOrtho(self.zoom, -self.zoom, -self.zoom, self.zoom, -5000, 5000)
-
         arriba = 1
         if self.theta == 360:
             arriba = -1
@@ -737,16 +756,125 @@ class Renderizador(QOpenGLWidget):
         glClearColor(1, 1, 1, 0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glLoadMatrixf(self.m)
-        self.planos_proyectantes()
-        if programa.ajustes.ver_ejes.isChecked():
-            self.dibujar_ejes()
-        if programa.ajustes.ver_puntos.isChecked():
-            self.dibujar_puntos()
-        if programa.ajustes.ver_rectas.isChecked():
-            self.dibujar_rectas()
-        if programa.ajustes.ver_planos.isChecked():
-            self.dibujar_planos()
+
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+        self.dibujar_elementos()
         self.update()
+
+    def dibujar_entidades(self, cuadrante: str):
+        if programa.ajustes.ver_puntos.isChecked():
+            self.dibujar_puntos(cuadrante)
+        if programa.ajustes.ver_rectas.isChecked():
+            self.dibujar_rectas(cuadrante)
+        if programa.ajustes.ver_planos.isChecked():
+            pass
+            # self.dibujar_planos(cuadrante)
+        # TODO
+
+    def dibujar_elementos(self):
+        self.bordes_plano_horizontal()
+        self.bordes_plano_vertical()
+
+        # Observador en:
+        # Línea de tierra:
+        if (self.phi == 0 or self.phi == 180) and self.theta == 0:
+            self.dibujar_ejes()
+            self.dibujar_entidades("I")
+            self.dibujar_entidades("II")
+            self.dibujar_entidades("III")
+            self.dibujar_entidades("IV")
+
+        # Plano horizontal:
+        elif self.theta == 450:
+            # PH positivo
+            if 0 <= self.phi <= 180:
+                self.dibujar_entidades("II")
+                self.dibujar_entidades("III")
+                self.plano_vertical_arriba()
+                self.plano_vertical_debajo()
+                self.dibujar_ejes()
+                self.dibujar_entidades("I")
+                self.dibujar_entidades("IV")
+            else:
+                # PH negativo
+                self.dibujar_entidades("I")
+                self.dibujar_entidades("IV")
+                self.plano_vertical_arriba()
+                self.plano_vertical_debajo()
+                self.dibujar_ejes()
+                self.dibujar_entidades("II")
+                self.dibujar_entidades("III")
+
+        # Plano vertical:
+        elif self.phi == 0 or self.phi == 180 or self.theta == 360 or self.theta == 520:
+            # PV positivo
+            if self.theta < 450:
+                self.dibujar_entidades("III")
+                self.dibujar_entidades("IV")
+                self.plano_horizontal_delante()
+                self.plano_horizontal_detras()
+                self.dibujar_ejes()
+                self.dibujar_entidades("I")
+                self.dibujar_entidades("II")
+            else:
+                # PV negativo
+                self.dibujar_entidades("I")
+                self.dibujar_entidades("II")
+                self.plano_horizontal_delante()
+                self.plano_horizontal_detras()
+                self.dibujar_ejes()
+                self.dibujar_entidades("III")
+                self.dibujar_entidades("IV")
+
+        # Primer cuadrante:
+        elif self.theta < 450 and self.phi < 180:
+            self.dibujar_entidades("III")
+            self.plano_vertical_debajo()
+            self.plano_horizontal_detras()
+            self.dibujar_entidades("II")
+            self.dibujar_entidades("IV")
+            self.plano_vertical_arriba()
+            self.plano_horizontal_delante()
+            self.dibujar_ejes()
+            self.dibujar_entidades("I")
+
+        # Segundo cuadrante:
+        elif self.theta < 450 and self.phi > 180:
+            self.dibujar_entidades("IV")
+            self.plano_vertical_debajo()
+            self.plano_horizontal_delante()
+            self.dibujar_entidades("III")
+            self.dibujar_entidades("I")
+            self.plano_vertical_arriba()
+            self.plano_horizontal_detras()
+            self.dibujar_ejes()
+            self.dibujar_entidades("II")
+
+        # Tercer cuadrante:
+        elif self.theta > 450 and self.phi > 180:
+            self.dibujar_entidades("I")
+            self.plano_vertical_arriba()
+            self.plano_horizontal_delante()
+            self.dibujar_entidades("II")
+            self.dibujar_entidades("IV")
+            self.plano_vertical_debajo()
+            self.plano_horizontal_detras()
+            self.dibujar_ejes()
+            self.dibujar_entidades("III")
+
+        # Cuarto cuadrante:
+        else:
+            self.dibujar_entidades("II")
+            self.plano_vertical_arriba()
+            self.plano_horizontal_detras()
+            self.dibujar_entidades("I")
+            self.dibujar_entidades("III")
+            self.plano_horizontal_delante()
+            self.plano_vertical_debajo()
+            self.dibujar_ejes()
+            self.dibujar_entidades("IV")
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_W:
@@ -903,67 +1031,57 @@ class Diedrico(QWidget):
     def dibujar_rectas(self, qp):
         for i in range(programa.lista_rectas.count()):
             recta = programa.lista_rectas.itemWidget(programa.lista_rectas.item(i))
+            partes = recta.partes
             if recta.render.isChecked():
                 if recta.infinita.isChecked():
-                    # Ninguna traza
-                    if not recta.traza_v and not recta.traza_h and len(recta.extremos_I) == 2:
-                        self.dibujar_continuo(qp, recta.extremos_I[0], recta.extremos_I[1])
-
-                    # Una traza en PH
-                    elif recta.traza_h and not recta.traza_v:
-                        inicio = recta.traza_h
-                        fin = recta.extremos_I[0]
-                        self.dibujar_continuo(qp, inicio, fin)
-
-                    # Una traza en PV
-                    elif not recta.traza_h and recta.traza_v:
-                        inicio = recta.traza_v
-                        fin = recta.extremos_I[0]
-                        self.dibujar_continuo(qp, inicio, fin)
-
-                    # Dos trazas
-                    elif recta.traza_v and recta.traza_h:
-
-                        # Trazas en LT
-                        if recta.traza_h == recta.traza_v:
-                            inicio = recta.traza_h
-                            fin = recta.extremos_I[0]
-                            self.dibujar_continuo(qp, inicio, fin)
-
-                        # Pasa por los cuadrantes 1, 2 y 4
-                        if recta.traza_h[2] > 0 and recta.traza_v[1] > 0:
-                            inicio = recta.traza_v
-                            fin = recta.traza_h
-                            self.dibujar_continuo(qp, inicio, fin)
-
-                        # Pasa por los cuadrantes 1, 3 y 4
-                        elif recta.traza_h[2] < 0 < recta.traza_v[1]:
-                            inicio = recta.traza_v
-                            fin = recta.extremos_I[0]
-                            self.dibujar_continuo(qp, inicio, fin)
-
-                        # Pasa por los cuadrantes 2, 3 y 4
-                        elif recta.traza_h[2] > 0 > recta.traza_v[1]:
-                            inicio = recta.traza_h
-                            fin = recta.extremos_I[0]
-                            self.dibujar_continuo(qp, inicio, fin)
+                    if 'I' in partes:
+                        self.dibujar_continuo(qp, partes['I'])
+                    if 'II' in partes:
+                        self.dibujar_discontinuo(qp, partes['II'])
+                    if 'III' in partes:
+                        self.dibujar_discontinuo(qp, partes['III'])
+                    if 'IV' in partes:
+                        self.dibujar_discontinuo(qp, partes['IV'])
                 else:
-                    if len(recta.extremos_I) == 2:
-                        self.dibujar_continuo(qp, recta.extremos_I[0], recta.extremos_I[1])
+                    if recta.p1.cuadrante == recta.p2.cuadrante == "I":
+                        self.dibujar_continuo(qp, (recta.p1.coords, recta.p2.coords))
+                    elif not 'I' in recta.partes:
+                        self.dibujar_discontinuo(qp, (recta.p1.coords, recta.p2.coords))
                     else:
-                        if recta.traza_v:
-                            if recta.traza_v[2] >= 0:
-                                self.dibujar_continuo(qp, recta.extremos[0], recta.traza_v)
+                        if recta.p1.cuadrante == "I":
+                            if recta.traza_v:
+                                if recta.traza_v[2] >= 0:
+                                    self.dibujar_discontinuo(qp, (recta.traza_v, recta.p2.coords))
+                                    self.dibujar_continuo(qp, (recta.p1.coords, recta.traza_v))
+                            if recta.traza_h:
+                                if recta.traza_h[1] >= 0:
+                                    self.dibujar_discontinuo(qp, (recta.traza_h, recta.p2.coords))
+                                    self.dibujar_continuo(qp, (recta.p1.coords, recta.traza_h))
+                        elif recta.p2.cuadrante == "I":
+                            if recta.traza_v:
+                                if recta.traza_v[2] >= 0:
+                                    self.dibujar_discontinuo(qp, (recta.traza_v, recta.p1.coords))
+                                    self.dibujar_continuo(qp, (recta.p2.coords, recta.traza_v))
+                            if recta.traza_h:
+                                if recta.traza_h[1] >= 0:
+                                    self.dibujar_discontinuo(qp, (recta.traza_h, recta.p1.coords))
+                                    self.dibujar_continuo(qp, (recta.p2.coords, recta.traza_h))
+                        if recta.traza_v and recta.traza_h:
+                            if recta.traza_v[2] >= 0 and recta.traza_h[1] >= 0:
 
-                        elif recta.traza_h:
-                            if recta.traza_h[1] >= 0:
-                                self.dibujar_continuo(qp, recta.extremos[0], recta.traza_h)
+                                if recta.p1.cuadrante == "II":
+                                    self.dibujar_discontinuo(qp, (recta.traza_v, recta.p1.coords))
+                                else:
+                                    self.dibujar_discontinuo(qp, (recta.traza_v, recta.p2.coords))
 
-                # Dibuja en discontínuo
-                qp.setPen(self.pen_recta_prima)
-                self.recta_prima(qp, recta.extremos)
-                qp.setPen(self.pen_recta_prima2)
-                self.recta_prima2(qp, recta.extremos)
+                                if recta.p1.cuadrante == "IV":
+                                    self.dibujar_discontinuo(qp, (recta.traza_h, recta.p1.coords))
+                                else:
+                                    self.dibujar_discontinuo(qp, (recta.traza_h, recta.p2.coords))
+
+                                self.dibujar_continuo(qp, (recta.traza_v, recta.traza_h))
+                        else:
+                            self.dibujar_discontinuo(qp, (recta.p1.coords, recta.p2.coords))
 
                 # Tercera proyección
                 if programa.tercera_proyeccion.checkState():
@@ -972,12 +1090,17 @@ class Diedrico(QWidget):
 
                 self.dibujar_trazas_recta(qp, recta)
 
-    def dibujar_continuo(self, qp, inicio, fin):
-        # Intercambio de ejes para arreglar sistema de coordenadas
+    def dibujar_continuo(self, qp, extremos):
         qp.setPen(self.pen_recta_prima_continuo)
-        self.recta_prima(qp, (inicio, fin))
+        self.recta_prima(qp, extremos)
         qp.setPen(self.pen_recta_prima2_continuo)
-        self.recta_prima2(qp, (inicio, fin))
+        self.recta_prima2(qp, extremos)
+
+    def dibujar_discontinuo(self, qp, extremos):
+        qp.setPen(self.pen_recta_prima)
+        self.recta_prima(qp, extremos)
+        qp.setPen(self.pen_recta_prima2)
+        self.recta_prima2(qp, extremos)
 
     @staticmethod
     def recta_prima(qp, extremos):
