@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 
+from itertools import cycle
 from math import sin, cos, radians, atan2
-from string import ascii_uppercase, ascii_lowercase
 
-from OpenGL.GL import glClear, GL_COLOR_BUFFER_BIT, glEnable, GL_DEPTH_TEST, glMatrixMode, GL_PROJECTION, GL_TRUE, \
-    glLoadIdentity, glOrtho, glClearColor, GL_DEPTH_BUFFER_BIT, GL_MODELVIEW, glLineWidth, glBegin, glColor, glVertex, \
-    glEnd, glPointSize, GL_POINT_SMOOTH, GL_POINTS, GL_BLEND, glBlendFunc, GL_SRC_ALPHA, GL_QUADS, glDisable, \
-    GL_LINES, GL_LINE_LOOP, glDepthMask, GL_FALSE, GL_ONE_MINUS_SRC_ALPHA, GL_TRIANGLE_FAN
+from OpenGL.GL import glClear, GL_COLOR_BUFFER_BIT, glEnable, glMatrixMode, GL_PROJECTION, glLoadIdentity, glOrtho, \
+    glClearColor, GL_DEPTH_BUFFER_BIT, GL_MODELVIEW, glLineWidth, glBegin, glColor, glVertex, glEnd, glPointSize, \
+    GL_POINT_SMOOTH, GL_POINTS, GL_BLEND, glBlendFunc, GL_SRC_ALPHA, GL_QUADS, GL_LINES, GL_LINE_LOOP, \
+    GL_ONE_MINUS_SRC_ALPHA, GL_TRIANGLE_FAN, glLoadMatrixf
 from OpenGL.GLU import gluLookAt
-from PyQt5.QtCore import Qt, QRect, QSize
+from PyQt5.QtCore import Qt, pyqtSlot, QSize
 from PyQt5.QtGui import QPainter, QPen, QCursor, QTransform, QFont, QColor
 from PyQt5.QtWidgets import QOpenGLWidget, QWidget, QCheckBox, QPushButton, QHBoxLayout, QMainWindow, QLabel, QMenu, \
     QApplication, QVBoxLayout, QSpinBox, QPlainTextEdit, QComboBox, QMessageBox, QGraphicsScene, QGraphicsView, \
@@ -87,25 +87,71 @@ class EntidadGeometrica(QWidget):
 
 
 class Punto(EntidadGeometrica):
-    def __init__(self, internal_id: int, nombre: str, do: int, alejamiento: int, cota: int):
-        EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}({do}, {alejamiento}, {cota})"))
+    def __init__(self,
+                 internal_id: int,
+                 nombre: str,
+                 do: int,
+                 alejamiento: int,
+                 cota: int,
+                 interseccion):
 
+        if interseccion is None:
+            EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}({do}, {alejamiento}, {cota})"))
+        else:
+            EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}({interseccion})"))
         self.borrar.triggered.connect(lambda: programa.borrar_punto(self.id))
         self.x = do
-        self.y = cota
-        self.z = alejamiento
+        self.y = alejamiento
+        self.z = cota
         self.nombre = nombre
-        self.coords = (self.x, self.z, self.y)
+        self.coords = (do, alejamiento, cota)
+        self.sympy = Point3D(self.coords)
+        self.cuadrante = self.calcular_cuadrante()
+        self.contenido_en_plano = False
+
+    def calcular_cuadrante(self):
+        coords = self.coords
+        if coords[1] >= 0 and coords[2] >= 0:
+            return "I"
+        elif coords[1] < 0 and coords[2] >= 0:
+            return "II"
+        elif coords[1] >= 0 and coords[2] < 0:
+            return "IV"
+        else:
+            return "III"
 
 
 class Recta(EntidadGeometrica):
-    def __init__(self, internal_id: int, nombre: str, p1: Punto, p2: Punto):
-        nombre = QLabel(f"{nombre}({p1.nombre}, {p2.nombre})")
-        EntidadGeometrica.__init__(self, internal_id, nombre)
+    def __init__(self,
+                 internal_id: int,
+                 nombre: str,
+                 entidad_1: EntidadGeometrica,
+                 entidad_2: EntidadGeometrica,
+                 modo=None,
+                 nombre_recta=None):
 
-        self.recta = Line(Point3D(p1.coords), Point3D(p2.coords))
-        self.p1 = (p1.coords[0], p1.coords[2], p1.coords[1])
-        self.p2 = (p2.coords[0], p2.coords[2], p2.coords[1])
+        if entidad_2 is None:
+            # Proviene de intersecciones
+            EntidadGeometrica.__init__(self, internal_id, QLabel(nombre))
+            self.sympy = entidad_1
+
+        elif isinstance(entidad_1, Punto) and isinstance(entidad_2, Punto):
+            EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}({entidad_1.nombre}, {entidad_2.nombre})"))
+            self.sympy = Line(Point3D(entidad_1.coords), Point3D(entidad_2.coords))
+            self.p1 = entidad_1
+            self.p2 = entidad_2
+
+        elif isinstance(entidad_1, Line3D) and isinstance(entidad_2, Plano):
+            self.sympy = entidad_1
+            EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}⊥{entidad_2.nombre}"))
+            # No se pueden crear rectas paralelas a planos que pasen por un punto debido a limitaciones técnicas
+
+        elif isinstance(entidad_1, Punto) and isinstance(entidad_2, Line3D):
+            self.sympy = entidad_2
+            if modo == "Perpendicular":
+                EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}⊥{nombre_recta}"))
+            else:
+                EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}║{nombre_recta}"))
 
         self.nombre = nombre
         self.contenida_pv = False
@@ -123,111 +169,168 @@ class Recta(EntidadGeometrica):
         self.menu.addAction(self.ver_traza_vertical)
 
         self.infinita = QAction("Infinita")
-        self.infinita.setCheckable(True)
-        self.infinita.setChecked(True)
         self.menu.addAction(self.infinita)
 
-        self.extremos = self.extremos()
-        # Extremos de la recta que se encuentren en el primer cuadrante
-        self.extremos_I = [i for i in self.extremos if i[1] >= 0 and i[2] >= 0]
+        # Solo se pueden utilizar segmentos cuando la recta ha sido definida por dos puntos, podría ser mejorado
+        if isinstance(entidad_1, Punto) and isinstance(entidad_2, Punto):
+            self.infinita.setCheckable(True)
+            self.infinita.setChecked(True)
+        else:
+            self.infinita.setCheckable(False)
+            self.infinita.setChecked(False)
+
+        self.extremos = self.extremos(self.sympy)
+        # Extremos de la recta separados por cuadrantes
+        self.extremos_I = tuple([i for i in self.extremos if i[1] >= 0 and i[2] >= 0])
+        self.extremos_II = tuple([i for i in self.extremos if (i[1] < 0 and i[2] > 0) or (i[1] < 0 and i[2] == 0)])
+        self.extremos_III = tuple([i for i in self.extremos if i[1] < 0 and i[2] < 0])
+        self.extremos_IV = tuple([i for i in self.extremos if (i[1] > 0 and i[2] < 0) or (i[1] == 0 and i[2] < 0)])
 
         self.traza_v = self.calcular_traza_v()
         self.traza_h = self.calcular_traza_h()
 
         # Si la recta no tiene trazas, se desactivan estas opciones
-        if self.traza_v:
-            self.traza_v = (self.traza_v[0], self.traza_v[2], self.traza_v[1])
-            if self.traza_v[0] > 500 or self.traza_v[1] > 500:
-                self.ver_traza_vertical.setChecked(False)
-                self.ver_traza_vertical.setCheckable(False)
-                self.ver_traza_vertical.setDisabled(True)
-        else:
+        if not self.traza_v:
             self.ver_traza_vertical.setChecked(False)
             self.ver_traza_vertical.setCheckable(False)
             self.ver_traza_vertical.setDisabled(True)
 
-        if self.traza_h:
-            self.traza_h = (self.traza_h[0], self.traza_h[2], self.traza_h[1])
-            if self.traza_h[0] > 500 or self.traza_h[2] > 500:
-                self.ver_traza_horizontal.setChecked(False)
-                self.ver_traza_horizontal.setCheckable(False)
-                self.ver_traza_horizontal.setDisabled(True)
-        else:
+        if not self.traza_h:
             self.ver_traza_horizontal.setChecked(False)
             self.ver_traza_horizontal.setCheckable(False)
             self.ver_traza_horizontal.setDisabled(True)
 
-    def extremos(self):
+        self.partes = self.calcular_partes()
+
+    def extremos(self, recta: Line3D):
         intersecciones = []
         for i in range(6):
-            interseccion = intersection(self.recta, self.planos[i])
+            interseccion = intersection(recta, self.planos[i])
             if interseccion:
-                intersecciones.append(interseccion[0])
-            else:
-                # Valores inventados para que no sirva la interseccion
-                intersecciones.append((501, 501, 501))
-        buenos = []
-        if -500 < intersecciones[1][0] < 500 and -500 < intersecciones[1][2] < 500:
-            buenos.append(intersecciones[1])
-        if -500 < intersecciones[4][0] < 500 and -500 < intersecciones[4][2] < 500:
-            buenos.append(intersecciones[4])
-        if -500 <= intersecciones[0][0] <= 500 and -500 <= intersecciones[0][1] <= 500:
-            buenos.append(intersecciones[0])
-        if -500 < intersecciones[2][1] < 500 and -500 < intersecciones[2][2] < 500:
-            buenos.append(intersecciones[2])
-        if -500 <= intersecciones[3][0] <= 500 and -500 <= intersecciones[3][1] <= 500:
-            buenos.append(intersecciones[3])
-        if -500 < intersecciones[5][1] < 500 and -500 < intersecciones[5][2] < 500:
-            buenos.append(intersecciones[5])
-        if 500 == abs(intersecciones[2][1]):
-            buenos.append(intersecciones[2])
-        if 500 == abs(intersecciones[5][1]):
-            buenos.append(intersecciones[5])
-        buenos = [tuple([punto.x, punto.z, punto.y]) for punto in buenos]
-        return buenos
+                interseccion = interseccion[0]
+                if abs(interseccion.x) <= 500 and abs(interseccion.y) <= 500 and abs(interseccion.z) <= 500:
+                    intersecciones.append((interseccion.x, interseccion.y, interseccion.z))
+        return tuple(set(intersecciones))
 
     def calcular_traza_h(self):
-        traza_h = intersection(self.recta, self.plano_horizontal)
+        traza_h = intersection(self.sympy, self.plano_horizontal)
         if traza_h:
-            if not isinstance(traza_h[0], Line3D) and traza_h[0]:
+            if not isinstance(traza_h[0], Line3D):
                 traza_h = tuple(traza_h[0])
-                return traza_h
-            else:
-                self.contenida_ph = True
+                if -500 <= traza_h[0] <= 500 and -500 <= traza_h[1] <= 500 and -500 <= traza_h[2] <= 500:
+                    return traza_h
         return False
 
     def calcular_traza_v(self):
-        traza_v = intersection(self.recta, self.plano_vertical)
+        traza_v = intersection(self.sympy, self.plano_vertical)
         if traza_v:
-            if not isinstance(traza_v[0], Line3D) and traza_v[0]:
+            if not isinstance(traza_v[0], Line3D):
                 traza_v = tuple(traza_v[0])
-                return traza_v
-            else:
-                self.contenida_pv = True
+                if -500 <= traza_v[0] <= 500 and -500 <= traza_v[1] <= 500 and -500 <= traza_v[2] <= 500:
+                    return traza_v
         return False
+
+    def calcular_partes(self):
+        extremos_I = self.extremos_I
+        extremos_II = self.extremos_II
+        extremos_III = self.extremos_III
+        extremos_IV = self.extremos_IV
+
+        traza_v = self.traza_v
+        traza_h = self.traza_h
+
+        partes = {}
+
+        if len(extremos_I) == 2:
+            # La recta no sale del primer cuadrante, puede estar en LT o contenida en los planos de proyección
+            partes['I'] = extremos_I
+        elif len(extremos_II) == 2:
+            partes['II'] = extremos_II
+        elif len(extremos_III) == 2:
+            partes['III'] = extremos_III
+        elif len(extremos_IV) == 2:
+            partes['IV'] = extremos_IV
+        elif not traza_h and traza_v:
+            if traza_v[2] >= 0:
+                partes['I'] = traza_v, extremos_I[0]
+                partes['II'] = traza_v, extremos_II[0]
+            else:
+                partes['III'] = traza_v, extremos_III[0]
+                partes['IV'] = traza_v, extremos_IV[0]
+        elif not traza_v and traza_h:
+            if traza_h[1] >= 0:
+                partes['I'] = traza_h, extremos_I[0]
+                partes['IV'] = traza_h, extremos_IV[0]
+            else:
+                partes['II'] = traza_h, extremos_II[0]
+                partes['III'] = traza_h, extremos_III[0]
+        else:
+            # Traza V y H
+            # LT:
+            if traza_v == traza_h:
+                if self.p1.cuadrante == "I" or self.p1.cuadrante == "III":
+                    partes['I'] = traza_h, extremos_I[0]
+                    partes['III'] = traza_h, extremos_III[0]
+                else:
+                    partes['II'] = traza_h, extremos_II[0]
+                    partes['IV'] = traza_h, extremos_IV[0]
+            elif traza_v[2] > 0 and traza_h[1] > 0:
+                partes['I'] = traza_v, traza_h
+                partes['II'] = traza_h, extremos_II[0]
+                partes['IV'] = traza_h, extremos_IV[0]
+            elif traza_v[2] < 0 and traza_h[1] < 0:
+                partes['II'] = extremos_II[0], traza_h
+                partes['III'] = traza_h, traza_v
+                partes['IV'] = traza_v, extremos_IV[0]
+            elif traza_v[2] > 0 and traza_h[1] < 0:
+                partes['I'] = extremos_I[0], traza_v
+                partes['II'] = traza_v, traza_h
+                partes['III'] = traza_h, extremos_III[0]
+            else:
+                partes['I'] = extremos_I[0], traza_v
+                partes['IV'] = traza_v, traza_h
+                partes['III'] = traza_h, extremos_III[0]
+        return partes
 
 
 class Plano(EntidadGeometrica):
-    def __init__(self, internal_id: int, nombre: str, p1: Punto, p2: Punto, p3: Punto):
-        EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}({p1.nombre}, {p2.nombre}, {p3.nombre})"))
+    def __init__(self,
+                 internal_id: int,
+                 nombre: str,
+                 entidad_1,
+                 entidad_2,
+                 entidad_3,
+                 modo):
 
-        self.plano = Plane(Point3D(p1.coords), Point3D(p2.coords), Point3D(p3.coords))
-        self.vector_normal = self.plano.normal_vector
-        self.nombre = QLabel(f"{nombre}({p1.nombre}, {p2.nombre}, {p3.nombre})")
-        self.p1 = (p1.coords[0], p1.coords[2], p1.coords[1])
-        self.p2 = (p2.coords[0], p2.coords[2], p2.coords[1])
-        self.p3 = (p3.coords[0], p3.coords[2], p3.coords[1])
+        if isinstance(entidad_1, Punto) and isinstance(entidad_2, Punto) and isinstance(entidad_3, Punto):
+            EntidadGeometrica.__init__(self, internal_id,
+                                       QLabel(f"{nombre}({entidad_1.nombre}, {entidad_2.nombre}, {entidad_3.nombre})"))
+            self.sympy = Plane(Point3D(entidad_1.coords), Point3D(entidad_2.coords), Point3D(entidad_3.coords))
+
+        elif isinstance(entidad_1, Plane) and isinstance(entidad_2, Plano):
+            self.sympy = entidad_1
+            if modo == "Perpendicular":
+                EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}⊥{entidad_2.nombre}"))
+            else:
+                EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}║{entidad_2.nombre}"))
+
+        self.vector_normal = self.sympy.normal_vector
+        self.nombre = nombre
+
+        self.infinito = QAction("Infinito")
+        self.infinito.setCheckable(True)
+        self.infinito.setChecked(True)
+        self.menu.addAction(self.infinito)
+
+        self.puntos = self.limites()
 
         self.borrar.triggered.connect(lambda: programa.borrar_plano(self.id))
 
-        # Color por defecto del plano
-        self.color = (0.6, 0.6, 0.15, 0.6)
-
+        # Color por defecto del plano, azul
+        self.color = (0, 0, 200, 0.4)
         self.editar_color = QAction("Color")
         self.menu.addAction(self.editar_color)
         self.editar_color.triggered.connect(self.cambiar_color)
-
-        self.puntos = self.limites(self.p1, self.p2, self.p3)
 
         self.ver_traza_horizontal = QAction("Traza en PH")
         self.ver_traza_horizontal.setCheckable(True)
@@ -252,8 +355,8 @@ class Plano(EntidadGeometrica):
             self.ver_traza_horizontal.setCheckable(False)
             self.ver_traza_horizontal.setDisabled(True)
 
-    def limites(self, p1: tuple, p2: tuple, p3: tuple):
-        plano = Plane(Point3D(p1), Point3D(p2), Point3D(p3))
+    def limites(self):
+        plano = self.sympy
         buenos = []
 
         for i in range(12):
@@ -278,24 +381,25 @@ class Plano(EntidadGeometrica):
             vector = plano.normal_vector
             proyectados = []
 
+            # Proyectar en:
             # Perfil
             if vector[1] == vector[2] == 0:
                 for i in buenos:
                     proyectados.append((i[1], i[2]))
 
             # Vertical
-            elif vector[0] == vector[1] == 0:
-                proyectante = self.planos[0]
-                for i in buenos:
-                    proyectau = proyectante.projection(i)
-                    proyectados.append((proyectau[0], proyectau[1]))
-
-            # Horizontal
-            else:
-                proyectante = self.planos[1]
+            elif vector[2] == 0:
+                proyectante = self.plano_vertical
                 for i in buenos:
                     proyectau = proyectante.projection(i)
                     proyectados.append((proyectau[0], proyectau[2]))
+
+            # Horizontal
+            else:
+                proyectante = self.plano_horizontal
+                for i in buenos:
+                    proyectau = proyectante.projection(i)
+                    proyectados.append((proyectau[0], proyectau[1]))
 
             angulos = []
             for i in proyectados:
@@ -313,9 +417,9 @@ class Plano(EntidadGeometrica):
             trazas = []
             for i in range(4):
                 if not len(trazas) == 2:
-                    interseccion = intersection(self.plano, self.plano_horizontal_bordes[i])
+                    interseccion = intersection(self.sympy, self.plano_horizontal_bordes[i])
                     if interseccion and not isinstance(interseccion[0], Segment3D):
-                        trazas.append((interseccion[0][0], interseccion[0][2], interseccion[0][1]))
+                        trazas.append(interseccion[0])
             trazas = list(set(trazas))
             if len(trazas) == 1:
                 return False
@@ -329,9 +433,9 @@ class Plano(EntidadGeometrica):
             trazas = []
             for i in range(4):
                 if not len(trazas) == 2:
-                    interseccion = intersection(self.plano, self.plano_vertical_bordes[i])
+                    interseccion = intersection(self.sympy, self.plano_vertical_bordes[i])
                     if interseccion and not isinstance(interseccion[0], Segment3D):
-                        trazas.append((interseccion[0][0], interseccion[0][2], interseccion[0][1]))
+                        trazas.append(interseccion[0])
             trazas = list(set(trazas))
             if len(trazas) == 1:
                 return False
@@ -356,12 +460,17 @@ class Renderizador(QOpenGLWidget):
         self.y = cos(radians(self.theta)) + self.desviacion_y
 
         # Vértices de los planos
-        self.vertices_plano_vertical_arriba = ((500, 500, 0), (-500, 500, 0), (-500, 0, 0), (500, 0, 0))
-        self.vertices_plano_vertical_debajo = ((500, 0, 0), (-500, 0, 0), (-500, -500, 0), (500, -500, 0))
-        self.vertices_plano_horizontal_delante = ((500, 0, 0), (500, 0, 500), (-500, 0, 500), (-500, 0, 0))
-        self.vertices_plano_horizontal_detras = ((500, 0, 0), (500, 0, -500), (-500, 0, -500), (-500, 0, 0))
-        self.vertices_borde_plano_vertical = ((500, 500, 0), (500, -500, 0), (-500, -500, 0), (-500, 500, 0))
-        self.vertices_borde_plano_horizontal = ((500, 0, 500), (-500, 0, 500), (-500, 0, -500), (500, 0, -500))
+        self.vertices_plano_vertical_arriba = ((500, 0, 500), (500, 0, 0), (-500, 0, 0), (-500, 0, 500))
+        self.vertices_plano_vertical_debajo = ((500, 0, 0), (-500, 0, 0), (-500, 0, -500), (500, 0, -500))
+        self.vertices_plano_horizontal_delante = ((500, 0, 0), (500, 500, 0), (-500, 500, 0), (-500, 0, 0))
+        self.vertices_plano_horizontal_detras = ((500, 0, 0), (500, -500, 0), (-500, -500, 0), (-500, 0, 0))
+        self.vertices_borde_plano_vertical = ((500, 0, 500), (-500, 0, 500), (-500, 0, -500), (500, 0, -500))
+        self.vertices_borde_plano_horizontal = ((500, 500, 0), (500, -500, 0), (-500, -500, 0), (-500, 500, 0))
+
+        self.m = [[1, 0, 0, 0],
+                  [0, 0, 1, 0],
+                  [0, 1, 0, 0],
+                  [0, 0, 0, 1]]
 
     def sizeHint(self):
         return QSize(800, 800)
@@ -407,32 +516,40 @@ class Renderizador(QOpenGLWidget):
 
     def plano_vertical_arriba(self):
         if programa.ajustes.ver_plano_vertical.isChecked():
-            glColor(0.1, 1, 0.1, 0.5)
+            glBegin(GL_QUADS)
+            glColor(programa.ajustes.color_plano_vertical)
             for vertex in range(4):
                 glVertex(self.vertices_plano_vertical_arriba[vertex])
+            glEnd()
 
     def plano_vertical_debajo(self):
         if programa.ajustes.ver_plano_vertical.isChecked():
-            glColor(0.1, 1, 0.1, 0.5)
+            glBegin(GL_QUADS)
+            glColor(programa.ajustes.color_plano_vertical)
             for vertex in range(4):
                 glVertex(self.vertices_plano_vertical_debajo[vertex])
+            glEnd()
 
     def plano_horizontal_delante(self):
         if programa.ajustes.ver_plano_horizontal.isChecked():
-            glColor(1, 0.1, 0.1, 0.5)
+            glBegin(GL_QUADS)
+            glColor(programa.ajustes.color_plano_horizontal)
             for vertex in range(4):
                 glVertex(self.vertices_plano_horizontal_delante[vertex])
+            glEnd()
 
     def plano_horizontal_detras(self):
         if programa.ajustes.ver_plano_horizontal.isChecked():
-            glColor(1, 0.1, 0.1, 0.5)
+            glBegin(GL_QUADS)
+            glColor(programa.ajustes.color_plano_horizontal)
             for vertex in range(4):
                 glVertex(self.vertices_plano_horizontal_detras[vertex])
+            glEnd()
 
     def bordes_plano_vertical(self):
         if programa.ajustes.ver_plano_vertical.isChecked():
             glLineWidth(1)
-            glColor(0.1, 1, 0.1, 0.5)
+            glColor(programa.ajustes.color_plano_vertical)
             glBegin(GL_LINE_LOOP)
             for vertex in range(4):
                 glVertex(self.vertices_borde_plano_vertical[vertex])
@@ -441,184 +558,323 @@ class Renderizador(QOpenGLWidget):
     def bordes_plano_horizontal(self):
         if programa.ajustes.ver_plano_horizontal.isChecked():
             glLineWidth(1)
-            glColor(1, 0.1, 0.1, 0.5)
+            glColor(programa.ajustes.color_plano_horizontal)
             glBegin(GL_LINE_LOOP)
             for vertex in range(4):
                 glVertex(self.vertices_borde_plano_horizontal[vertex])
             glEnd()
 
-    def planos_proyectantes(self):
-        if programa.ajustes.ver_plano_vertical.isChecked() or programa.ajustes.ver_plano_horizontal.isChecked():
-            glEnable(GL_BLEND)
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-            glDepthMask(GL_FALSE)
-            glBegin(GL_QUADS)
-
-            # Observador en:
-            # Línea de tierra:
-            if (self.phi == 0 or self.phi == 180) and self.theta == 0:
-                # Desde la línea de tierra no se ven los planos
-                pass
-
-            # Plano horizontal:
-            elif self.theta == 450:
-                self.plano_vertical_arriba()
-                self.plano_vertical_debajo()
-
-            # Plano vertical:
-            elif self.phi == 0 or self.phi == 180 or self.theta == 360 or self.theta == 520:
-                self.plano_horizontal_delante()
-                self.plano_horizontal_detras()
-
-            # Primer cuadrante:
-            elif self.theta < 450 and self.phi < 180:
-                self.plano_vertical_debajo()
-                self.plano_horizontal_detras()
-                self.plano_vertical_arriba()
-                self.plano_horizontal_delante()
-
-            # Segundo cuadrante:
-            elif self.theta < 450 and self.phi > 180:
-                self.plano_vertical_debajo()
-                self.plano_horizontal_delante()
-                self.plano_vertical_arriba()
-                self.plano_horizontal_detras()
-
-            # Tercer cuadrante:
-            elif self.theta > 450 and self.phi > 180:
-                self.plano_vertical_arriba()
-                self.plano_horizontal_delante()
-                self.plano_vertical_debajo()
-                self.plano_horizontal_detras()
-
-            # Cuarto cuadrante:
-            else:
-                self.plano_vertical_arriba()
-                self.plano_horizontal_detras()
-                self.plano_horizontal_delante()
-                self.plano_vertical_debajo()
-
-            glEnd()
-            glDepthMask(GL_TRUE)
-            self.bordes_plano_horizontal()
-            self.bordes_plano_vertical()
-            glDisable(GL_BLEND)
-
     @staticmethod
     def dibujar_ejes():
-        glLineWidth(3)
-        glBegin(GL_LINES)
-        # Eje X, color rojo
-        glColor(1, 0, 0)
-        glVertex(0, 0, 0)
-        glVertex(10, 0, 0)
-        # Eje Y, color verde
-        glColor(0, 1, 0)
-        glVertex(0, 0, 0)
-        glVertex(0, 10, 0)
-        # Eje Z, color azul
-        glColor(0, 0, 1)
-        glVertex(0, 0, 0)
-        glVertex(0, 0, 10)
-        glEnd()
+        if programa.ajustes.ver_ejes.isChecked():
+            glLineWidth(3)
+            glBegin(GL_LINES)
+            # Eje X, color rojo
+            glColor(1, 0, 0)
+            glVertex(0, 0, 0)
+            glVertex(10, 0, 0)
+            # Eje Y, color verde
+            glColor(0, 1, 0)
+            glVertex(0, 0, 0)
+            glVertex(0, 10, 0)
+            # Eje Z, color azul
+            glColor(0, 0, 1)
+            glVertex(0, 0, 0)
+            glVertex(0, 0, 10)
+            glEnd()
 
     @staticmethod
-    def dibujar_puntos():
+    def dibujar_puntos(cuadrante: str):
         for i in range(programa.lista_puntos.count()):
             punto = programa.lista_puntos.itemWidget(programa.lista_puntos.item(i))
-            if punto.render.isChecked():
+            if punto.render.isChecked() and punto.cuadrante == cuadrante:
                 glColor(punto.color)
-                glPointSize(4)
+                glPointSize(5)
                 glEnable(GL_POINT_SMOOTH)
                 glBegin(GL_POINTS)
                 glVertex(punto.x, punto.y, punto.z)
                 glEnd()
 
-    @staticmethod
-    def dibujar_rectas():
+    def dibujar_rectas(self, cuadrante: str):
         for i in range(programa.lista_rectas.count()):
             recta = programa.lista_rectas.itemWidget(programa.lista_rectas.item(i))
             if recta.render.isChecked():
                 glColor(recta.color)
                 glLineWidth(2)
-                glBegin(GL_LINES)
                 if recta.infinita.isChecked():
-                    glVertex(recta.extremos[0])
-                    glVertex(recta.extremos[1])
+                    glBegin(GL_LINES)
+                    if "I" in recta.partes and cuadrante == "I":
+                        glVertex(recta.partes["I"][0])
+                        glVertex(recta.partes["I"][1])
+                    if "II" in recta.partes and cuadrante == "II":
+                        glVertex(recta.partes["II"][0])
+                        glVertex(recta.partes["II"][1])
+                    if "III" in recta.partes and cuadrante == "III":
+                        glVertex(recta.partes["III"][0])
+                        glVertex(recta.partes["III"][1])
+                    if "IV" in recta.partes and cuadrante == "IV":
+                        glVertex(recta.partes["IV"][0])
+                        glVertex(recta.partes["IV"][1])
+                    glEnd()
+                    self.traza_v_recta(recta)
+                    self.traza_h_recta(recta)
                 else:
-                    glVertex(recta.p1)
-                    glVertex(recta.p2)
-                glEnd()
-                if programa.ajustes.ver_rectas_trazas_horizontales.isChecked():
-                    if recta.traza_h and recta.ver_traza_horizontal.isChecked():
-                        if recta.traza_h[0] < 500 and recta.traza_h[2] < 500:
-                            glColor(1, 0, 0, 0)
-                            glBegin(GL_POINTS)
-                            glVertex(recta.traza_h)
+                    if recta.p1.cuadrante == recta.p2.cuadrante == cuadrante == "I":
+                        glBegin(GL_LINES)
+                        glVertex(recta.p1.coords)
+                        glVertex(recta.p2.coords)
+                        glEnd()
+                    elif recta.p1.cuadrante == recta.p2.cuadrante == cuadrante == "II":
+                        glBegin(GL_LINES)
+                        glVertex(recta.p1.coords)
+                        glVertex(recta.p2.coords)
+                        glEnd()
+                    elif recta.p1.cuadrante == recta.p2.cuadrante == cuadrante == "III":
+                        glBegin(GL_LINES)
+                        glVertex(recta.p1.coords)
+                        glVertex(recta.p2.coords)
+                        glEnd()
+                    elif recta.p1.cuadrante == recta.p2.cuadrante == cuadrante == "IV":
+                        glBegin(GL_LINES)
+                        glVertex(recta.p1.coords)
+                        glVertex(recta.p2.coords)
+                        glEnd()
+                    elif not recta.p1.cuadrante == recta.p2.cuadrante:
+                        if recta.traza_v:
+                            glBegin(GL_LINES)
+                            if recta.p1.coords[1] > 0:
+                                if recta.p1.coords[2] > 0 and cuadrante == "I":
+                                    glVertex(recta.p1.coords)
+                                    glVertex(recta.traza_v)
+                                elif recta.p1.coords[2] < 0 and cuadrante == "IV":
+                                    glVertex(recta.p1.coords)
+                                    glVertex(recta.traza_v)
+                                if cuadrante == "II" or cuadrante == "III":
+                                    glVertex(recta.p2.coords)
+                                    glVertex(recta.traza_v)
+                            else:
+                                if recta.p2.coords[2] > 0 and cuadrante == "I":
+                                    glVertex(recta.p2.coords)
+                                    glVertex(recta.traza_v)
+                                elif recta.p2.coords[2] < 0 and cuadrante == "IV":
+                                    glVertex(recta.p2.coords)
+                                    glVertex(recta.traza_h)
+                                if (cuadrante == "II" or cuadrante == "III") and recta.p2.coords[2] > 0:
+                                    glVertex(recta.p1.coords)
+                                    glVertex(recta.traza_v)
                             glEnd()
-                if programa.ajustes.ver_rectas_trazas_verticales.isChecked():
-                    if recta.traza_v and recta.ver_traza_vertical.isChecked():
-                        if recta.traza_v[0] < 500 and recta.traza_v[1] < 500:
-                            glColor(0, 1, 0, 0)
-                            glBegin(GL_POINTS)
-                            glVertex(recta.traza_v)
+                        self.traza_v_recta(recta)
+
+                        if recta.traza_h:
+                            glBegin(GL_LINES)
+                            if recta.p1.coords[2] > 0:
+                                if recta.p1.coords[1] > 0 and cuadrante == "I":
+                                    glVertex(recta.p1.coords)
+                                    glVertex(recta.traza_h)
+                                elif recta.p1.coords[1] < 0 and cuadrante == "II":
+                                    glVertex(recta.p1.coords)
+                                    glVertex(recta.traza_h)
+                                if cuadrante == "III" or cuadrante == "IV":
+                                    glVertex(recta.p2.coords)
+                                    glVertex(recta.traza_h)
+                            else:
+                                if recta.p2.coords[1] > 0 and cuadrante == "I":
+                                    glVertex(recta.p2.coords)
+                                    glVertex(recta.traza_h)
+                                elif recta.p2.coords[1] < 0 and cuadrante == "II":
+                                    glVertex(recta.p2.coords)
+                                    glVertex(recta.traza_v)
+                                if (cuadrante == "III" or cuadrante == "IV") and recta.p2.coords[1] > 0:
+                                    glVertex(recta.p1.coords)
+                                    glVertex(recta.traza_h)
                             glEnd()
+                        self.traza_h_recta(recta)
 
     @staticmethod
-    def dibujar_planos():
+    def traza_v_recta(recta):
+        if programa.ajustes.ver_rectas_trazas_verticales.isChecked():
+            if recta.traza_v and recta.ver_traza_vertical.isChecked():
+                if recta.traza_v[0] < 500 and recta.traza_v[1] < 500:
+                    glColor(0, 1, 0, 1)
+                    glBegin(GL_POINTS)
+                    glVertex(recta.traza_v)
+                    glEnd()
+                    glColor(recta.color)
+
+    @staticmethod
+    def traza_h_recta(recta):
+        if programa.ajustes.ver_rectas_trazas_horizontales.isChecked():
+            if recta.traza_h and recta.ver_traza_horizontal.isChecked():
+                if recta.traza_h[0] < 500 and recta.traza_h[2] < 500:
+                    glColor(1, 0, 0, 1)
+                    glBegin(GL_POINTS)
+                    glVertex(recta.traza_h)
+                    glEnd()
+                    glColor(recta.color)
+
+    @staticmethod
+    def dibujar_planos(cuadrante: str):
         for i in range(programa.lista_planos.count()):
             plano = programa.lista_planos.itemWidget(programa.lista_planos.item(i))
             if plano.render.isChecked():
-                glEnable(GL_BLEND)
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-                glDepthMask(GL_FALSE)
                 if plano.render.isChecked():
                     glBegin(GL_TRIANGLE_FAN)
                     glColor(plano.color)
-                    for j in plano.puntos:
-                        glVertex(j[0], j[1], j[2])
+                    if plano.infinito.isChecked():
+                        for j in plano.puntos:
+                            glVertex(j)
+                    else:
+                        glVertex(plano.p1)
+                        glVertex(plano.p2)
+                        glVertex(plano.p3)
                     glEnd()
-                glDepthMask(GL_TRUE)
-                glDisable(GL_BLEND)
-                glColor(0, 0, 0, 0.2)
-                # Trazas:
-                glLineWidth(2)
-                if plano.ver_traza_vertical.isChecked():
-                    glBegin(GL_LINES)
-                    glVertex(plano.traza_v[0])
-                    glVertex(plano.traza_v[1])
-                    glEnd()
-                if plano.ver_traza_horizontal.isEnabled():
-                    glBegin(GL_LINES)
-                    glVertex(plano.traza_h[0])
-                    glVertex(plano.traza_h[1])
-                    glEnd()
-
-    def initializeGL(self):
-        glEnable(GL_DEPTH_TEST)
+                if plano.infinito.isChecked():
+                    glColor(0, 0, 0, 0.2)
+                    # Trazas:
+                    glLineWidth(2)
+                    if plano.ver_traza_vertical.isChecked() and programa.ajustes.ver_planos_trazas_verticales:
+                        glBegin(GL_LINES)
+                        glVertex(plano.traza_v[0])
+                        glVertex(plano.traza_v[1])
+                        glEnd()
+                    if plano.ver_traza_horizontal.isChecked() and programa.ajustes.ver_planos_trazas_horizontales:
+                        glBegin(GL_LINES)
+                        glVertex(plano.traza_h[0])
+                        glVertex(plano.traza_h[1])
+                        glEnd()
 
     def paintGL(self):
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
         glOrtho(self.zoom, -self.zoom, -self.zoom, self.zoom, -5000, 5000)
-        glMatrixMode(GL_MODELVIEW)
-        glClearColor(1, 1, 1, 0)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        glLoadIdentity()
         arriba = 1
         if self.theta == 360:
             arriba = -1
         gluLookAt(self.x, self.y, self.z, self.desviacion_x, self.desviacion_y, self.desviacion_z, 0, arriba, 0)
-        self.planos_proyectantes()
-        if programa.ajustes.ver_ejes.isChecked():
-            self.dibujar_ejes()
-        if programa.ajustes.ver_puntos.isChecked():
-            self.dibujar_puntos()
-        if programa.ajustes.ver_rectas.isChecked():
-            self.dibujar_rectas()
-        if programa.ajustes.ver_planos.isChecked():
-            self.dibujar_planos()
+
+        glMatrixMode(GL_MODELVIEW)
+        glClearColor(1, 1, 1, 0)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glLoadMatrixf(self.m)
+
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+        self.dibujar_elementos()
         self.update()
+
+    def dibujar_entidades(self, cuadrante: str):
+        if programa.ajustes.ver_puntos.isChecked():
+            self.dibujar_puntos(cuadrante)
+        if programa.ajustes.ver_rectas.isChecked():
+            self.dibujar_rectas(cuadrante)
+        if programa.ajustes.ver_planos.isChecked():
+            pass
+            # self.dibujar_planos(cuadrante)
+        # TODO
+
+    def dibujar_elementos(self):
+        self.bordes_plano_horizontal()
+        self.bordes_plano_vertical()
+
+        # Observador en:
+        # Línea de tierra:
+        if (self.phi == 0 or self.phi == 180) and self.theta == 0:
+            self.dibujar_ejes()
+            self.dibujar_entidades("I")
+            self.dibujar_entidades("II")
+            self.dibujar_entidades("III")
+            self.dibujar_entidades("IV")
+
+        # Plano horizontal:
+        elif self.theta == 450:
+            # PH positivo
+            if 0 <= self.phi <= 180:
+                self.dibujar_entidades("II")
+                self.dibujar_entidades("III")
+                self.plano_vertical_arriba()
+                self.plano_vertical_debajo()
+                self.dibujar_ejes()
+                self.dibujar_entidades("I")
+                self.dibujar_entidades("IV")
+            else:
+                # PH negativo
+                self.dibujar_entidades("I")
+                self.dibujar_entidades("IV")
+                self.plano_vertical_arriba()
+                self.plano_vertical_debajo()
+                self.dibujar_ejes()
+                self.dibujar_entidades("II")
+                self.dibujar_entidades("III")
+
+        # Plano vertical:
+        elif self.phi == 0 or self.phi == 180 or self.theta == 360 or self.theta == 520:
+            # PV positivo
+            if self.theta < 450:
+                self.dibujar_entidades("III")
+                self.dibujar_entidades("IV")
+                self.plano_horizontal_delante()
+                self.plano_horizontal_detras()
+                self.dibujar_ejes()
+                self.dibujar_entidades("I")
+                self.dibujar_entidades("II")
+            else:
+                # PV negativo
+                self.dibujar_entidades("I")
+                self.dibujar_entidades("II")
+                self.plano_horizontal_delante()
+                self.plano_horizontal_detras()
+                self.dibujar_ejes()
+                self.dibujar_entidades("III")
+                self.dibujar_entidades("IV")
+
+        # Primer cuadrante:
+        elif self.theta < 450 and self.phi < 180:
+            self.dibujar_entidades("III")
+            self.plano_vertical_debajo()
+            self.plano_horizontal_detras()
+            self.dibujar_entidades("II")
+            self.dibujar_entidades("IV")
+            self.plano_vertical_arriba()
+            self.plano_horizontal_delante()
+            self.dibujar_ejes()
+            self.dibujar_entidades("I")
+
+        # Segundo cuadrante:
+        elif self.theta < 450 and self.phi > 180:
+            self.dibujar_entidades("IV")
+            self.plano_vertical_debajo()
+            self.plano_horizontal_delante()
+            self.dibujar_entidades("III")
+            self.dibujar_entidades("I")
+            self.plano_vertical_arriba()
+            self.plano_horizontal_detras()
+            self.dibujar_ejes()
+            self.dibujar_entidades("II")
+
+        # Tercer cuadrante:
+        elif self.theta > 450 and self.phi > 180:
+            self.dibujar_entidades("I")
+            self.plano_vertical_arriba()
+            self.plano_horizontal_delante()
+            self.dibujar_entidades("II")
+            self.dibujar_entidades("IV")
+            self.plano_vertical_debajo()
+            self.plano_horizontal_detras()
+            self.dibujar_ejes()
+            self.dibujar_entidades("III")
+
+        # Cuarto cuadrante:
+        else:
+            self.dibujar_entidades("II")
+            self.plano_vertical_arriba()
+            self.plano_horizontal_detras()
+            self.dibujar_entidades("I")
+            self.dibujar_entidades("III")
+            self.plano_horizontal_delante()
+            self.plano_vertical_debajo()
+            self.dibujar_ejes()
+            self.dibujar_entidades("IV")
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_W:
@@ -762,95 +1018,70 @@ class Diedrico(QWidget):
 
     def punto_prima(self, qp, punto):
         qp.setPen(self.pen_punto_prima)
-        qp.drawPoint(punto.x, -punto.z)
+        qp.drawPoint(punto.x, -punto.y)
 
     def punto_prima2(self, qp, punto):
         qp.setPen(self.pen_punto_prima2)
-        qp.drawPoint(punto.x, punto.y)
+        qp.drawPoint(punto.x, punto.z)
 
     def punto_prima3(self, qp, punto):
         qp.setPen(self.pen_prima3)
-        qp.drawPoint(-punto.z, punto.y)
+        qp.drawPoint(-punto.y, punto.z)
 
     def dibujar_rectas(self, qp):
         for i in range(programa.lista_rectas.count()):
             recta = programa.lista_rectas.itemWidget(programa.lista_rectas.item(i))
+            partes = recta.partes
             if recta.render.isChecked():
-
                 if recta.infinita.isChecked():
-                    # Ninguna traza
-                    if not recta.traza_v and not recta.traza_h and len(recta.extremos_I) == 2:
-                        # Recta en PH
-                        if recta.contenida_ph and not recta.contenida_pv:
-                            self.dibujar_continuo(qp, recta.extremos_I[0], recta.extremos_I[1])
-
-                        # Recta en PV
-                        elif not recta.contenida_ph and recta.contenida_pv:
-                            self.dibujar_continuo(qp, recta.extremos_I[0], recta.extremos_I[1])
-
-                        # Trazas en LT
-                        elif recta.extremos[0][1:] == recta.extremos[1][1:] == (0, 0):
-                            self.dibujar_continuo(qp, [500, 0, 0], [-500, 0, 0])
-
-                        # 1er cuadrante
-                        else:
-                            self.dibujar_continuo(qp, recta.extremos_I[0], recta.extremos_I[1])
-
-                    # Una traza en PH
-                    elif recta.traza_h and not recta.traza_v:
-                        inicio = recta.traza_h
-                        fin = recta.extremos_I[0]
-                        self.dibujar_continuo(qp, inicio, fin)
-
-                    # Una traza en PV
-                    elif not recta.traza_h and recta.traza_v:
-                        inicio = recta.traza_v
-                        fin = recta.extremos_I[0]
-                        self.dibujar_continuo(qp, inicio, fin)
-
-                    # Dos trazas
-                    elif recta.traza_v and recta.traza_h:
-
-                        # Trazas en LT
-                        if recta.traza_h == recta.traza_v:
-                            inicio = recta.traza_h
-                            fin = recta.extremos_I[0]
-                            self.dibujar_continuo(qp, inicio, fin)
-
-                        # Pasa por los cuadrantes 1, 2 y 4
-                        if recta.traza_h[2] > 0 and recta.traza_v[1] > 0:
-                            inicio = recta.traza_v
-                            fin = recta.traza_h
-                            self.dibujar_continuo(qp, inicio, fin)
-
-                        # Pasa por los cuadrantes 1, 3 y 4
-                        elif recta.traza_h[2] < 0 < recta.traza_v[1]:
-                            inicio = recta.traza_v
-                            fin = recta.extremos_I[0]
-                            self.dibujar_continuo(qp, inicio, fin)
-
-                        # Pasa por los cuadrantes 2, 3 y 4
-                        elif recta.traza_h[2] > 0 > recta.traza_v[1]:
-                            inicio = recta.traza_h
-                            fin = recta.extremos_I[0]
-                            self.dibujar_continuo(qp, inicio, fin)
+                    if 'I' in partes:
+                        self.dibujar_continuo(qp, partes['I'])
+                    if 'II' in partes:
+                        self.dibujar_discontinuo(qp, partes['II'])
+                    if 'III' in partes:
+                        self.dibujar_discontinuo(qp, partes['III'])
+                    if 'IV' in partes:
+                        self.dibujar_discontinuo(qp, partes['IV'])
                 else:
-                    if len(recta.extremos_I) == 2:
-                        self.dibujar_continuo(qp, recta.extremos_I[0], recta.extremos_I[1])
+                    if recta.p1.cuadrante == recta.p2.cuadrante == "I":
+                        self.dibujar_continuo(qp, (recta.p1.coords, recta.p2.coords))
+                    elif not 'I' in recta.partes:
+                        self.dibujar_discontinuo(qp, (recta.p1.coords, recta.p2.coords))
                     else:
-                        if recta.traza_v:
-                            if recta.traza_v[2] >= 0:
-                                self.dibujar_continuo(qp, recta.extremos[0], recta.traza_v)
+                        if recta.p1.cuadrante == "I":
+                            if recta.traza_v:
+                                if recta.traza_v[2] >= 0:
+                                    self.dibujar_discontinuo(qp, (recta.traza_v, recta.p2.coords))
+                                    self.dibujar_continuo(qp, (recta.p1.coords, recta.traza_v))
+                            if recta.traza_h:
+                                if recta.traza_h[1] >= 0:
+                                    self.dibujar_discontinuo(qp, (recta.traza_h, recta.p2.coords))
+                                    self.dibujar_continuo(qp, (recta.p1.coords, recta.traza_h))
+                        elif recta.p2.cuadrante == "I":
+                            if recta.traza_v:
+                                if recta.traza_v[2] >= 0:
+                                    self.dibujar_discontinuo(qp, (recta.traza_v, recta.p1.coords))
+                                    self.dibujar_continuo(qp, (recta.p2.coords, recta.traza_v))
+                            if recta.traza_h:
+                                if recta.traza_h[1] >= 0:
+                                    self.dibujar_discontinuo(qp, (recta.traza_h, recta.p1.coords))
+                                    self.dibujar_continuo(qp, (recta.p2.coords, recta.traza_h))
+                        if recta.traza_v and recta.traza_h:
+                            if recta.traza_v[2] >= 0 and recta.traza_h[1] >= 0:
 
-                        elif recta.traza_h:
-                            if recta.traza_h[1] >= 0:
-                                self.dibujar_continuo(qp, recta.extremos[0], recta.traza_h)
+                                if recta.p1.cuadrante == "II":
+                                    self.dibujar_discontinuo(qp, (recta.traza_v, recta.p1.coords))
+                                else:
+                                    self.dibujar_discontinuo(qp, (recta.traza_v, recta.p2.coords))
 
-                # Dibuja en discontínuo
-                qp.setPen(self.pen_recta_prima)
-                self.recta_prima(qp, recta.extremos)
-                qp.setPen(self.pen_recta_prima2)
-                self.recta_prima2(qp, recta.extremos)
+                                if recta.p1.cuadrante == "IV":
+                                    self.dibujar_discontinuo(qp, (recta.traza_h, recta.p1.coords))
+                                else:
+                                    self.dibujar_discontinuo(qp, (recta.traza_h, recta.p2.coords))
+
+                                self.dibujar_continuo(qp, (recta.traza_v, recta.traza_h))
+                        else:
+                            self.dibujar_discontinuo(qp, (recta.p1.coords, recta.p2.coords))
 
                 # Tercera proyección
                 if programa.tercera_proyeccion.checkState():
@@ -859,19 +1090,24 @@ class Diedrico(QWidget):
 
                 self.dibujar_trazas_recta(qp, recta)
 
-    def dibujar_continuo(self, qp, inicio, fin):
-        # Intercambio de ejes para arreglar sistema de coordenadas
+    def dibujar_continuo(self, qp, extremos):
         qp.setPen(self.pen_recta_prima_continuo)
-        self.recta_prima(qp, (inicio, fin))
+        self.recta_prima(qp, extremos)
         qp.setPen(self.pen_recta_prima2_continuo)
-        self.recta_prima2(qp, (inicio, fin))
+        self.recta_prima2(qp, extremos)
+
+    def dibujar_discontinuo(self, qp, extremos):
+        qp.setPen(self.pen_recta_prima)
+        self.recta_prima(qp, extremos)
+        qp.setPen(self.pen_recta_prima2)
+        self.recta_prima2(qp, extremos)
 
     @staticmethod
     def recta_prima(qp, extremos):
         x0 = int(extremos[0][0])
         x = int(extremos[1][0])
-        y0 = int(-extremos[0][2])
-        y = int(-extremos[1][2])
+        y0 = int(-extremos[0][1])
+        y = int(-extremos[1][1])
         if not (x0 == x and y0 == y):
             qp.drawLine(x0, y0, x, y)
 
@@ -879,37 +1115,37 @@ class Diedrico(QWidget):
     def recta_prima2(qp, extremos):
         x0 = int(extremos[0][0])
         x = int(extremos[1][0])
-        y0 = int(extremos[0][1])
-        y = int(extremos[1][1])
+        y0 = int(extremos[0][2])
+        y = int(extremos[1][2])
         if not (x0 == x and y0 == y):
             qp.drawLine(x0, y0, x, y)
 
     @staticmethod
     def recta_prima3(qp, extremos):
-        x0 = int(-extremos[0][2])
-        x = int(-extremos[1][2])
-        y0 = int(extremos[0][1])
-        y = int(extremos[1][1])
+        x0 = int(-extremos[0][1])
+        x = int(-extremos[1][1])
+        y0 = int(extremos[0][2])
+        y = int(extremos[1][2])
         qp.drawLine(x0, y0, x, y)
 
     def dibujar_trazas_recta(self, qp, recta):
         qp.setPen(self.pen_trazas)
         if recta.infinita.isChecked():
             if recta.traza_h and recta.ver_traza_horizontal.isChecked():
-                qp.drawPoint(int(recta.traza_h[0]), int(-recta.traza_h[2]))  # V "
+                qp.drawPoint(int(recta.traza_h[0]), int(-recta.traza_h[1]))  # V "
                 qp.drawPoint(int(recta.traza_h[0]), 0)  # V '
             if recta.traza_v and recta.ver_traza_vertical.isChecked():
-                qp.drawPoint(int(recta.traza_v[0]), int(recta.traza_v[1]))  # H '
+                qp.drawPoint(int(recta.traza_v[0]), int(recta.traza_v[2]))  # H '
                 qp.drawPoint(int(recta.traza_v[0]), 0)  # H "
 
     def dibujar_planos(self, qp):
         for i in range(programa.lista_planos.count()):
             plano = programa.lista_planos.itemWidget(programa.lista_planos.item(i))
-            if plano.render.isChecked():
-                if plano.traza_h:
+            if plano.render.isChecked() and plano.infinito.isChecked():
+                if plano.ver_traza_horizontal.isChecked():
                     qp.setPen(self.pen_plano_prima)
                     self.recta_prima(qp, plano.traza_h)
-                if plano.traza_v:
+                if plano.ver_traza_vertical.isChecked():
                     qp.setPen(self.pen_plano_prima2)
                     self.recta_prima2(qp, plano.traza_v)
 
@@ -917,7 +1153,12 @@ class Diedrico(QWidget):
 class Ajustes(QMainWindow):
     def __init__(self):
         QMainWindow.__init__(self)
-        self.setFixedSize(420, 135)
+        self.setWindowFlags(Qt.WindowStaysOnTopHint)
+        self.setFixedSize(420, 180)
+
+        self.color_plano_vertical = (0.1, 1, 0.1, 0.5)
+        self.color_plano_horizontal = (1, 0.1, 0.1, 0.5)
+
         fuente = QFont()
         fuente.setPointSize(12)
         widget_central = QWidget(self)
@@ -985,8 +1226,478 @@ class Ajustes(QMainWindow):
         self.ver_planos_trazas_horizontales.setText("Ver trazas horizontales")
         self.ver_planos_trazas_horizontales.setGeometry(280, 50, 129, 17)
 
+        boton_color_vertical = QPushButton(widget_central)
+        boton_color_vertical.setGeometry(10, 130, 101, 41)
+        boton_color_vertical.setText("Cambiar el color del\n plano vertical")
+        boton_color_vertical.clicked.connect(self.cambiar_color_plano_vertical)
+        reset_vertical = QPushButton(widget_central)
+        reset_vertical.setGeometry(120, 130, 75, 41)
+        reset_vertical.setText("Reestablecer")
+        reset_vertical.clicked.connect(self.reset_color_vertical)
+
+        boton_color_horizontal = QPushButton(widget_central)
+        boton_color_horizontal.setGeometry(200, 130, 101, 41)
+        boton_color_horizontal.setText("Cambiar el color del\n plano horizontal")
+        boton_color_horizontal.clicked.connect(self.cambiar_color_plano_horizontal)
+        reset_horizontal = QPushButton(widget_central)
+        reset_horizontal.setGeometry(310, 130, 75, 41)
+        reset_horizontal.setText("Reestablecer")
+
         self.setWindowTitle("Ajustes")
         self.setCentralWidget(widget_central)
+
+    def reset_color_vertical(self):
+        self.color_plano_vertical = (0.1, 1, 0.1, 0.5)
+
+    def reset_color_horizontal(self):
+        self.color_plano_horizontal = (1, 0.1, 0.1, 0.5)
+
+    def cambiar_color_plano_vertical(self):
+        color_dialog = QColorDialog()
+        color = color_dialog.getColor(options=QColorDialog.ShowAlphaChannel)
+        if color.isValid():
+            color = color.getRgb()
+            self.color_plano_vertical = tuple([i / 255 for i in color])
+
+    def cambiar_color_plano_horizontal(self):
+        color_dialog = QColorDialog()
+        color = color_dialog.getColor(options=QColorDialog.ShowAlphaChannel)
+        if color.isValid():
+            color = color.getRgb()
+            self.color_plano_horizontal = tuple([i / 255 for i in color])
+
+
+class VentanaBase(QMainWindow):
+    def __init__(self):
+        QMainWindow.__init__(self)
+        self.setFixedSize(140, 140)
+        self.setWindowFlags(Qt.WindowStaysOnTopHint)
+        font = QFont()
+        font.setPointSize(10)
+        self.setFont(font)
+        self.widget_central = QWidget(self)
+        self.setCentralWidget(self.widget_central)
+
+        self.etiqueta_1 = QLabel(self.widget_central)
+        self.etiqueta_1.setGeometry(10, 10, 130, 16)
+
+        self.etiqueta_2 = QLabel(self.widget_central)
+        self.etiqueta_2.setGeometry(10, 60, 130, 16)
+
+        self.boton_crear = QPushButton(self.widget_central)
+        self.boton_crear.setGeometry(10, 110, 61, 23)
+        self.boton_crear.setText("Crear")
+
+        self.boton_cerrar = QPushButton(self.widget_central)
+        self.boton_cerrar.setGeometry(70, 110, 61, 23)
+        self.boton_cerrar.setText("Cancelar")
+        self.boton_cerrar.clicked.connect(self.cerrar)
+
+        self.elegir_entidad_1 = QComboBox(self.widget_central)
+        self.elegir_entidad_1.setGeometry(10, 30, 121, 21)
+
+        self.elegir_entidad_2 = QComboBox(self.widget_central)
+        self.elegir_entidad_2.setGeometry(10, 80, 121, 21)
+
+    @pyqtSlot()
+    def cerrar(self):
+        self.close()
+
+
+class VentanaBaseConNombre(VentanaBase):
+    def __init__(self):
+        VentanaBase.__init__(self)
+        self.setFixedSize(140, 190)
+        self.etiqueta_nombre = QLabel(self.widget_central)
+        self.etiqueta_nombre.setGeometry(10, 110, 51, 20)
+        self.etiqueta_nombre.setText("Nombre:")
+
+        self.boton_crear.setGeometry(10, 160, 61, 23)
+        self.boton_cerrar.setGeometry(70, 160, 61, 23)
+
+        self.nombre = QPlainTextEdit(self.widget_central)
+        self.nombre.setGeometry(10, 130, 121, 28)
+
+
+class RectaPerpendicularAPlano(VentanaBaseConNombre):
+    def __init__(self):
+        VentanaBaseConNombre.__init__(self)
+
+        self.etiqueta_1.setText("Punto:")
+        self.etiqueta_2.setText("Plano:")
+
+        self.boton_crear.clicked.connect(self.crear_recta)
+
+    def abrir(self):
+        self.elegir_entidad_1.clear()
+        self.elegir_entidad_2.clear()
+        for i in range(programa.lista_puntos.count()):
+            self.elegir_entidad_1.addItem(programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre)
+
+        for i in range(programa.lista_planos.count()):
+            self.elegir_entidad_2.addItem(programa.lista_planos.itemWidget(programa.lista_planos.item(i)).nombre)
+        self.show()
+
+    def crear_recta(self):
+        punto = self.elegir_entidad_1.currentText()
+        plano = self.elegir_entidad_2.currentText()
+        nombre = programa.asignar_nombre_recta(self.nombre.toPlainText())
+
+        for i in range(programa.lista_puntos.count()):
+            if programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre == punto:
+                punto = programa.lista_puntos.itemWidget(programa.lista_puntos.item(i))
+
+        for i in range(programa.lista_planos.count()):
+            if programa.lista_planos.itemWidget(programa.lista_planos.item(i)).nombre == plano:
+                plano = programa.lista_planos.itemWidget(programa.lista_planos.item(i))
+
+        if punto == "" or plano == "":
+            QMessageBox.critical(self, "Error al crear la recta",
+                                 "Debes crear al menos un plano y un punto para crear una recta")
+        else:
+            recta = plano.sympy.perpendicular_line(punto.sympy)
+            programa.crear_recta(nombre, recta, plano, modo="Perpendicular")
+            self.cerrar()
+
+
+class PlanoPerpendicularAPlano(VentanaBaseConNombre):
+    def __init__(self):
+        VentanaBaseConNombre.__init__(self)
+        self.setFixedSize(140, 230)
+
+        self.etiqueta_1.setText("Punto:")
+        self.etiqueta_2.setText("Plano:")
+        self.etiqueta_2.setGeometry(10, 110, 41, 16)
+        self.etiqueta_3 = QLabel(self.widget_central)
+        self.etiqueta_3.setGeometry(10, 60, 41, 16)
+        self.etiqueta_3.setText("Punto:")
+
+        self.elegir_entidad_3 = QComboBox(self.widget_central)
+        self.elegir_entidad_3.setGeometry(10, 130, 121, 21)
+
+        self.nombre.setGeometry(10, 170, 121, 28)
+        self.etiqueta_nombre.setGeometry(10, 150, 51, 20)
+
+        self.boton_crear.setGeometry(10, 200, 61, 23)
+        self.boton_cerrar.setGeometry(70, 200, 61, 23)
+
+        self.boton_crear.clicked.connect(self.crear_plano)
+
+    def abrir(self):
+        self.elegir_entidad_1.clear()
+        self.elegir_entidad_2.clear()
+        self.elegir_entidad_3.clear()
+        for i in range(programa.lista_puntos.count()):
+            self.elegir_entidad_1.addItem(programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre)
+            self.elegir_entidad_2.addItem(programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre)
+        for i in range(programa.lista_planos.count()):
+            self.elegir_entidad_3.addItem(programa.lista_planos.itemWidget(programa.lista_planos.item(i)).nombre)
+        self.show()
+
+    def crear_plano(self):
+        punto = self.elegir_entidad_1.currentText()
+        punto2 = self.elegir_entidad_2.currentText()
+        plano = self.elegir_entidad_3.currentText()
+        nombre = programa.asignar_nombre_plano(self.nombre.toPlainText())
+
+        for i in range(programa.lista_puntos.count()):
+            if programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre == punto:
+                punto = programa.lista_puntos.itemWidget(programa.lista_puntos.item(i))
+            if programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre == punto2:
+                punto2 = programa.lista_puntos.itemWidget(programa.lista_puntos.item(i))
+
+        for i in range(programa.lista_planos.count()):
+            if programa.lista_planos.itemWidget(programa.lista_planos.item(i)).nombre == plano:
+                plano = programa.lista_planos.itemWidget(programa.lista_planos.item(i))
+
+        if punto == "" or plano == "":
+            QMessageBox.critical(self, "Error al crear el plano",
+                                 "Debes crear al menos un plano y un punto para crear un plano perpendicular a este")
+        else:
+            plano_perpendicular = plano.sympy.perpendicular_plane(punto.sympy, punto2.punto)
+            programa.crear_plano(nombre, plano_perpendicular, plano, modo="Perpendicular")
+            self.cerrar()
+
+
+class PlanoParaleloAPlano(VentanaBaseConNombre):
+    def __init__(self):
+        VentanaBaseConNombre.__init__(self)
+
+        self.etiqueta_1.setText("Punto:")
+        self.etiqueta_2.setText("Plano:")
+
+        self.boton_crear.clicked.connect(self.crear_plano)
+
+    def abrir(self):
+        self.elegir_entidad_1.clear()
+        self.elegir_entidad_2.clear()
+        for i in range(programa.lista_puntos.count()):
+            self.elegir_entidad_1.addItem(programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre)
+        for i in range(programa.lista_planos.count()):
+            self.elegir_entidad_2.addItem(programa.lista_planos.itemWidget(programa.lista_planos.item(i)).nombre)
+        self.show()
+
+    def crear_plano(self):
+        punto = self.elegir_entidad_1.currentText()
+        plano = self.elegir_entidad_2.currentText()
+        nombre = programa.asignar_nombre_plano(self.nombre.toPlainText())
+
+        for i in range(programa.lista_puntos.count()):
+            if programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre == punto:
+                punto = programa.lista_puntos.itemWidget(programa.lista_puntos.item(i))
+
+        for i in range(programa.lista_planos.count()):
+            if programa.lista_planos.itemWidget(programa.lista_planos.item(i)).nombre == plano:
+                plano = programa.lista_planos.itemWidget(programa.lista_planos.item(i))
+
+        if punto == "" or plano == "":
+            QMessageBox.critical(self, "Error al crear el plano",
+                                 "Debes crear al menos un plano y un punto para crear un plano paralelo a este")
+        else:
+            plano_paralelo = plano.sympy.parallel_plane(punto.sympy)
+            programa.crear_plano(nombre, plano_paralelo, plano, modo="Paralelo")
+            self.cerrar()
+
+
+class RectaPerpendicularARecta(VentanaBaseConNombre):
+    def __init__(self):
+        VentanaBaseConNombre.__init__(self)
+        self.etiqueta_1.setText("Punto:")
+        self.etiqueta_2.setText("Recta:")
+
+        self.boton_crear.clicked.connect(self.crear_recta)
+
+    def abrir(self):
+        self.elegir_entidad_1.clear()
+        self.elegir_entidad_2.clear()
+        for i in range(programa.lista_puntos.count()):
+            self.elegir_entidad_1.addItem(programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre)
+        for i in range(programa.lista_rectas.count()):
+            self.elegir_entidad_2.addItem(programa.lista_rectas.itemWidget(programa.lista_rectas.item(i)).nombre)
+        self.show()
+
+    def crear_recta(self):
+        punto = self.elegir_entidad_1.currentText()
+        recta = self.elegir_entidad_2.currentText()
+        nombre = programa.asignar_nombre_recta(self.nombre.toPlainText())
+
+        for i in range(programa.lista_puntos.count()):
+            if programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre == punto:
+                punto = programa.lista_puntos.itemWidget(programa.lista_puntos.item(i))
+
+        for i in range(programa.lista_rectas.count()):
+            if programa.lista_rectas.itemWidget(programa.lista_rectas.item(i)).nombre == recta:
+                recta = programa.lista_rectas.itemWidget(programa.lista_rectas.item(i))
+        if punto == "" or recta == "":
+            QMessageBox.critical(self, "Error al crear la recta",
+                                 "Debes crear al menos una recta y un punto para crear una recta")
+        else:
+            recta_perpendicular = recta.sympy.perpendicular_line(punto.sympy)
+            programa.crear_recta(nombre, punto, recta_perpendicular, modo="Perpendicular", nombre_recta=recta.nombre)
+            self.cerrar()
+
+
+class RectaParalelaARecta(VentanaBaseConNombre):
+    def __init__(self):
+        VentanaBaseConNombre.__init__(self)
+
+        self.etiqueta_1.setText("Punto:")
+        self.etiqueta_2.setText("Recta:")
+
+        self.boton_crear.clicked.connect(self.crear_recta)
+
+    def abrir(self):
+        self.elegir_entidad_1.clear()
+        self.elegir_entidad_2.clear()
+        for i in range(programa.lista_puntos.count()):
+            self.elegir_entidad_1.addItem(programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre)
+
+        for i in range(programa.lista_rectas.count()):
+            self.elegir_entidad_2.addItem(programa.lista_rectas.itemWidget(programa.lista_rectas.item(i)).nombre)
+        self.show()
+
+    def crear_recta(self):
+        punto = self.elegir_entidad_1.currentText()
+        recta = self.elegir_entidad_2.currentText()
+        nombre = programa.asignar_nombre_recta(self.nombre.toPlainText())
+        for i in range(programa.lista_puntos.count()):
+            if programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre == punto:
+                punto = programa.lista_puntos.itemWidget(programa.lista_puntos.item(i))
+
+        for i in range(programa.lista_rectas.count()):
+            if programa.lista_rectas.itemWidget(programa.lista_rectas.item(i)).nombre == recta:
+                recta = programa.lista_rectas.itemWidget(programa.lista_rectas.item(i))
+
+        if punto == "" or recta == "":
+            QMessageBox.critical(self, "Error al crear la recta",
+                                 "Debes crear al menos una recta y un punto para crear una recta")
+        else:
+            recta_paralela = recta.sympy.parallel_line(punto.sympy)
+            programa.crear_recta(nombre, punto, recta_paralela, modo="Paralela", nombre_recta=recta.nombre)
+            self.cerrar()
+
+
+class Distancia(VentanaBase):
+    def __init__(self):
+        VentanaBase.__init__(self)
+
+        self.etiqueta_1.setText("Entidad geométrica 1:")
+        self.etiqueta_2.setText("Entidad geométrica 2:")
+
+        self.boton_crear.clicked.connect(self.calcular_distancia)
+
+    def abrir(self):
+        self.elegir_entidad_1.clear()
+        self.elegir_entidad_2.clear()
+
+        for i in range(programa.lista_puntos.count()):
+            self.elegir_entidad_1.addItem(programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre)
+            self.elegir_entidad_2.addItem(programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre)
+
+        for i in range(programa.lista_planos.count()):
+            self.elegir_entidad_1.addItem(programa.lista_planos.itemWidget(programa.lista_planos.item(i)).nombre)
+            self.elegir_entidad_2.addItem(programa.lista_planos.itemWidget(programa.lista_planos.item(i)).nombre)
+
+        for i in range(programa.lista_rectas.count()):
+            self.elegir_entidad_1.addItem(programa.lista_rectas.itemWidget(programa.lista_rectas.item(i)).nombre)
+            self.elegir_entidad_2.addItem(programa.lista_rectas.itemWidget(programa.lista_rectas.item(i)).nombre)
+
+        self.show()
+
+    def calcular_distancia(self):
+        entidad_1 = self.elegir_entidad_1.currentText()
+        entidad_2 = self.elegir_entidad_2.currentText()
+
+        for i in range(programa.lista_puntos.count()):
+            if programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre == entidad_1:
+                entidad_1 = programa.lista_puntos.itemWidget(programa.lista_puntos.item(i))
+            if programa.lista_puntos.itemWidget(programa.lista_puntos.item(i)).nombre == entidad_2:
+                entidad_2 = programa.lista_puntos.itemWidget(programa.lista_puntos.item(i))
+
+        for i in range(programa.lista_rectas.count()):
+            if programa.lista_rectas.itemWidget(programa.lista_rectas.item(i)).nombre == entidad_1:
+                entidad_1 = programa.lista_rectas.itemWidget(programa.lista_rectas.item(i))
+            if programa.lista_rectas.itemWidget(programa.lista_rectas.item(i)).nombre == entidad_2:
+                entidad_2 = programa.lista_rectas.itemWidget(programa.lista_rectas.item(i))
+
+        for i in range(programa.lista_planos.count()):
+            if programa.lista_planos.itemWidget(programa.lista_planos.item(i)).nombre == entidad_1:
+                entidad_1 = programa.lista_planos.itemWidget(programa.lista_planos.item(i))
+            if programa.lista_planos.itemWidget(programa.lista_planos.item(i)).nombre == entidad_2:
+                entidad_2 = programa.lista_planos.itemWidget(programa.lista_planos.item(i))
+
+        if entidad_1 == "" or entidad_2 == "":
+            QMessageBox.critical(self, "Error al calcular la distancia",
+                                 "Debes crear almenos dos elementos para calcular su distancia")
+        elif entidad_1 == entidad_2:
+            QMessageBox.critical(self, "Error al calcular la distancia",
+                                 "Los elementos seleccionados son el mismo")
+        else:
+            distancia = round(entidad_1.sympy.distance(entidad_2.sympy), 2)
+            QMessageBox.about(self, "Resultado",
+                              f"La distancia entre estos dos elementos es de {distancia} mm")
+
+
+class Interseccion(VentanaBase):
+    def __init__(self):
+        VentanaBase.__init__(self)
+
+        self.etiqueta_1.setText("Entidad geométrica 1:")
+        self.etiqueta_2.setText("Entidad geométrica 2:")
+
+        self.boton_crear.clicked.connect(self.calcular_interseccion)
+
+    def abrir(self):
+        self.elegir_entidad_1.clear()
+        self.elegir_entidad_2.clear()
+
+        for i in range(programa.lista_planos.count()):
+            self.elegir_entidad_1.addItem(programa.lista_planos.itemWidget(programa.lista_planos.item(i)).nombre)
+            self.elegir_entidad_2.addItem(programa.lista_planos.itemWidget(programa.lista_planos.item(i)).nombre)
+
+        for i in range(programa.lista_rectas.count()):
+            self.elegir_entidad_1.addItem(programa.lista_rectas.itemWidget(programa.lista_rectas.item(i)).nombre)
+            self.elegir_entidad_2.addItem(programa.lista_rectas.itemWidget(programa.lista_rectas.item(i)).nombre)
+
+        self.show()
+
+    def calcular_interseccion(self):
+        entidad_1 = self.elegir_entidad_1.currentText()
+        entidad_2 = self.elegir_entidad_2.currentText()
+
+        for i in range(programa.lista_rectas.count()):
+            if programa.lista_rectas.itemWidget(programa.lista_rectas.item(i)).nombre == entidad_1:
+                entidad_1 = programa.lista_rectas.itemWidget(programa.lista_rectas.item(i))
+            elif programa.lista_rectas.itemWidget(programa.lista_rectas.item(i)).nombre == entidad_2:
+                entidad_2 = programa.lista_rectas.itemWidget(programa.lista_rectas.item(i))
+
+        for i in range(programa.lista_planos.count()):
+            if programa.lista_planos.itemWidget(programa.lista_planos.item(i)).nombre == entidad_1:
+                entidad_1 = programa.lista_planos.itemWidget(programa.lista_planos.item(i))
+            elif programa.lista_planos.itemWidget(programa.lista_planos.item(i)).nombre == entidad_2:
+                entidad_2 = programa.lista_planos.itemWidget(programa.lista_planos.item(i))
+
+        if entidad_1 == "" or entidad_2 == "":
+            QMessageBox.critical(self, "Error al calcular la intersección",
+                                 "Debes crear al dos elementos para calcular su intersección")
+        elif entidad_1 == entidad_2:
+            QMessageBox.critical(self, "Error al calcular la intersección",
+                                 "Los elementos seleccionados son el mismo")
+        else:
+            interseccion = intersection(entidad_1.sympy, entidad_2.sympy)
+            if interseccion:
+                interseccion = interseccion[0]
+
+            if isinstance(entidad_1, Recta) and isinstance(entidad_2, Recta):
+                """
+                Intersección recta-recta. Tres opciones: 
+                Ambas son coincidentes -> Se crea una recta idéntica a ambas
+                Secantes -> Se crea un punto de intersección
+                Paralelas -> No tienen ningún punto en común
+                """
+
+                if isinstance(interseccion, Point3D):
+                    if abs(interseccion.x) > 499 or abs(interseccion.y) > 499 or abs(interseccion.z) > 499:
+                        QMessageBox.critical(self, "Error al calcular la intersección",
+                                             "Las rectas se cortan en un punto fuera de los límites establecidos en "
+                                             "el programa")
+                    else:
+                        texto = f"{entidad_1.nombre}∩{entidad_2.nombre}"
+                        programa.crear_punto("", interseccion.x, interseccion.y, interseccion.z, interseccion=texto)
+                elif isinstance(interseccion, Line3D):
+                    QMessageBox.critical(self, "Error al calcular la intersección",
+                                         "Las rectas son coincidentes")
+                else:
+                    QMessageBox.critical(self, "Error al calcular la intersección",
+                                         "Las rectas son paralelas")
+
+            elif isinstance(entidad_1, Plano) and isinstance(entidad_2, Plano):
+                # lo mismo, 3 casos: Planos paralelos, secantes o coincidentes
+
+                if isinstance(interseccion, Line3D):
+                    try:
+                        nombre = f"{entidad_1.nombre}∩{entidad_2.nombre}"
+                        extremos = Recta.extremos(interseccion)
+                        if len(extremos) < 2:
+                            QMessageBox.critical(self, "Error al crear la intersección",
+                                                 "La recta está fuera de los límites del programa")
+                        else:
+                            programa.crear_recta(nombre, interseccion)
+                    except:
+                        QMessageBox.critical(self, "Error al crear la intersección",
+                                             "Se ha producido un grave error debido a limitaciones del programa")
+            else:
+                if isinstance(interseccion, Point3D):
+                    if abs(interseccion.x) > 499 or abs(interseccion.y) > 499 or abs(interseccion.z) > 499:
+                        QMessageBox.critical(self, "Error al calcular la intersección",
+                                             "Las intersección se encuentra en un punto fuera de los límites "
+                                             "establecidos en el programa")
+                    else:
+                        texto = f"{entidad_1.nombre}∩{entidad_2.nombre}"
+                        programa.crear_punto("", interseccion.x, interseccion.y, interseccion.z, interseccion=texto)
+                else:
+                    QMessageBox.critical(self, "Error al calcular la intersección",
+                                         "La recta se encuentra en el plano")
 
 
 class Ventana(QMainWindow):
@@ -1023,233 +1734,263 @@ class Ventana(QMainWindow):
         frame.setLineWidth(3)
 
         informacion = QLabel(frame)
-        informacion.setGeometry(QRect(10, 10, 91, 16))
+        informacion.setGeometry(0, 10, 91, 16)
         informacion.setFont(fuente)
         informacion.setText("Información:")
 
         posicion = QLabel(frame)
-        posicion.setGeometry(QRect(10, 30, 71, 16))
+        posicion.setGeometry(0, 30, 71, 16)
         posicion.setFont(fuente)
         posicion.setText("Posición:")
 
         self.posicion = QLabel(frame)
-        self.posicion.setGeometry(QRect(80, 30, 151, 16))
+        self.posicion.setGeometry(60, 30, 151, 16)
         self.posicion.setFont(fuente)
         self.posicion.setText("Primer cuadrante")
 
         self.angulo_vertical = QLabel(frame)
-        self.angulo_vertical.setGeometry(QRect(10, 50, 121, 16))
+        self.angulo_vertical.setGeometry(0, 50, 121, 16)
         self.angulo_vertical.setFont(fuente)
 
         self.angulo_horizontal = QLabel(frame)
-        self.angulo_horizontal.setGeometry(QRect(130, 50, 130, 16))
+        self.angulo_horizontal.setGeometry(120, 50, 130, 16)
         self.angulo_horizontal.setFont(fuente)
 
         vista = QLabel(frame)
-        vista.setGeometry(QRect(10, 70, 91, 16))
+        vista.setGeometry(0, 70, 91, 16)
         vista.setFont(fuente)
         vista.setText("Vista:")
 
         crear_puntos = QLabel(frame)
-        crear_puntos.setGeometry(QRect(10, 120, 91, 16))
+        crear_puntos.setGeometry(0, 120, 91, 16)
         crear_puntos.setFont(fuente)
         crear_puntos.setText("Crear puntos:")
 
         nombre_punto = QLabel(frame)
-        nombre_punto.setGeometry(QRect(10, 200, 91, 16))
+        nombre_punto.setGeometry(0, 200, 91, 16)
         nombre_punto.setText("Nombre:")
 
         distancia_al_origen = QLabel(frame)
-        distancia_al_origen.setGeometry(QRect(10, 140, 91, 16))
+        distancia_al_origen.setGeometry(0, 140, 91, 16)
         distancia_al_origen.setText("Distancia al origen:")
 
         alejamiento = QLabel(frame)
-        alejamiento.setGeometry(QRect(10, 160, 91, 16))
+        alejamiento.setGeometry(0, 160, 91, 16)
         alejamiento.setText("Alejamiento:")
 
         cota = QLabel(frame)
-        cota.setGeometry(QRect(10, 180, 91, 16))
+        cota.setGeometry(0, 180, 91, 16)
         cota.setText("Cota:")
 
         nombre_recta = QLabel(frame)
-        nombre_recta.setGeometry(QRect(170, 180, 91, 21))
+        nombre_recta.setGeometry(160, 180, 91, 21)
         nombre_recta.setText("Nombre:")
 
         crear_rectas = QLabel(frame)
-        crear_rectas.setGeometry(QRect(170, 120, 91, 16))
+        crear_rectas.setGeometry(160, 120, 91, 16)
         crear_rectas.setFont(fuente)
         crear_rectas.setText("Crear rectas:")
 
         punto_1_recta = QLabel(frame)
-        punto_1_recta.setGeometry(QRect(170, 140, 51, 16))
+        punto_1_recta.setGeometry(160, 140, 51, 16)
         punto_1_recta.setText("Punto 1:")
 
         punto_2_recta = QLabel(frame)
-        punto_2_recta.setGeometry(QRect(170, 160, 51, 16))
+        punto_2_recta.setGeometry(160, 160, 51, 16)
         punto_2_recta.setText("Punto 2:")
 
         nombre_plano = QLabel(frame)
-        nombre_plano.setGeometry(QRect(330, 200, 91, 21))
+        nombre_plano.setGeometry(320, 200, 91, 21)
         nombre_plano.setText("Nombre:")
 
-        crear_planos = QLabel(frame)
-        crear_planos.setGeometry(QRect(330, 120, 91, 16))
-        crear_planos.setFont(fuente)
-        crear_planos.setText("Crear planos:")
+        comprobar_planos = QLabel(frame)
+        comprobar_planos.setGeometry(320, 120, 91, 16)
+        comprobar_planos.setFont(fuente)
+        comprobar_planos.setText("Crear planos:")
 
         punto_1_plano = QLabel(frame)
-        punto_1_plano.setGeometry(QRect(330, 140, 51, 16))
+        punto_1_plano.setGeometry(320, 140, 51, 16)
         punto_1_plano.setText("Punto 1:")
 
         punto_2_plano = QLabel(frame)
-        punto_2_plano.setGeometry(QRect(330, 160, 51, 16))
+        punto_2_plano.setGeometry(320, 160, 51, 16)
         punto_2_plano.setText("Punto 2:")
 
         punto_3_plano = QLabel(frame)
-        punto_3_plano.setGeometry(QRect(330, 180, 51, 16))
+        punto_3_plano.setGeometry(320, 180, 51, 16)
         punto_3_plano.setText("Punto 3:")
 
         boton_reset = QPushButton(frame)
-        boton_reset.setGeometry(QRect(10, 90, 81, 23))
+        boton_reset.setGeometry(0, 90, 81, 23)
         boton_reset.clicked.connect(self.renderizador.ver_reset)
         boton_reset.setText("Reset (R)")
 
         boton_alzado = QPushButton(frame)
-        boton_alzado.setGeometry(QRect(100, 90, 81, 23))
+        boton_alzado.setGeometry(90, 90, 81, 23)
         boton_alzado.clicked.connect(self.renderizador.ver_alzado)
         boton_alzado.setText("Alzado (1) ''")
 
         boton_planta = QPushButton(frame)
-        boton_planta.setGeometry(QRect(190, 90, 81, 23))
+        boton_planta.setGeometry(180, 90, 81, 23)
         boton_planta.clicked.connect(self.renderizador.ver_planta)
         boton_planta.setText("Planta (2) '")
 
         boton_perfil = QPushButton(frame)
-        boton_perfil.setGeometry(QRect(280, 90, 81, 23))
+        boton_perfil.setGeometry(270, 90, 81, 23)
         boton_perfil.clicked.connect(self.renderizador.ver_perfil)
         boton_perfil.setText("Perfil (3) '''")
 
         boton_punto = QPushButton(frame)
-        boton_punto.setGeometry(QRect(10, 250, 151, 21))
-        boton_punto.clicked.connect(self.crear_punto)
+        boton_punto.setGeometry(0, 250, 151, 21)
+        boton_punto.clicked.connect(self.comprobar_punto)
         boton_punto.setText("Crear")
 
         boton_recta = QPushButton(frame)
-        boton_recta.setGeometry(QRect(170, 229, 151, 21))
-        boton_recta.clicked.connect(self.crear_recta)
+        boton_recta.setGeometry(160, 229, 151, 21)
+        boton_recta.clicked.connect(self.comprobar_recta)
         boton_recta.setText("Crear")
 
         boton_plano = QPushButton(frame)
-        boton_plano.setGeometry(QRect(330, 250, 151, 21))
-        boton_plano.clicked.connect(self.crear_plano)
+        boton_plano.setGeometry(320, 250, 151, 21)
+        boton_plano.clicked.connect(self.comprobar_plano)
         boton_plano.setText("Crear")
 
         self.valor_distancia_origen = QSpinBox(frame)
-        self.valor_distancia_origen.setGeometry(QRect(110, 140, 51, 20))
+        self.valor_distancia_origen.setGeometry(100, 140, 51, 20)
         self.valor_distancia_origen.setRange(-499, 499)
+
         self.valor_alejamiento = QSpinBox(frame)
-        self.valor_alejamiento.setGeometry(QRect(110, 160, 51, 20))
+        self.valor_alejamiento.setGeometry(100, 160, 51, 20)
         self.valor_alejamiento.setRange(-499, 499)
+
         self.valor_cota = QSpinBox(frame)
-        self.valor_cota.setGeometry(QRect(110, 180, 51, 20))
+        self.valor_cota.setGeometry(100, 180, 51, 20)
         self.valor_cota.setRange(-499, 499)
 
         self.punto_recta_1 = QComboBox(frame)
-        self.punto_recta_1.setGeometry(QRect(230, 140, 91, 22))
+        self.punto_recta_1.setGeometry(220, 140, 91, 22)
         self.punto_recta_2 = QComboBox(frame)
-        self.punto_recta_2.setGeometry(QRect(230, 160, 91, 21))
+        self.punto_recta_2.setGeometry(220, 160, 91, 21)
         self.punto_plano_1 = QComboBox(frame)
-        self.punto_plano_1.setGeometry(QRect(380, 140, 91, 22))
+        self.punto_plano_1.setGeometry(370, 140, 91, 22)
         self.punto_plano_2 = QComboBox(frame)
-        self.punto_plano_2.setGeometry(QRect(380, 160, 91, 22))
+        self.punto_plano_2.setGeometry(370, 160, 91, 22)
         self.punto_plano_3 = QComboBox(frame)
-        self.punto_plano_3.setGeometry(QRect(380, 180, 91, 22))
+        self.punto_plano_3.setGeometry(370, 180, 91, 22)
 
         self.punto_nombre = QPlainTextEdit(frame)
-        self.punto_nombre.setGeometry(QRect(10, 220, 151, 25))
+        self.punto_nombre.setGeometry(0, 220, 151, 25)
         self.recta_nombre = QPlainTextEdit(frame)
-        self.recta_nombre.setGeometry(QRect(170, 200, 151, 25))
+        self.recta_nombre.setGeometry(160, 200, 151, 25)
         self.plano_nombre = QPlainTextEdit(frame)
-        self.plano_nombre.setGeometry(QRect(330, 220, 151, 25))
+        self.plano_nombre.setGeometry(320, 220, 151, 25)
 
         self.tercera_proyeccion = QCheckBox(dock_diedrico)
-        self.tercera_proyeccion.setGeometry(QRect(58, 3, 111, 17))
+        self.tercera_proyeccion.setGeometry(58, 3, 111, 17)
         self.tercera_proyeccion.setText("Tercera proyección")
 
         self.ver_puntos = QCheckBox(dock_diedrico)
-        self.ver_puntos.setGeometry(QRect(172, 3, 61, 17))
+        self.ver_puntos.setGeometry(172, 3, 61, 17)
         self.ver_puntos.setChecked(True)
         self.ver_puntos.setText("Puntos")
 
         self.ver_rectas = QCheckBox(dock_diedrico)
-        self.ver_rectas.setGeometry(QRect(230, 3, 61, 17))
+        self.ver_rectas.setGeometry(230, 3, 61, 17)
         self.ver_rectas.setChecked(True)
         self.ver_rectas.setText("Rectas")
 
         self.ver_planos = QCheckBox(dock_diedrico)
-        self.ver_planos.setGeometry(QRect(288, 3, 70, 17))
+        self.ver_planos.setGeometry(288, 3, 70, 17)
         self.ver_planos.setChecked(True)
         self.ver_planos.setText("Planos")
 
         ajustes = QPushButton(frame)
-        ajustes.setGeometry(QRect(370, 90, 81, 23))
+        ajustes.setGeometry(290, 550, 181, 30)
         ajustes.setText("Ajustes")
         self.ajustes = Ajustes()
         ajustes.clicked.connect(self.ajustes.show)
 
         widget_punto = QWidget(frame)
-        widget_punto.setGeometry(QRect(10, 271, 151, 211))
+        widget_punto.setGeometry(0, 270, 150, 210)
         vertical_punto = QVBoxLayout(widget_punto)
         vertical_punto.setContentsMargins(0, 0, 0, 0)
         self.lista_puntos = QListWidget(widget_punto)
         vertical_punto.addWidget(self.lista_puntos)
 
         widget_recta = QWidget(frame)
-        widget_recta.setGeometry(QRect(170, 250, 151, 231))
+        widget_recta.setGeometry(160, 250, 150, 230)
         vertical_recta = QVBoxLayout(widget_recta)
         vertical_recta.setContentsMargins(0, 0, 0, 0)
         self.lista_rectas = QListWidget(widget_recta)
         vertical_recta.addWidget(self.lista_rectas)
 
         widget_planos = QWidget(frame)
-        widget_planos.setGeometry(QRect(330, 271, 151, 211))
+        widget_planos.setGeometry(320, 270, 151, 210)
         vertical_planos = QVBoxLayout(widget_planos)
         vertical_planos.setContentsMargins(0, 0, 0, 0)
         self.lista_planos = QListWidget(widget_planos)
         vertical_planos.addWidget(self.lista_planos)
 
-        self.puntero_puntos = 15
-        self.puntero_rectas = 17
-        self.puntero_planos = 0
+        recta_perpendicular_plano = QPushButton(frame)
+        recta_perpendicular_plano.setGeometry(160, 480, 151, 71)
+        self.recta_perpendicular_plano = RectaPerpendicularAPlano()
+        recta_perpendicular_plano.clicked.connect(self.recta_perpendicular_plano.abrir)
+        recta_perpendicular_plano.setText("Crear recta \nperpendicular a plano")
+
+        plano_perpendicular_plano = QPushButton(frame)
+        plano_perpendicular_plano.setGeometry(320, 480, 151, 40)
+        self.plano_perpendicular_plano = PlanoPerpendicularAPlano()
+        plano_perpendicular_plano.clicked.connect(self.plano_perpendicular_plano.abrir)
+        plano_perpendicular_plano.setText("Crear plano\nperpendicular a plano")
+
+        plano_paralelo_plano = QPushButton(frame)
+        plano_paralelo_plano.setGeometry(320, 520, 151, 30)
+        self.plano_paralelo_plano = PlanoParaleloAPlano()
+        plano_paralelo_plano.clicked.connect(self.plano_paralelo_plano.abrir)
+        plano_paralelo_plano.setText("Crear plano paralelo a plano")
+
+        recta_perpendicular_recta = QPushButton(frame)
+        recta_perpendicular_recta.setGeometry(0, 480, 151, 40)
+        self.recta_perpendicular_recta = RectaPerpendicularARecta()
+        recta_perpendicular_recta.clicked.connect(self.recta_perpendicular_recta.abrir)
+        recta_perpendicular_recta.setText("Crear recta \nperpendicular a recta")
+
+        recta_paralela_recta = QPushButton(frame)
+        recta_paralela_recta.setGeometry(0, 520, 151, 30)
+        self.recta_paralela_recta = RectaParalelaARecta()
+        recta_paralela_recta.clicked.connect(self.recta_paralela_recta.abrir)
+        recta_paralela_recta.setText("Crear recta paralela a recta")
+
+        distancia = QPushButton(frame)
+        distancia.setGeometry(0, 550, 181, 30)
+        self.distancia = Distancia()
+        distancia.clicked.connect(self.distancia.abrir)
+        distancia.setText("Calcular distancia entre elementos")
+
+        interseccion = QPushButton(frame)
+        interseccion.setGeometry(180, 550, 111, 30)
+        self.interseccion = Interseccion()
+        interseccion.clicked.connect(self.interseccion.abrir)
+        interseccion.setText("Crear intersección")
+
         self.id_punto = 1
         self.id_recta = 1
         self.id_plano = 1
 
-        # Vértices del cubo
-        self.v = (Point3D(500, 500, 500), Point3D(-500, 500, 500), Point3D(-500, -500, 500),
-                  Point3D(500, -500, 500), Point3D(500, 500, -500), Point3D(-500, 500, -500),
-                  Point3D(-500, -500, -500), Point3D(500, -500, -500))
+        self.mayusculas = cycle("PQRSTUVWXYZABCDEFGHIJKLMNO")
+        self.minusculas = cycle("rstuvwxyzabcdefghijklmnopq")
 
-        # Aristas del cubo
-        self.a = (Segment3D(self.v[0], self.v[1]), Segment3D(self.v[1], self.v[2]),
-                  Segment3D(self.v[2], self.v[3]), Segment3D(self.v[3], self.v[0]),
-                  Segment3D(self.v[0], self.v[4]), Segment3D(self.v[1], self.v[5]),
-                  Segment3D(self.v[2], self.v[6]), Segment3D(self.v[3], self.v[7]),
-                  Segment3D(self.v[4], self.v[5]), Segment3D(self.v[5], self.v[6]),
-                  Segment3D(self.v[6], self.v[7]), Segment3D(self.v[7], self.v[4]))
-
-        # Caras del cubo
-        self.p = (Plane(self.v[0], self.v[1], self.v[2]), Plane(self.v[0], self.v[1], self.v[5]),
-                  Plane(self.v[0], self.v[4], self.v[7]), Plane(self.v[4], self.v[5], self.v[7]),
-                  Plane(self.v[2], self.v[3], self.v[7]), Plane(self.v[1], self.v[2], self.v[5]))
-
-        self.alfabeto_griego = (u'\u03B1', u'\u03B2', u'\u03B3', u'\u03B4', u'\u03B5', u'\u03B6', u'\u03B7', u'\u03B8',
-                                u'\u03B9', u'\u03BA', u'\u03BB', u'\u03BC', u'\u03BD', u'\u03BE', u'\u03BF', u'\u03C0',
-                                u'\u03C1', u'\u03C3', u'\u03C4', u'\u03C5', u'\u03C6', u'\u03C7', u'\u03C8', u'\u03C9')
+        alfabeto_griego = (u'\u03B1', u'\u03B2', u'\u03B3', u'\u03B4', u'\u03B5', u'\u03B6', u'\u03B7', u'\u03B8',
+                           u'\u03B9', u'\u03BA', u'\u03BB', u'\u03BC', u'\u03BD', u'\u03BE', u'\u03BF', u'\u03C0',
+                           u'\u03C1', u'\u03C3', u'\u03C4', u'\u03C5', u'\u03C6', u'\u03C7', u'\u03C8', u'\u03C9')
+        self.alfabeto_griego = cycle(alfabeto_griego)
 
         self.actualizar_texto()
         self.setWindowTitle("Dibujo técnico")
         self.setCentralWidget(frame)
+
+    def sizeHint(self):
+        return QSize(1200, 800)
 
     def elegir_puntos_recta(self):
         self.punto_recta_1.clear()
@@ -1297,85 +2038,87 @@ class Ventana(QMainWindow):
             else:
                 self.posicion.setText("Tercer cuadrante")
 
-    def sizeHint(self) -> QSize:
-        return QSize(1400, 800)
-
-    def crear_punto(self):
-        nombre = self.punto_nombre.toPlainText()
-
-        # Evita que el puntero supere la longitud de la lista
-        if self.puntero_puntos == len(ascii_uppercase):
-            self.puntero_puntos = 0
-
+    def asignar_nombre_punto(self, nombre):
         # Genera nombres genéricos si no se provee uno
         if nombre == "":
-            nombre = ascii_uppercase[self.puntero_puntos]
-            self.puntero_puntos += 1
-
+            nombre = self.mayusculas.__next__()
         # Evita nombres duplicados
         for i in range(self.lista_puntos.count()):
             if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre == nombre:
-                nombre = ascii_uppercase[self.puntero_puntos]
-                self.puntero_puntos += 1
+                nombre = self.minusculas.__next__()
                 break
+        return nombre
 
+    def asignar_nombre_recta(self, nombre):
+        # Genera nombres genéricos si no se provee uno
+        if nombre == "":
+            nombre = self.minusculas.__next__()
+        # Evita nombres duplicados
+        for i in range(self.lista_rectas.count()):
+            if self.lista_rectas.itemWidget(self.lista_rectas.item(i)).nombre == nombre:
+                nombre = self.minusculas.__next__()
+                break
+        return nombre
+
+    def asignar_nombre_plano(self, nombre):
+        # Genera nombres genéricos si no se provee uno
+        if nombre == "":
+            nombre = self.alfabeto_griego.__next__()
+        # Evita nombres duplicados
+        for i in range(self.lista_planos.count()):
+            if self.lista_planos.itemWidget(self.lista_planos.item(i)).nombre == nombre:
+                nombre = self.alfabeto_griego.__next__()
+                break
+        return nombre
+
+    def comprobar_punto(self):
+        nombre = self.punto_nombre.toPlainText()
+        do = self.valor_distancia_origen.value()
+        alejamiento = self.valor_alejamiento.value()
+        cota = self.valor_cota.value()
+        self.crear_punto(nombre, do, alejamiento, cota)
+
+    def crear_punto(self, nombre, do, alejamiento, cota, interseccion=None):
+        nombre = self.asignar_nombre_punto(nombre)
         item = QListWidgetItem()
         self.lista_puntos.addItem(item)
-        punto = Punto(self.id_punto, nombre, self.valor_distancia_origen.value(), self.valor_alejamiento.value(),
-                      self.valor_cota.value())
-        self.id_punto += 1
+        punto = Punto(self.id_punto, nombre, do, alejamiento, cota, interseccion)
         item.setSizeHint(punto.minimumSizeHint())
         self.lista_puntos.setItemWidget(item, punto)
-
+        self.id_punto += 1
         self.elegir_puntos_recta()
         self.elegir_puntos_plano()
 
-    def crear_recta(self):
+    def comprobar_recta(self):
         punto1 = self.punto_recta_1.currentText()
         punto2 = self.punto_recta_2.currentText()
-        nombre = self.recta_nombre.toPlainText()
         for i in range(self.lista_puntos.count()):
             if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre == punto1:
                 punto1 = self.lista_puntos.itemWidget(self.lista_puntos.item(i))
             if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre == punto2:
                 punto2 = self.lista_puntos.itemWidget(self.lista_puntos.item(i))
         if not punto1 and not punto2:
-            QMessageBox.about(self, "Error al crear la recta",
-                              "Debes crear al menos dos puntos y seleccionarlos para crear la recta")
+            QMessageBox.critical(self, "Error al crear la recta",
+                                 "Debes crear al menos dos puntos y seleccionarlos para crear la recta")
         elif punto1.coords == punto2.coords:
-            QMessageBox.about(self, "Error al crear la recta",
-                              "La recta debe ser creada a partir de dos puntos no coincidentes")
+            QMessageBox.critical(self, "Error al crear la recta",
+                                 "La recta debe ser creada a partir de dos puntos no coincidentes")
         else:
-            # Evita que el puntero supere la longitud de la lista
-            if self.puntero_rectas == len(ascii_lowercase):
-                self.puntero_rectas = 0
+            nombre = self.asignar_nombre_recta(self.recta_nombre.toPlainText())
+            self.crear_recta(nombre, punto1, punto2)
 
-            # Genera nombres genéricos si no se provee uno
-            if nombre == "":
-                nombre = ascii_lowercase[self.puntero_rectas]
-                self.puntero_rectas += 1
+    def crear_recta(self, nombre, entidad_1=None, entidad_2=None, modo=None, nombre_recta=None):
+        recta = Recta(self.id_recta, nombre, entidad_1, entidad_2, modo, nombre_recta)
+        item = QListWidgetItem()
+        self.lista_rectas.addItem(item)
+        item.setSizeHint(recta.minimumSizeHint())
+        self.lista_rectas.setItemWidget(item, recta)
+        self.id_recta += 1
 
-            # Evita nombres duplicados
-            for i in range(self.lista_rectas.count()):
-                if self.lista_rectas.itemWidget(self.lista_rectas.item(i)).nombre == nombre:
-                    nombre = ascii_lowercase[self.puntero_rectas]
-                    self.puntero_rectas += 1
-                    break
-
-            item = QListWidgetItem()
-            self.lista_rectas.addItem(item)
-            recta = Recta(self.id_recta, nombre, punto1, punto2)
-            self.id_recta += 1
-            item.setSizeHint(recta.minimumSizeHint())
-            self.lista_rectas.setItemWidget(item, recta)
-
-            self.id_recta += 1
-
-    def crear_plano(self):
+    def comprobar_plano(self):
         punto1 = self.punto_plano_1.currentText()
         punto2 = self.punto_plano_2.currentText()
         punto3 = self.punto_plano_3.currentText()
-        nombre = self.plano_nombre.toPlainText()
 
         for i in range(self.lista_puntos.count()):
             if self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre == punto1:
@@ -1386,64 +2129,51 @@ class Ventana(QMainWindow):
                 punto3 = self.lista_puntos.itemWidget(self.lista_puntos.item(i))
 
         if not punto1 and not punto2 and not punto3:
-            QMessageBox.about(self, "Error al crear el plano",
-                              "Debes crear al menos tres puntos y seleccionarlos para crear el plano")
+            QMessageBox.critical(self, "Error al crear el plano",
+                                 "Debes crear al menos tres puntos y seleccionarlos para crear el plano")
 
         elif len({punto1.coords, punto2.coords, punto3.coords}) < 3:
-            QMessageBox.about(self, "Error al crear el plano",
-                              "Dos de los puntos proporcionados son coincidentes")
+            QMessageBox.critical(self, "Error al crear el plano",
+                                 "Dos de los puntos proporcionados son coincidentes")
         elif Point3D.is_collinear(Point3D(punto1.coords), Point3D(punto2.coords), Point3D(punto3.coords)):
-            QMessageBox.about(self, "Error al crear el plano",
-                              "El plano debe ser creado por tres puntos no alineados")
+            QMessageBox.critical(self, "Error al crear el plano",
+                                 "El plano debe ser creado por tres puntos no alineados")
 
         else:
-            # Evita que el puntero supere la longitud de la lista
-            if self.puntero_planos == len(self.alfabeto_griego):
-                self.puntero_planos = 0
+            nombre = self.asignar_nombre_plano(self.plano_nombre.toPlainText())
+            self.crear_plano(nombre, punto1, punto2, punto3)
 
-            # Genera nombres genéricos si no se provee uno
-            if nombre == "":
-                nombre = self.alfabeto_griego[self.puntero_planos]
-                self.puntero_planos += 1
+    def crear_plano(self, nombre, entidad_1, entidad_2, entidad_3=None, modo=None):
+        plano = Plano(self.id_plano, nombre, entidad_1, entidad_2, entidad_3, modo)
+        item = QListWidgetItem()
+        self.lista_planos.addItem(item)
+        item.setSizeHint(plano.minimumSizeHint())
+        self.lista_planos.setItemWidget(item, plano)
+        self.id_plano += 1
 
-            # Evita nombres duplicados
-            for i in range(self.lista_planos.count()):
-                if self.lista_planos.itemWidget(self.lista_planos.item(i)).nombre == nombre:
-                    nombre = self.alfabeto_griego[self.puntero_planos]
-                    self.puntero_planos += 1
-                    break
-
-            item = QListWidgetItem()
-            self.lista_planos.addItem(item)
-            plano = Plano(self.id_plano, nombre, punto1, punto2, punto3)
-            item.setSizeHint(plano.minimumSizeHint())
-            self.lista_planos.setItemWidget(item, plano)
-
-            self.id_plano += 1
-
-    def borrar_punto(self, idd):
+    def borrar_punto(self, borrar_id):
         for indice in range(self.lista_puntos.count()):
             item = self.lista_puntos.item(indice)
             widget = self.lista_puntos.itemWidget(item)
-            if widget.id == idd:
+            if widget.id == borrar_id:
                 self.lista_puntos.takeItem(self.lista_puntos.row(item))
                 break
         self.elegir_puntos_recta()
         self.elegir_puntos_plano()
 
-    def borrar_recta(self, idd):
+    def borrar_recta(self, borrar_id):
         for indice in range(self.lista_rectas.count()):
             item = self.lista_rectas.item(indice)
             widget = self.lista_rectas.itemWidget(item)
-            if widget.id == idd:
+            if widget.id == borrar_id:
                 self.lista_rectas.takeItem(self.lista_rectas.row(item))
                 break
 
-    def borrar_plano(self, idd):
+    def borrar_plano(self, borrar_id):
         for indice in range(self.lista_planos.count()):
             item = self.lista_planos.item(indice)
             widget = self.lista_planos.itemWidget(item)
-            if widget.id == idd:
+            if widget.id == borrar_id:
                 self.lista_planos.takeItem(self.lista_planos.row(item))
                 break
 
