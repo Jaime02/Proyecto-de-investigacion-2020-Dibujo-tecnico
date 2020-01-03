@@ -355,6 +355,56 @@ class Plano(EntidadGeometrica):
             self.ver_traza_horizontal.setCheckable(False)
             self.ver_traza_horizontal.setDisabled(True)
 
+        self.partes = self.calcular_partes(self.sympy)
+
+    def ordenar_vertices(self, vertices: list):
+        # Si es un triángulo no hace falta ordenar su vértices
+        if len(vertices) <= 3:
+            return tuple(vertices)
+        else:
+            vector = self.vector_normal
+            proyectados = []
+            # Proyectar en:
+            # Perfil
+            if vector[1] == vector[2] == 0:
+                for i in vertices:
+                    punto = (i[1], i[2])
+                    proyectados.append(punto)
+            # Vertical
+            elif vector[2] == 0:
+                for i in vertices:
+                    punto = (i[0], i[2])
+                    proyectados.append(punto)
+            # Horizontal
+            else:
+                for i in vertices:
+                    punto = (i[0], i[1])
+                    proyectados.append(punto)
+
+            centroide = self.centroide(proyectados)
+
+            for index, punto in enumerate(proyectados):
+                punto = (punto[0] - centroide[0], punto[1] - centroide[1])
+                proyectados[index] = punto
+
+            angulos = []
+            for i in proyectados:
+                angulos.append(atan2(i[0], i[1]))
+            print(angulos)
+            juntados = sorted(zip(angulos, vertices))
+            ordenados = [i[1] for i in juntados]
+
+            return tuple(ordenados)
+
+    @staticmethod
+    def centroide(puntos):
+        x = 0
+        y = 0
+        for punto in puntos:
+            x += punto[0]
+            y += punto[1]
+        return x / len(puntos), y / len(puntos)
+
     def limites(self):
         plano = self.sympy
         buenos = []
@@ -372,43 +422,40 @@ class Plano(EntidadGeometrica):
 
         # Elimina duplicados
         buenos = list(set(buenos))
+        return self.ordenar_vertices(buenos)
 
-        # Si es un triángulo no hace falta ordenar su vértices
-        if len(buenos) == 3:
-            return buenos
+    def calcular_partes(self, plano: Plane):
+        puntos = list(self.puntos)
+        partes = {'I': [], 'II': [], 'III': [], 'IV': []}
 
-        else:
-            vector = plano.normal_vector
-            proyectados = []
+        for segmento in self.plano_vertical_bordes:
+            interseccion = intersection(plano, segmento)
+            if interseccion:
+                puntos.append((interseccion[0].x, interseccion[0].y, interseccion[0].z))
+        for segmento in self.plano_horizontal_bordes:
+            interseccion = intersection(plano, segmento)
+            if interseccion:
+                puntos.append((interseccion[0].x, interseccion[0].y, interseccion[0].z))
+        interseccion = intersection(Segment3D(Point3D(500, 0, 0), Point3D(-500, 0, 0)), plano)
+        if interseccion:
+            puntos.append((interseccion[0].x, interseccion[0].y, interseccion[0].z))
+        for punto in puntos:
+            if punto[1] >= 0 and punto[2] >= 0:
+                partes['I'].append(punto)
+            if punto[1] <= 0 and punto[2] >= 0:
+                partes['II'].append(punto)
+            if punto[1] <= 0 and punto[2] <= 0:
+                partes['III'].append(punto)
+            if punto[1] >= 0 and punto[2] <= 0:
+                partes['IV'].append(punto)
 
-            # Proyectar en:
-            # Perfil
-            if vector[1] == vector[2] == 0:
-                for i in buenos:
-                    proyectados.append((i[1], i[2]))
+        # partes = dict((k, list(map(self.ordenar_vertices, v))) for k, v in partes.items())
+        partes['I'] = self.ordenar_vertices(partes['I'])
+        partes['II'] = self.ordenar_vertices(partes['II'])
+        partes['III'] = self.ordenar_vertices(partes['III'])
+        partes['IV'] = self.ordenar_vertices(partes['IV'])
 
-            # Vertical
-            elif vector[2] == 0:
-                proyectante = self.plano_vertical
-                for i in buenos:
-                    proyectau = proyectante.projection(i)
-                    proyectados.append((proyectau[0], proyectau[2]))
-
-            # Horizontal
-            else:
-                proyectante = self.plano_horizontal
-                for i in buenos:
-                    proyectau = proyectante.projection(i)
-                    proyectados.append((proyectau[0], proyectau[1]))
-
-            angulos = []
-            for i in proyectados:
-                angulos.append(atan2(i[0], i[1]))
-
-            juntados = sorted(zip(angulos, buenos))
-            ordenados = [i[1] for i in juntados]
-
-            return ordenados
+        return partes
 
     def calcular_traza_h(self):
         if self.vector_normal[0] == 0 and self.vector_normal[1] == 0:
@@ -717,31 +764,17 @@ class Renderizador(QOpenGLWidget):
         for i in range(programa.lista_planos.count()):
             plano = programa.lista_planos.itemWidget(programa.lista_planos.item(i))
             if plano.render.isChecked():
-                if plano.render.isChecked():
-                    glBegin(GL_TRIANGLE_FAN)
-                    glColor(plano.color)
-                    if plano.infinito.isChecked():
-                        for j in plano.puntos:
-                            glVertex(j)
-                    else:
-                        glVertex(plano.p1)
-                        glVertex(plano.p2)
-                        glVertex(plano.p3)
-                    glEnd()
+                glBegin(GL_TRIANGLE_FAN)
+                glColor(plano.color)
                 if plano.infinito.isChecked():
-                    glColor(0, 0, 0, 0.2)
-                    # Trazas:
-                    glLineWidth(2)
-                    if plano.ver_traza_vertical.isChecked() and programa.ajustes.ver_planos_trazas_verticales:
-                        glBegin(GL_LINES)
-                        glVertex(plano.traza_v[0])
-                        glVertex(plano.traza_v[1])
-                        glEnd()
-                    if plano.ver_traza_horizontal.isChecked() and programa.ajustes.ver_planos_trazas_horizontales:
-                        glBegin(GL_LINES)
-                        glVertex(plano.traza_h[0])
-                        glVertex(plano.traza_h[1])
-                        glEnd()
+                    puntos = plano.partes[cuadrante]
+                    for j in puntos:
+                        glVertex(j)
+                else:
+                    glVertex(plano.p1)
+                    glVertex(plano.p2)
+                    glVertex(plano.p3)
+                glEnd()
 
     def paintGL(self):
         glMatrixMode(GL_PROJECTION)
@@ -769,9 +802,7 @@ class Renderizador(QOpenGLWidget):
         if programa.ajustes.ver_rectas.isChecked():
             self.dibujar_rectas(cuadrante)
         if programa.ajustes.ver_planos.isChecked():
-            pass
-            # self.dibujar_planos(cuadrante)
-        # TODO
+            self.dibujar_planos(cuadrante)
 
     def dibujar_elementos(self):
         self.bordes_plano_horizontal()
