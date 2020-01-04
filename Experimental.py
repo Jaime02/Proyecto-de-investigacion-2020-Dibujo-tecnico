@@ -171,14 +171,26 @@ class Recta(EntidadGeometrica):
 
         self.infinita = QAction("Infinita")
         self.menu.addAction(self.infinita)
+        self.infinita.setCheckable(True)
+        self.infinita.setChecked(True)
 
         # Solo se pueden utilizar segmentos cuando la recta ha sido definida por dos puntos, podría ser mejorado
         if isinstance(entidad_1, Punto) and isinstance(entidad_2, Punto):
-            self.infinita.setCheckable(True)
-            self.infinita.setChecked(True)
+            self.traza_v_entre_puntos = False
+            self.traza_h_entre_puntos = False
+            self.trazas_entre_puntos()
+
+            if self.traza_h_entre_puntos and self.traza_v_entre_puntos:
+                if self.traza_h_entre_puntos == "PH+" and self.traza_v_entre_puntos == "PV+":
+                    self.segmento_entre_trazas = "I"
+                if self.traza_h_entre_puntos == "PH-" and self.traza_v_entre_puntos == "PV+":
+                    self.segmento_entre_trazas = "II"
+                if self.traza_h_entre_puntos == "PH-" and self.traza_v_entre_puntos == "PV-":
+                    self.segmento_entre_trazas = "III"
+                if self.traza_h_entre_puntos == "PH+" and self.traza_v_entre_puntos == "PV-":
+                    self.segmento_entre_trazas = "IV"
         else:
-            self.infinita.setCheckable(False)
-            self.infinita.setChecked(False)
+            self.infinita.setDisabled(True)
 
         self.extremos = self.extremos(self.sympy)
         # Extremos de la recta separados por cuadrantes
@@ -202,20 +214,6 @@ class Recta(EntidadGeometrica):
             self.ver_traza_horizontal.setDisabled(True)
 
         self.partes = self.calcular_partes()
-
-        self.traza_v_entre_puntos = False
-        self.traza_h_entre_puntos = False
-        self.trazas_entre_puntos()
-
-        if self.traza_h_entre_puntos and self.traza_v_entre_puntos:
-            if self.traza_h_entre_puntos == "PH+" and self.traza_v_entre_puntos == "PV+":
-                self.segmento_entre_trazas = "I"
-            if self.traza_h_entre_puntos == "PH-" and self.traza_v_entre_puntos == "PV+":
-                self.segmento_entre_trazas = "II"
-            if self.traza_h_entre_puntos == "PH-" and self.traza_v_entre_puntos == "PV-":
-                self.segmento_entre_trazas = "III"
-            if self.traza_h_entre_puntos == "PH+" and self.traza_v_entre_puntos == "PV-":
-                self.segmento_entre_trazas = "IV"
 
     def extremos(self, recta: Line3D):
         intersecciones = []
@@ -302,7 +300,7 @@ class Recta(EntidadGeometrica):
             # Traza V y H
             # LT:
             if traza_v == traza_h:
-                if self.p1.cuadrante == "I" or self.p1.cuadrante == "III":
+                if extremos_I or extremos_III:
                     partes['I'] = traza_h, extremos_I[0]
                     partes['III'] = traza_h, extremos_III[0]
                 else:
@@ -338,7 +336,6 @@ class Plano(EntidadGeometrica):
 
         infinito = True
         if isinstance(entidad_1, Punto) and isinstance(entidad_2, Punto) and isinstance(entidad_3, Punto):
-
             EntidadGeometrica.__init__(self, internal_id,
                                        QLabel(f"{nombre}({entidad_1.nombre}, {entidad_2.nombre}, {entidad_3.nombre})"))
             self.sympy = Plane(Point3D(entidad_1.coords), Point3D(entidad_2.coords), Point3D(entidad_3.coords))
@@ -359,13 +356,11 @@ class Plano(EntidadGeometrica):
         self.nombre = nombre
 
         self.infinito = QAction("Infinito")
+        self.infinito.setCheckable(True)
+        self.infinito.setChecked(True)
 
-        if infinito:
-            self.infinito.setCheckable(True)
-            self.infinito.setChecked(True)
-        else:
-            self.infinito.setCheckable(False)
-            self.infinito.setChecked(False)
+        if not infinito:
+            self.infinito.setDisabled(True)
 
         self.menu.addAction(self.infinito)
 
@@ -1129,7 +1124,7 @@ class Diedrico(QWidget):
                 else:
                     if recta.p1.cuadrante == recta.p2.cuadrante == "I":
                         self.dibujar_continuo(qp, (recta.p1.coords, recta.p2.coords))
-                    elif 'I' not in recta.partes:
+                    elif recta.p1.cuadrante != "I" and recta.p2.cuadrante != "I":
                         self.dibujar_discontinuo(qp, (recta.p1.coords, recta.p2.coords))
                     else:
                         if recta.p1.cuadrante == "I":
@@ -1164,8 +1159,6 @@ class Diedrico(QWidget):
                                     self.dibujar_discontinuo(qp, (recta.traza_h, recta.p2.coords))
 
                                 self.dibujar_continuo(qp, (recta.traza_v, recta.traza_h))
-                        else:
-                            self.dibujar_discontinuo(qp, (recta.p1.coords, recta.p2.coords))
 
                 # Tercera proyección
                 if programa.tercera_proyeccion.checkState():
@@ -1497,8 +1490,10 @@ class PlanoPerpendicularAPlano(VentanaBaseConNombre):
         if punto == "" or plano == "":
             QMessageBox.critical(self, "Error al crear el plano",
                                  "Debes crear al menos un plano y un punto para crear un plano perpendicular a este")
+        elif punto.sympy == punto2.sympy:
+            QMessageBox.critical(self, "Error al crear el plano", "Los puntos son coincidentes")
         else:
-            plano_perpendicular = plano.sympy.perpendicular_plane(punto.sympy, punto2.punto)
+            plano_perpendicular = plano.sympy.perpendicular_plane(punto.sympy, punto2.sympy)
             programa.crear_plano(nombre, plano_perpendicular, plano, modo="Perpendicular")
             self.cerrar()
 
