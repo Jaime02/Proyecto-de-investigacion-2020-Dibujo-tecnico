@@ -90,21 +90,22 @@ class Punto(EntidadGeometrica):
     def __init__(self,
                  internal_id: int,
                  nombre: str,
-                 do: int,
+                 distancia_origen: int,
                  alejamiento: int,
                  cota: int,
                  interseccion):
 
         if interseccion is None:
-            EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}({do}, {alejamiento}, {cota})"))
+            EntidadGeometrica.__init__(self, internal_id,
+                                       QLabel(f"{nombre}({distancia_origen}, {alejamiento}, {cota})"))
         else:
             EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}({interseccion})"))
         self.borrar.triggered.connect(lambda: programa.borrar_punto(self.id))
-        self.x = do
+        self.x = distancia_origen
         self.y = alejamiento
         self.z = cota
         self.nombre = nombre
-        self.coords = (do, alejamiento, cota)
+        self.coords = (distancia_origen, alejamiento, cota)
         self.sympy = Point3D(self.coords)
         self.cuadrante = self.calcular_cuadrante()
         self.contenido_en_plano = False
@@ -202,14 +203,28 @@ class Recta(EntidadGeometrica):
 
         self.partes = self.calcular_partes()
 
+        self.traza_v_entre_puntos = False
+        self.traza_h_entre_puntos = False
+        self.trazas_entre_puntos()
+
+        if self.traza_h_entre_puntos and self.traza_v_entre_puntos:
+            if self.traza_h_entre_puntos == "PH+" and self.traza_v_entre_puntos == "PV+":
+                self.segmento_entre_trazas = "I"
+            if self.traza_h_entre_puntos == "PH-" and self.traza_v_entre_puntos == "PV+":
+                self.segmento_entre_trazas = "II"
+            if self.traza_h_entre_puntos == "PH-" and self.traza_v_entre_puntos == "PV-":
+                self.segmento_entre_trazas = "III"
+            if self.traza_h_entre_puntos == "PH+" and self.traza_v_entre_puntos == "PV-":
+                self.segmento_entre_trazas = "IV"
+
     def extremos(self, recta: Line3D):
         intersecciones = []
         for i in range(6):
             interseccion = intersection(recta, self.planos[i])
             if interseccion:
                 interseccion = interseccion[0]
-                if abs(interseccion.x) <= 500 and abs(interseccion.y) <= 500 and abs(interseccion.z) <= 500:
-                    intersecciones.append((interseccion.x, interseccion.y, interseccion.z))
+                if all(abs(i) <= 500 for i in interseccion.coordinates):
+                    intersecciones.append(interseccion.coordinates)
         return tuple(set(intersecciones))
 
     def calcular_traza_h(self):
@@ -217,18 +232,37 @@ class Recta(EntidadGeometrica):
         if traza_h:
             if not isinstance(traza_h[0], Line3D):
                 traza_h = tuple(traza_h[0])
-                if -500 <= traza_h[0] <= 500 and -500 <= traza_h[1] <= 500 and -500 <= traza_h[2] <= 500:
+                if all(abs(i) <= 500 for i in traza_h):
                     return traza_h
-        return False
+        else:
+            return False
 
     def calcular_traza_v(self):
         traza_v = intersection(self.sympy, self.plano_vertical)
         if traza_v:
             if not isinstance(traza_v[0], Line3D):
                 traza_v = tuple(traza_v[0])
-                if -500 <= traza_v[0] <= 500 and -500 <= traza_v[1] <= 500 and -500 <= traza_v[2] <= 500:
+                if all(abs(i) <= 500 for i in traza_v):
                     return traza_v
-        return False
+        else:
+            return False
+
+    def trazas_entre_puntos(self):
+        segmento = Segment3D(Point3D(self.p1.coords), Point3D(self.p2.coords))
+        interseccion_pv = intersection(segmento, self.plano_vertical)
+        interseccion_ph = intersection(segmento, self.plano_horizontal)
+        if interseccion_pv:
+            if not isinstance(interseccion_pv[0], Line3D):
+                if interseccion_pv[0].z > 0:
+                    self.traza_v_entre_puntos = "PV+"
+                else:
+                    self.traza_v_entre_puntos = "PV-"
+        if interseccion_ph:
+            if not isinstance(interseccion_ph[0], Line3D):
+                if interseccion_ph[0].y > 0:
+                    self.traza_h_entre_puntos = "PH+"
+                else:
+                    self.traza_h_entre_puntos = "PH-"
 
     def calcular_partes(self):
         extremos_I = self.extremos_I
@@ -287,9 +321,9 @@ class Recta(EntidadGeometrica):
                 partes['II'] = traza_v, traza_h
                 partes['III'] = traza_h, extremos_III[0]
             else:
-                partes['I'] = extremos_I[0], traza_v
-                partes['IV'] = traza_v, traza_h
-                partes['III'] = traza_h, extremos_III[0]
+                partes['I'] = extremos_I[0], traza_h
+                partes['IV'] = traza_h, traza_v
+                partes['III'] = traza_v, extremos_III[0]
         return partes
 
 
@@ -302,24 +336,37 @@ class Plano(EntidadGeometrica):
                  entidad_3,
                  modo):
 
+        infinito = True
         if isinstance(entidad_1, Punto) and isinstance(entidad_2, Punto) and isinstance(entidad_3, Punto):
+
             EntidadGeometrica.__init__(self, internal_id,
                                        QLabel(f"{nombre}({entidad_1.nombre}, {entidad_2.nombre}, {entidad_3.nombre})"))
             self.sympy = Plane(Point3D(entidad_1.coords), Point3D(entidad_2.coords), Point3D(entidad_3.coords))
 
+            self.p1 = entidad_1
+            self.p2 = entidad_2
+            self.p3 = entidad_3
+
         elif isinstance(entidad_1, Plane) and isinstance(entidad_2, Plano):
-            self.sympy = entidad_1
             if modo == "Perpendicular":
                 EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}⊥{entidad_2.nombre}"))
             else:
                 EntidadGeometrica.__init__(self, internal_id, QLabel(f"{nombre}║{entidad_2.nombre}"))
+            self.sympy = entidad_1
+            infinito = False
 
         self.vector_normal = self.sympy.normal_vector
         self.nombre = nombre
 
         self.infinito = QAction("Infinito")
-        self.infinito.setCheckable(True)
-        self.infinito.setChecked(True)
+
+        if infinito:
+            self.infinito.setCheckable(True)
+            self.infinito.setChecked(True)
+        else:
+            self.infinito.setCheckable(False)
+            self.infinito.setChecked(False)
+
         self.menu.addAction(self.infinito)
 
         self.puntos = self.limites()
@@ -355,7 +402,7 @@ class Plano(EntidadGeometrica):
             self.ver_traza_horizontal.setCheckable(False)
             self.ver_traza_horizontal.setDisabled(True)
 
-        self.partes = self.calcular_partes(self.sympy)
+        self.partes = self.calcular_partes()
 
     def ordenar_vertices(self, vertices: list):
         # Si es un triángulo no hace falta ordenar su vértices
@@ -390,7 +437,6 @@ class Plano(EntidadGeometrica):
             angulos = []
             for i in proyectados:
                 angulos.append(atan2(i[0], i[1]))
-            print(angulos)
             juntados = sorted(zip(angulos, vertices))
             ordenados = [i[1] for i in juntados]
 
@@ -424,21 +470,33 @@ class Plano(EntidadGeometrica):
         buenos = list(set(buenos))
         return self.ordenar_vertices(buenos)
 
-    def calcular_partes(self, plano: Plane):
+    def calcular_partes(self):
         puntos = list(self.puntos)
         partes = {'I': [], 'II': [], 'III': [], 'IV': []}
-
+        plano = self.sympy
         for segmento in self.plano_vertical_bordes:
             interseccion = intersection(plano, segmento)
             if interseccion:
-                puntos.append((interseccion[0].x, interseccion[0].y, interseccion[0].z))
+                if isinstance(interseccion[0], Segment3D):
+                    puntos.append(segmento.points[0].coordinates)
+                    puntos.append(segmento.points[1].coordinates)
+                else:
+                    puntos.append(interseccion[0].coordinates)
         for segmento in self.plano_horizontal_bordes:
             interseccion = intersection(plano, segmento)
             if interseccion:
-                puntos.append((interseccion[0].x, interseccion[0].y, interseccion[0].z))
+                if isinstance(interseccion[0], Segment3D):
+                    puntos.append(segmento.points[0].coordinates)
+                    puntos.append(segmento.points[1].coordinates)
+                else:
+                    puntos.append(interseccion[0].coordinates)
         interseccion = intersection(Segment3D(Point3D(500, 0, 0), Point3D(-500, 0, 0)), plano)
         if interseccion:
-            puntos.append((interseccion[0].x, interseccion[0].y, interseccion[0].z))
+            if isinstance(interseccion[0], Segment3D):
+                puntos.append((500, 0, 0))
+                puntos.append((-500, 0, 0))
+            else:
+                puntos.append(interseccion[0].coordinates)
         for punto in puntos:
             if punto[1] >= 0 and punto[2] >= 0:
                 partes['I'].append(punto)
@@ -643,99 +701,89 @@ class Renderizador(QOpenGLWidget):
                 glEnd()
 
     def dibujar_rectas(self, cuadrante: str):
+        def dibujar(inicio, fin):
+            glBegin(GL_LINES)
+            glVertex(inicio)
+            glVertex(fin)
+            glEnd()
+
         for i in range(programa.lista_rectas.count()):
             recta = programa.lista_rectas.itemWidget(programa.lista_rectas.item(i))
             if recta.render.isChecked():
                 glColor(recta.color)
                 glLineWidth(2)
                 if recta.infinita.isChecked():
-                    glBegin(GL_LINES)
                     if "I" in recta.partes and cuadrante == "I":
+                        glBegin(GL_LINES)
                         glVertex(recta.partes["I"][0])
                         glVertex(recta.partes["I"][1])
+                        glEnd()
                     if "II" in recta.partes and cuadrante == "II":
+                        glBegin(GL_LINES)
                         glVertex(recta.partes["II"][0])
                         glVertex(recta.partes["II"][1])
-                    if "III" in recta.partes and cuadrante == "III":
+                        glEnd()
+                    elif "III" in recta.partes and cuadrante == "III":
+                        glBegin(GL_LINES)
                         glVertex(recta.partes["III"][0])
                         glVertex(recta.partes["III"][1])
-                    if "IV" in recta.partes and cuadrante == "IV":
+                        glEnd()
+                    elif "IV" in recta.partes and cuadrante == "IV":
+                        glBegin(GL_LINES)
                         glVertex(recta.partes["IV"][0])
                         glVertex(recta.partes["IV"][1])
-                    glEnd()
+                        glEnd()
                     self.traza_v_recta(recta)
                     self.traza_h_recta(recta)
                 else:
                     if recta.p1.cuadrante == recta.p2.cuadrante == cuadrante == "I":
-                        glBegin(GL_LINES)
-                        glVertex(recta.p1.coords)
-                        glVertex(recta.p2.coords)
-                        glEnd()
+                        dibujar(recta.p1.coords, recta.p2.coords)
                     elif recta.p1.cuadrante == recta.p2.cuadrante == cuadrante == "II":
-                        glBegin(GL_LINES)
-                        glVertex(recta.p1.coords)
-                        glVertex(recta.p2.coords)
-                        glEnd()
+                        dibujar(recta.p1.coords, recta.p2.coords)
                     elif recta.p1.cuadrante == recta.p2.cuadrante == cuadrante == "III":
-                        glBegin(GL_LINES)
-                        glVertex(recta.p1.coords)
-                        glVertex(recta.p2.coords)
-                        glEnd()
+                        dibujar(recta.p1.coords, recta.p2.coords)
                     elif recta.p1.cuadrante == recta.p2.cuadrante == cuadrante == "IV":
-                        glBegin(GL_LINES)
-                        glVertex(recta.p1.coords)
-                        glVertex(recta.p2.coords)
-                        glEnd()
-                    elif not recta.p1.cuadrante == recta.p2.cuadrante:
-                        if recta.traza_v:
-                            glBegin(GL_LINES)
-                            if recta.p1.coords[1] > 0:
-                                if recta.p1.coords[2] > 0 and cuadrante == "I":
-                                    glVertex(recta.p1.coords)
-                                    glVertex(recta.traza_v)
-                                elif recta.p1.coords[2] < 0 and cuadrante == "IV":
-                                    glVertex(recta.p1.coords)
-                                    glVertex(recta.traza_v)
-                                if cuadrante == "II" or cuadrante == "III":
-                                    glVertex(recta.p2.coords)
-                                    glVertex(recta.traza_v)
-                            else:
-                                if recta.p2.coords[2] > 0 and cuadrante == "I":
-                                    glVertex(recta.p2.coords)
-                                    glVertex(recta.traza_v)
-                                elif recta.p2.coords[2] < 0 and cuadrante == "IV":
-                                    glVertex(recta.p2.coords)
-                                    glVertex(recta.traza_h)
-                                if (cuadrante == "II" or cuadrante == "III") and recta.p2.coords[2] > 0:
-                                    glVertex(recta.p1.coords)
-                                    glVertex(recta.traza_v)
-                            glEnd()
-                        self.traza_v_recta(recta)
+                        dibujar(recta.p1.coords, recta.p2.coords)
+                    else:
+                        if recta.traza_v_entre_puntos and recta.traza_h_entre_puntos:
+                            # LT
+                            if recta.traza_v == recta.traza_h:
+                                if cuadrante == recta.p1.cuadrante:
+                                    dibujar(recta.p1.coords, recta.traza_v)
+                                if cuadrante == recta.p2.cuadrante:
+                                    dibujar(recta.p2.coords, recta.traza_v)
+                                self.traza_h_recta(recta)
+                            if recta.segmento_entre_trazas == cuadrante:
+                                dibujar(recta.traza_v, recta.traza_h)
 
-                        if recta.traza_h:
-                            glBegin(GL_LINES)
-                            if recta.p1.coords[2] > 0:
-                                if recta.p1.coords[1] > 0 and cuadrante == "I":
-                                    glVertex(recta.p1.coords)
-                                    glVertex(recta.traza_h)
-                                elif recta.p1.coords[1] < 0 and cuadrante == "II":
-                                    glVertex(recta.p1.coords)
-                                    glVertex(recta.traza_h)
-                                if cuadrante == "III" or cuadrante == "IV":
-                                    glVertex(recta.p2.coords)
-                                    glVertex(recta.traza_h)
-                            else:
-                                if recta.p2.coords[1] > 0 and cuadrante == "I":
-                                    glVertex(recta.p2.coords)
-                                    glVertex(recta.traza_h)
-                                elif recta.p2.coords[1] < 0 and cuadrante == "II":
-                                    glVertex(recta.p2.coords)
-                                    glVertex(recta.traza_v)
-                                if (cuadrante == "III" or cuadrante == "IV") and recta.p2.coords[1] > 0:
-                                    glVertex(recta.p1.coords)
-                                    glVertex(recta.traza_h)
-                            glEnd()
-                        self.traza_h_recta(recta)
+                        if recta.p1.cuadrante == cuadrante:
+                            if recta.traza_h_entre_puntos == "PH+" and (cuadrante == "I" or cuadrante == "IV"):
+                                dibujar(recta.p1.coords, recta.traza_h)
+                                self.traza_h_recta(recta)
+                            if recta.traza_h_entre_puntos == "PH-" and (cuadrante == "II" or cuadrante == "III"):
+                                dibujar(recta.p1.coords, recta.traza_h)
+                                self.traza_h_recta(recta)
+
+                            if recta.traza_v_entre_puntos == "PV+" and (cuadrante == "I" or cuadrante == "II"):
+                                dibujar(recta.p1.coords, recta.traza_v)
+                                self.traza_v_recta(recta)
+                            if recta.traza_v_entre_puntos == "PV-" and (cuadrante == "III" or cuadrante == "IV"):
+                                dibujar(recta.p1.coords, recta.traza_v)
+                                self.traza_v_recta(recta)
+                        if recta.p2.cuadrante == cuadrante:
+                            if recta.traza_h_entre_puntos == "PH+" and (cuadrante == "I" or cuadrante == "IV"):
+                                dibujar(recta.p2.coords, recta.traza_h)
+                                self.traza_h_recta(recta)
+                            if recta.traza_h_entre_puntos == "PH-" and (cuadrante == "II" or cuadrante == "III"):
+                                dibujar(recta.p2.coords, recta.traza_h)
+                                self.traza_h_recta(recta)
+
+                            if recta.traza_v_entre_puntos == "PV+" and (cuadrante == "I" or cuadrante == "II"):
+                                dibujar(recta.p2.coords, recta.traza_v)
+                                self.traza_v_recta(recta)
+                            if recta.traza_v_entre_puntos == "PV-" and (cuadrante == "III" or cuadrante == "IV"):
+                                dibujar(recta.p2.coords, recta.traza_v)
+                                self.traza_v_recta(recta)
 
     @staticmethod
     def traza_v_recta(recta):
@@ -770,11 +818,16 @@ class Renderizador(QOpenGLWidget):
                     puntos = plano.partes[cuadrante]
                     for j in puntos:
                         glVertex(j)
+                    glEnd()
+                    glBegin(GL_LINE_LOOP)
+                    for j in plano.puntos:
+                        glVertex(j)
+                    glEnd()
                 else:
-                    glVertex(plano.p1)
-                    glVertex(plano.p2)
-                    glVertex(plano.p3)
-                glEnd()
+                    glVertex(plano.p1.coords)
+                    glVertex(plano.p2.coords)
+                    glVertex(plano.p3.coords)
+                    glEnd()
 
     def paintGL(self):
         glMatrixMode(GL_PROJECTION)
@@ -998,12 +1051,12 @@ class Diedrico(QWidget):
         self.elementos_estaticos(qp)
         qp.translate(500, 500)
         qp.scale(-1, -1)
+        if programa.ver_planos.checkState():
+            self.dibujar_planos(qp)
         if programa.ver_rectas.checkState():
             self.dibujar_rectas(qp)
         if programa.ver_puntos.checkState():
             self.dibujar_puntos(qp)
-        if programa.ver_planos.checkState():
-            self.dibujar_planos(qp)
         self.update()
 
     def keyPressEvent(self, event):
@@ -1076,7 +1129,7 @@ class Diedrico(QWidget):
                 else:
                     if recta.p1.cuadrante == recta.p2.cuadrante == "I":
                         self.dibujar_continuo(qp, (recta.p1.coords, recta.p2.coords))
-                    elif not 'I' in recta.partes:
+                    elif 'I' not in recta.partes:
                         self.dibujar_discontinuo(qp, (recta.p1.coords, recta.p2.coords))
                     else:
                         if recta.p1.cuadrante == "I":
@@ -1688,7 +1741,7 @@ class Interseccion(VentanaBase):
                 """
 
                 if isinstance(interseccion, Point3D):
-                    if abs(interseccion.x) > 499 or abs(interseccion.y) > 499 or abs(interseccion.z) > 499:
+                    if any(abs(i) > 499 for i in interseccion.coordinates):
                         QMessageBox.critical(self, "Error al calcular la intersección",
                                              "Las rectas se cortan en un punto fuera de los límites establecidos en "
                                              "el programa")
@@ -1714,12 +1767,12 @@ class Interseccion(VentanaBase):
                                                  "La recta está fuera de los límites del programa")
                         else:
                             programa.crear_recta(nombre, interseccion)
-                    except:
+                    except Exception:
                         QMessageBox.critical(self, "Error al crear la intersección",
                                              "Se ha producido un grave error debido a limitaciones del programa")
             else:
                 if isinstance(interseccion, Point3D):
-                    if abs(interseccion.x) > 499 or abs(interseccion.y) > 499 or abs(interseccion.z) > 499:
+                    if any(abs(i) > 499 for i in interseccion.coordinates):
                         QMessageBox.critical(self, "Error al calcular la intersección",
                                              "Las intersección se encuentra en un punto fuera de los límites "
                                              "establecidos en el programa")
