@@ -399,6 +399,20 @@ class Plano(EntidadGeometrica):
 
         self.partes = self.calcular_partes()
 
+        if self.traza_h and self.traza_v:
+            self.punto_en_LT = intersection(self.sympy, Segment3D(Point3D(500, 0, 0), Point3D(-500, 0, 0)))[0]
+            if self.traza_h[0][1] < self.traza_h[1][1]:
+                self.traza_h[0], self.traza_h[1] = self.traza_h[1], self.traza_h[0]
+            if self.traza_v[0][2] < self.traza_v[1][2]:
+                self.traza_v[0], self.traza_v[1] = self.traza_v[1], self.traza_v[0]
+            self.traza_h.insert(1, self.punto_en_LT)
+            self.traza_v.insert(1, self.punto_en_LT)
+
+            self.ver_trazas_negativas = QAction("Ver trazas negativas")
+            self.ver_trazas_negativas.setCheckable(True)
+            self.ver_trazas_negativas.setChecked(True)
+            self.menu.addAction(self.ver_trazas_negativas)
+
     def ordenar_vertices(self, vertices: list):
         # Si es un triángulo no hace falta ordenar su vértices
         if len(vertices) <= 3:
@@ -519,7 +533,7 @@ class Plano(EntidadGeometrica):
                 if not len(trazas) == 2:
                     interseccion = intersection(self.sympy, self.plano_horizontal_bordes[i])
                     if interseccion and not isinstance(interseccion[0], Segment3D):
-                        trazas.append(interseccion[0])
+                        trazas.append(interseccion[0].coordinates)
             trazas = list(set(trazas))
             if len(trazas) == 1:
                 return False
@@ -535,7 +549,7 @@ class Plano(EntidadGeometrica):
                 if not len(trazas) == 2:
                     interseccion = intersection(self.sympy, self.plano_vertical_bordes[i])
                     if interseccion and not isinstance(interseccion[0], Segment3D):
-                        trazas.append(interseccion[0])
+                        trazas.append(interseccion[0].coordinates)
             trazas = list(set(trazas))
             if len(trazas) == 1:
                 return False
@@ -1040,6 +1054,11 @@ class Diedrico(QWidget):
         self.pen_plano_prima = QPen(azul, 4)
         self.pen_plano_prima2 = QPen(azul_oscuro, 4)
 
+        self.pen_plano_prima_discontinuo = QPen(azul, 4)
+        self.pen_plano_prima_discontinuo.setDashPattern([1, 3])
+        self.pen_plano_prima2_discontinuo = QPen(azul_oscuro, 4)
+        self.pen_plano_prima2_discontinuo.setDashPattern([1, 3])
+
     def paintEvent(self, event):
         qp = QPainter(self)
         qp.setRenderHint(QPainter.Antialiasing)
@@ -1221,10 +1240,23 @@ class Diedrico(QWidget):
             if plano.render.isChecked() and plano.infinito.isChecked():
                 if plano.ver_traza_horizontal.isChecked():
                     qp.setPen(self.pen_plano_prima)
-                    self.recta_prima(qp, plano.traza_h)
+                    if len(plano.traza_h) == 2:
+                        self.recta_prima(qp, plano.traza_h)
+                    else:
+                        self.recta_prima(qp, (plano.traza_h[0], plano.traza_h[1]))
+                        if plano.ver_trazas_negativas.isChecked():
+                            qp.setPen(self.pen_plano_prima_discontinuo)
+                            self.recta_prima(qp, (plano.traza_h[1], plano.traza_h[2]))
+
                 if plano.ver_traza_vertical.isChecked():
                     qp.setPen(self.pen_plano_prima2)
-                    self.recta_prima2(qp, plano.traza_v)
+                    if len(plano.traza_v) == 2:
+                        self.recta_prima2(qp, plano.traza_v)
+                    else:
+                        self.recta_prima2(qp, (plano.traza_v[0], plano.traza_v[1]))
+                        if plano.ver_trazas_negativas.isChecked():
+                            qp.setPen(self.pen_plano_prima2_discontinuo)
+                            self.recta_prima2(qp, (plano.traza_v[1], plano.traza_v[2]))
 
 
 class Ajustes(QMainWindow):
