@@ -8,7 +8,7 @@ from OpenGL.GL import glClear, GL_COLOR_BUFFER_BIT, glEnable, glMatrixMode, GL_P
     GL_POINT_SMOOTH, GL_POINTS, GL_BLEND, glBlendFunc, GL_SRC_ALPHA, GL_QUADS, GL_LINES, GL_LINE_LOOP, \
     GL_ONE_MINUS_SRC_ALPHA, GL_TRIANGLE_FAN, glLoadMatrixf
 from OpenGL.GLU import gluLookAt
-from PyQt5.QtCore import Qt, pyqtSlot, QSize
+from PyQt5.QtCore import Qt, pyqtSlot, QSize, QPoint
 from PyQt5.QtGui import QPainter, QPen, QCursor, QTransform, QFont, QColor
 from PyQt5.QtWidgets import QOpenGLWidget, QWidget, QCheckBox, QPushButton, QHBoxLayout, QMainWindow, QLabel, QMenu, \
     QApplication, QVBoxLayout, QSpinBox, QPlainTextEdit, QComboBox, QMessageBox, QGraphicsScene, QGraphicsView, \
@@ -581,6 +581,8 @@ class Renderizador(QOpenGLWidget):
         self.vertices_borde_plano_vertical = ((500, 0, 500), (-500, 0, 500), (-500, 0, -500), (500, 0, -500))
         self.vertices_borde_plano_horizontal = ((500, 500, 0), (500, -500, 0), (-500, -500, 0), (-500, 500, 0))
 
+        self.lastPos = QPoint()
+
         self.m = [[1, 0, 0, 0],
                   [0, 0, 1, 0],
                   [0, 1, 0, 0],
@@ -596,7 +598,38 @@ class Renderizador(QOpenGLWidget):
             self.resize(self.width(), self.width())
         QOpenGLWidget.resizeEvent(self, event)
 
+    def mousePressEvent(self, event):
+        self.lastPos = event.pos()
+
+    def mouseMoveEvent(self, event):
+        self.update()
+        dx = event.x() - self.lastPos.x()
+        dy = event.y() - self.lastPos.y()
+
+        if event.buttons() and Qt.LeftButton:
+            self.theta += dy
+            self.phi -= dx
+
+        self.lastPos = event.pos()
+
+        self.recalcular_posicion()
+
+        programa.actualizar_texto()
+
     def recalcular_posicion(self):
+
+        if self.theta < 360:
+            self.theta = 360
+        if self.theta > 540:
+            self.theta = 540
+        if self.phi >= 360:
+            self.phi -= 360
+        if self.phi < 0:
+            self.phi += 360
+
+        if self.zoom < 10:
+            self.zoom = 10
+
         self.x = sin(radians(self.theta)) * cos(radians(self.phi)) + self.desviacion_x
         self.z = sin(radians(self.theta)) * sin(radians(self.phi)) + self.desviacion_z
         self.y = cos(radians(self.theta)) + self.desviacion_y
@@ -1002,18 +1035,6 @@ class Renderizador(QOpenGLWidget):
             self.zoom += 10
         elif event.key() == Qt.Key_Plus:
             self.zoom -= 10
-
-        if self.theta < 360:
-            self.theta = 360
-        if self.theta > 540:
-            self.theta = 540
-        if self.phi >= 360:
-            self.phi -= 360
-        if self.phi < 0:
-            self.phi += 360
-
-        if self.zoom < 10:
-            self.zoom = 10
 
         self.x = sin(radians(self.theta)) * cos(radians(self.phi)) + self.desviacion_x
         self.z = sin(radians(self.theta)) * sin(radians(self.phi)) + self.desviacion_z
