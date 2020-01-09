@@ -934,7 +934,7 @@ class Renderizador(QOpenGLWidget):
                 self.dibujar_entidades("III")
 
         # Plano vertical:
-        elif self.phi == 0 or self.phi == 180 or self.theta == 360 or self.theta == 520:
+        elif self.phi == 0 or self.phi == 180 or self.theta == 360 or self.theta == 540:
             # PV positivo
             if self.theta < 450:
                 self.dibujar_entidades("III")
