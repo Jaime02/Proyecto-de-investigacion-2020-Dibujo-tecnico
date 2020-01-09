@@ -934,7 +934,7 @@ class Renderizador(QOpenGLWidget):
                 self.dibujar_entidades("III")
 
         # Plano vertical:
-        elif self.phi == 0 or self.phi == 180 or self.theta == 360 or self.theta == 520:
+        elif self.phi == 0 or self.phi == 180 or self.theta == 360 or self.theta == 540:
             # PV positivo
             if self.theta < 450:
                 self.dibujar_entidades("III")
@@ -1004,13 +1004,13 @@ class Renderizador(QOpenGLWidget):
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_W:
-            self.theta -= 5
+            self.theta -= 1
         elif event.key() == Qt.Key_A:
-            self.phi -= 5
+            self.phi -= 1
         elif event.key() == Qt.Key_S:
-            self.theta += 5
+            self.theta += 1
         elif event.key() == Qt.Key_D:
-            self.phi += 5
+            self.phi += 1
         elif event.key() == Qt.Key_Q:
             self.desviacion_z += 1
         elif event.key() == Qt.Key_E:
@@ -1036,11 +1036,8 @@ class Renderizador(QOpenGLWidget):
         elif event.key() == Qt.Key_Plus:
             self.zoom -= 10
 
-        self.x = sin(radians(self.theta)) * cos(radians(self.phi)) + self.desviacion_x
-        self.z = sin(radians(self.theta)) * sin(radians(self.phi)) + self.desviacion_z
-        self.y = cos(radians(self.theta)) + self.desviacion_y
+        self.recalcular_posicion()
 
-        programa.actualizar_texto()
         self.update()
         QOpenGLWidget.keyPressEvent(self, event)
 
