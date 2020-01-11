@@ -2,7 +2,7 @@
 Este repositorio guarda el código de un programa escrito en Python enfocado al uso educacional del sistema de dibujo diédrico.
 
 **Enlace al archivo .exe:**
-https://drive.google.com/open?id=1BLe6zmpsN9pJCVUqrsc16kuDuAg76C1m
+https://drive.google.com/open?id=1YrUvEAeDoWLhTqg1DOhzDsx76h0DBLX_
 
 Debería funcionar en todo ordenador que utilice Windows 10 o 7.
 
