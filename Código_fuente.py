@@ -9,7 +9,7 @@ from OpenGL.GL import glClear, GL_COLOR_BUFFER_BIT, glEnable, glMatrixMode, GL_P
     GL_ONE_MINUS_SRC_ALPHA, GL_TRIANGLE_FAN, glLoadMatrixf
 from OpenGL.GLU import gluLookAt
 from PyQt5.QtCore import Qt, pyqtSlot, QSize, QPoint
-from PyQt5.QtGui import QPainter, QPen, QCursor, QTransform, QFont, QColor
+from PyQt5.QtGui import QPainter, QPen, QCursor, QTransform, QFont, QColor, QIcon
 from PyQt5.QtWidgets import QOpenGLWidget, QWidget, QCheckBox, QPushButton, QHBoxLayout, QMainWindow, QLabel, QMenu, \
     QApplication, QVBoxLayout, QSpinBox, QPlainTextEdit, QComboBox, QMessageBox, QGraphicsScene, QGraphicsView, \
     QListWidgetItem, QListWidget, QAction, QColorDialog, QDockWidget, QFrame
@@ -2118,6 +2118,8 @@ class Ventana(QMainWindow):
         self.setWindowTitle("Dibujo técnico")
         self.setCentralWidget(frame)
         self.show()
+        self.setWindowIcon(QIcon("Logo.ico"))
+
 
     def sizeHint(self):
         return QSize(1200, 800)
