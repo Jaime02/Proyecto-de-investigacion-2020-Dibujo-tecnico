@@ -2117,6 +2117,7 @@ class Ventana(QMainWindow):
         self.actualizar_texto()
         self.setWindowTitle("Dibujo técnico")
         self.setCentralWidget(frame)
+        self.show()
 
     def sizeHint(self):
         return QSize(1200, 800)
@@ -2306,6 +2307,9 @@ class Ventana(QMainWindow):
                 self.lista_planos.takeItem(self.lista_planos.row(item))
                 break
 
+    def closeEvent(self, evento):
+        exit()
+
 
 if __name__ == "__main__":
     evento_principal = QApplication([])
@@ -2314,6 +2318,4 @@ if __name__ == "__main__":
     # Zoom out para que quepa mejor
     programa.diedrico.zoom_out()
     programa.diedrico.zoom_out()
-
-    programa.show()
     evento_principal.exec()
