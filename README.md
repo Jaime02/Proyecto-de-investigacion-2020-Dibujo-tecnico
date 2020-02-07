@@ -8,4 +8,4 @@ Debería funcionar en todo ordenador que utilice Windows 10 o 7.
 
 Ante cualquier duda error o sugerencia, por favor, envía un correo a jresanoais1@educacion.navarra.es
 
-El archivo Código_fuente.py contiene el código fuente de la aplicación. Está escrito en Python 3. Para generar el archivo ejecutable se ha utilizado Pyinstaller
+El archivo Código_fuente.py contiene el código fuente de la aplicación. Está escrito en Python 3. Para generar el archivo ejecutable se ha utilizado Pyinstaller.
