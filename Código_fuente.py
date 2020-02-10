@@ -2755,6 +2755,8 @@ class VentanaPrincipal(QMainWindow):
         self.lista_puntos.clear()
         self.lista_rectas.clear()
         self.lista_planos.clear()
+        self.elegir_puntos_recta()
+        self.elegir_puntos_plano()
 
     def guardar(self):
         try:
