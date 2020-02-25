@@ -1,5 +1,5 @@
 # Desarrollo de un programa de dibujo técnico mediante Python y OpenGL
-Este repositorio guarda el código de un programa escrito en Python enfocado al uso educacional del sistema de dibujo diédrico.
+Este repositorio guarda el código de un programa enfocado al uso educativo del sistema diédrico.
 
 **Enlace al archivo .exe:**
 [Enlace](https://drive.google.com/open?id=1YrUvEAeDoWLhTqg1DOhzDsx76h0DBLX_)
