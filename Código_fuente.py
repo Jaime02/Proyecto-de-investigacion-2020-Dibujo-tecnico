@@ -2,7 +2,7 @@
 
 # Interfaz:
 from PyQt5.QtCore import Qt, QSize, QPoint, QPointF
-from PyQt5.QtGui import QPainter, QPen, QCursor, QTransform, QFont, QColor, QIcon
+from PyQt5.QtGui import QPainter, QPen, QCursor, QTransform, QFont, QColor, QIcon, QPalette
 from PyQt5.QtWidgets import QOpenGLWidget, QWidget, QCheckBox, QPushButton, QHBoxLayout, QMainWindow, QLabel, \
     QApplication, QVBoxLayout, QSpinBox, QPlainTextEdit, QComboBox, QMessageBox, QGraphicsScene, QGraphicsView, \
     QListWidgetItem, QListWidget, QAction, QColorDialog, QDockWidget, QMenu, QMenuBar, QFileDialog
@@ -947,13 +947,14 @@ class Renderizador(QOpenGLWidget):
         gluLookAt(self.x, self.y, self.z, self.desviacion_x, self.desviacion_y, self.desviacion_z, 0, arriba, 0)
 
         glMatrixMode(GL_MODELVIEW)
-        glClearColor(1, 1, 1, 0)
+        if programa.modo_oscuro:
+            glClearColor(0.3, 0.3, 0.3, 0)
+        else:
+            glClearColor(1, 1, 1, 0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glLoadMatrixf(self.m)
-
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-
         self.dibujar_elementos()
         self.update()
 
@@ -1130,8 +1131,7 @@ class Diedrico(QWidget):
         azul = QColor(50, 100, 255)
         azul_oscuro = QColor(10, 50, 140)
 
-        self.pen_base = QPen(negro, 0)
-        self.pen_base.setWidth(2)
+        self.pen_base = QPen(negro, 2)
         self.pen_base.setCosmetic(True)
 
         self.pen_punto_prima = QPen(QColor(201, 10, 0), 6)
@@ -1207,6 +1207,10 @@ class Diedrico(QWidget):
         programa.vista.setTransform(transformacion)
 
     def elementos_estaticos(self, qp):
+        if programa.modo_oscuro:
+            self.pen_base.setColor(QColor(200, 200, 200))
+        else:
+            self.pen_base.setColor(QColor(0, 0, 0))
         qp.setPen(self.pen_base)
         qp.drawRect(0, 0, 1000, 1000)  # Marco
         qp.drawLine(5, 500, 995, 500)  # LT
@@ -1232,6 +1236,10 @@ class Diedrico(QWidget):
         qp.drawPoint(QPointF(punto.x, punto.z))
 
     def punto_prima3(self, qp, punto):
+        if programa.modo_oscuro:
+            self.pen_prima3.setColor(QColor(200, 200, 200))
+        else:
+            self.pen_prima3.setColor(QColor(0, 0, 0))
         qp.setPen(self.pen_prima3)
         qp.drawPoint(QPointF(-punto.y, punto.z))
 
@@ -1290,6 +1298,10 @@ class Diedrico(QWidget):
 
                 # Tercera proyección
                 if programa.tercera_proyeccion.checkState():
+                    if programa.modo_oscuro:
+                        self.pen_prima3.setColor(QColor(200, 200, 200))
+                    else:
+                        self.pen_prima3.setColor(QColor(0, 0, 0))
                     qp.setPen(self.pen_prima3)
                     self.recta_prima3(qp, recta.extremos)
 
@@ -2325,6 +2337,12 @@ class VentanaPrincipal(QMainWindow):
         self.accion_acerca_de.triggered.connect(self.acerca_de.show)
         self.menubar.addAction(self.accion_acerca_de)
 
+        self.accion_modo_oscuro = QAction("Modo oscuro")
+        self.accion_modo_oscuro.setCheckable(True)
+        self.accion_modo_oscuro.triggered.connect(self.cambiar_tema)
+        self.menubar.addAction(self.accion_modo_oscuro)
+        self.modo_oscuro = False
+
         self.renderizador = Renderizador()
         self.renderizador.setFocusPolicy(Qt.ClickFocus)
         dock_renderizador = QDockWidget("Renderizador")
@@ -2764,7 +2782,6 @@ class VentanaPrincipal(QMainWindow):
 
             with open(nombre, 'wb') as archivo:
                 dump(self.recolectar_elementos(), archivo)
-                # archivo.write(str(self.recolectar_elementos()))
 
         except OSError:
             QMessageBox.critical(self, "Error al guardar", "Se ha producido un error al guardar el archivo")
@@ -2812,6 +2829,29 @@ class VentanaPrincipal(QMainWindow):
         except OSError:
             QMessageBox.critical(self, "Error al abrir", "Se ha producido un error al abrir el archivo")
 
+    def cambiar_tema(self):
+        if not self.modo_oscuro:
+            modo_oscuro = QPalette()
+            modo_oscuro.setColor(QPalette.Window, QColor(53, 53, 53))
+            modo_oscuro.setColor(QPalette.WindowText, Qt.white)
+            modo_oscuro.setColor(QPalette.Base, QColor(25, 25, 25))
+            modo_oscuro.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+            modo_oscuro.setColor(QPalette.ToolTipBase, Qt.white)
+            modo_oscuro.setColor(QPalette.ToolTipText, Qt.white)
+            modo_oscuro.setColor(QPalette.Text, Qt.white)
+            modo_oscuro.setColor(QPalette.Button, QColor(53, 53, 53))
+            modo_oscuro.setColor(QPalette.ButtonText, Qt.white)
+            modo_oscuro.setColor(QPalette.BrightText, Qt.red)
+            modo_oscuro.setColor(QPalette.Link, QColor(42, 130, 218))
+            modo_oscuro.setColor(QPalette.Highlight, QColor(42, 130, 218))
+            modo_oscuro.setColor(QPalette.HighlightedText, Qt.black)
+            evento_principal.setPalette(modo_oscuro)
+            self.modo_oscuro = True
+        else:
+            modo_claro = QPalette(self.style().standardPalette())
+            evento_principal.setPalette(modo_claro)
+            self.modo_oscuro = False
+
     def closeEvent(self, evento):
         exit()
 
@@ -2821,6 +2861,7 @@ class VentanaPrincipal(QMainWindow):
 
 if __name__ == "__main__":
     evento_principal = QApplication([])
+    evento_principal.setStyle('Fusion')
     programa = VentanaPrincipal()
 
     # Reducir el zoom un poco para que quepa mejor
