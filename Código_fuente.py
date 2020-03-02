@@ -111,7 +111,7 @@ class EntidadGeometrica(QWidget):
 class VentanaRenombrar(QMainWindow):
     def __init__(self):
         QMainWindow.__init__(self)
-        self.setFixedSize(180, 80)
+        self.setFixedSize(180, 90)
         self.setWindowFlags(Qt.Tool)
         self.setWindowModality(Qt.ApplicationModal)
         self.setWindowTitle("Renombrar")
@@ -1207,10 +1207,6 @@ class Diedrico(QWidget):
         programa.vista.setTransform(transformacion)
 
     def elementos_estaticos(self, qp):
-        if programa.modo_oscuro:
-            self.pen_base.setColor(QColor(200, 200, 200))
-        else:
-            self.pen_base.setColor(QColor(0, 0, 0))
         qp.setPen(self.pen_base)
         qp.drawRect(0, 0, 1000, 1000)  # Marco
         qp.drawLine(5, 500, 995, 500)  # LT
@@ -2337,11 +2333,9 @@ class VentanaPrincipal(QMainWindow):
         self.accion_acerca_de.triggered.connect(self.acerca_de.show)
         self.menubar.addAction(self.accion_acerca_de)
 
-        self.accion_modo_oscuro = QAction("Modo oscuro")
-        self.accion_modo_oscuro.setCheckable(True)
-        self.accion_modo_oscuro.triggered.connect(self.cambiar_tema)
+        self.accion_modo_oscuro = QAction("Cambiar a modo oscuro")
+        self.accion_modo_oscuro.triggered.connect(self.cambiar_modo)
         self.menubar.addAction(self.accion_modo_oscuro)
-        self.modo_oscuro = False
 
         self.renderizador = Renderizador()
         self.renderizador.setFocusPolicy(Qt.ClickFocus)
@@ -2590,8 +2584,10 @@ class VentanaPrincipal(QMainWindow):
                            u'\u03B9', u'\u03BA', u'\u03BB', u'\u03BC', u'\u03BD', u'\u03BE', u'\u03BF', u'\u03C0',
                            u'\u03C1', u'\u03C3', u'\u03C4', u'\u03C5', u'\u03C6', u'\u03C7', u'\u03C8', u'\u03C9')
         self.alfabeto_griego = cycle(alfabeto_griego)
-        self.setCentralWidget(widget_central)
         self.actualizar_texto()
+        self.modo_oscuro = True
+        self.cambiar_modo()
+        self.setCentralWidget(widget_central)
         self.show()
 
     def elegir_puntos_recta(self):
@@ -2829,28 +2825,34 @@ class VentanaPrincipal(QMainWindow):
         except OSError:
             QMessageBox.critical(self, "Error al abrir", "Se ha producido un error al abrir el archivo")
 
-    def cambiar_tema(self):
-        if not self.modo_oscuro:
+    def cambiar_modo(self):
+        if self.modo_oscuro:
+            self.vista.setStyleSheet("background-color: rgb(240, 240, 240)")
+            self.diedrico.setStyleSheet("background-color: white")
+            self.diedrico.pen_base.setColor(QColor(0, 0, 0))
+            modo_claro = QPalette(self.style().standardPalette())
+            evento_principal.setPalette(modo_claro)
+            self.modo_oscuro = False
+            self.accion_modo_oscuro.setText("Cambiar a modo oscuro")
+
+        else:
+            self.vista.setStyleSheet("background-color: rgb(20, 20, 20)")
+            self.diedrico.setStyleSheet("background-color: rgb(40, 40, 40)")
+            self.diedrico.pen_base.setColor(QColor(200, 200, 200))
             modo_oscuro = QPalette()
             modo_oscuro.setColor(QPalette.Window, QColor(53, 53, 53))
             modo_oscuro.setColor(QPalette.WindowText, Qt.white)
             modo_oscuro.setColor(QPalette.Base, QColor(25, 25, 25))
             modo_oscuro.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
-            modo_oscuro.setColor(QPalette.ToolTipBase, Qt.white)
-            modo_oscuro.setColor(QPalette.ToolTipText, Qt.white)
             modo_oscuro.setColor(QPalette.Text, Qt.white)
             modo_oscuro.setColor(QPalette.Button, QColor(53, 53, 53))
             modo_oscuro.setColor(QPalette.ButtonText, Qt.white)
-            modo_oscuro.setColor(QPalette.BrightText, Qt.red)
-            modo_oscuro.setColor(QPalette.Link, QColor(42, 130, 218))
+            modo_oscuro.setColor(QPalette.Link, QColor(200, 130, 218))
             modo_oscuro.setColor(QPalette.Highlight, QColor(42, 130, 218))
             modo_oscuro.setColor(QPalette.HighlightedText, Qt.black)
             evento_principal.setPalette(modo_oscuro)
             self.modo_oscuro = True
-        else:
-            modo_claro = QPalette(self.style().standardPalette())
-            evento_principal.setPalette(modo_claro)
-            self.modo_oscuro = False
+            self.accion_modo_oscuro.setText("Cambiar a modo claro")
 
     def closeEvent(self, evento):
         exit()
