@@ -4,7 +4,7 @@ Este repositorio guarda el código de un programa enfocado al uso educativo del 
 **Enlace al archivo .exe:**
 [Enlace](https://drive.google.com/open?id=1YrUvEAeDoWLhTqg1DOhzDsx76h0DBLX_)
 
-**Enlaces alternativo al .exe en caso de que el otro falle:**
+**Enlaces alternativos al .exe en caso de que el otro falle:**
 [Enlace2](https://drive.google.com/open?id=1s15qYKsqI4rRQBTKd5Ox7NbVqeuljq3Q)
 [Enlace3](https://drive.google.com/open?id=1e9o_RtQYeBI5-59uZCWV6f4WYSqKnwxt)
 
