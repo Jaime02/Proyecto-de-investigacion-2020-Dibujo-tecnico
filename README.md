@@ -2,7 +2,15 @@
 Este repositorio guarda el código de un programa enfocado al uso educativo del sistema diédrico.
 
 **Enlace al archivo .exe:**
-[Enlace](https://drive.google.com/open?id=1YrUvEAeDoWLhTqg1DOhzDsx76h0DBLX_)
+[Enlace](https://drive.google.com/open?id=15fRLrFcFbPjrWlnP9I3neFjRj8TuAQb4)
+
+**Enlace alternativo al .exe en caso de que el otro falle:**
+[Enlace](https://drive.google.com/open?id=1s15qYKsqI4rRQBTKd5Ox7NbVqeuljq3Q)
+
+
+Tutorial de instalación: https://www.youtube.com/watch?v=JtC1NjetLaQ
+
+Cómo usar el programa: https://www.youtube.com/watch?v=-e3rVOB_YXM
 
 Debería funcionar en todo ordenador que utilice Windows 10 o 7.
 
