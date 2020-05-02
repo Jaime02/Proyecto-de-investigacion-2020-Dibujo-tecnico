@@ -23,13 +23,10 @@ class VentanaBase(QMainWindow):
 
         self.boton_crear = QPushButton("Crear", self.widget_central, geometry=QRect(10, 110, 80, 23))
         self.boton_cerrar = QPushButton("Cancelar", self.widget_central, geometry=QRect(90, 110, 80, 23))
-        self.boton_cerrar.clicked.connect(self.cerrar)
+        self.boton_cerrar.clicked.connect(self.close)
 
         self.elegir_entidad_1 = QComboBox(self.widget_central, geometry=QRect(10, 30, 160, 25))
         self.elegir_entidad_2 = QComboBox(self.widget_central, geometry=QRect(10, 80, 160, 25))
-
-    def cerrar(self):
-        self.close()
 
 
 class VentanaBaseConNombre(VentanaBase):
@@ -793,7 +790,7 @@ class Ajustes(QMainWindow):
     def __init__(self):
         QMainWindow.__init__(self)
         self.setWindowFlags(Qt.Tool)
-        self.setWindowModality(Qt.ApplicationModal)
+        self.setWindowFlags(Qt.WindowStaysOnTopHint)
         self.setFixedSize(420, 180)
 
         self.color_plano_vertical = (0.1, 1, 0.1, 0.5)
