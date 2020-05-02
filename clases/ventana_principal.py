@@ -19,16 +19,15 @@ from .ventanas_base import (PuntoMedio, Interseccion, Bisectriz, Distancia, Proy
 class VentanaPrincipal(QMainWindow):
     def __init__(self, evento_principal):
         QMainWindow.__init__(self)
-        evento_principal.setStyle('Fusion')
-        wc = QWidget()
         self.setWindowTitle("Dibujo técnico")
-        evento_principal.setWindowIcon(QIcon("Logo.ico"))
+        self.evento_principal = evento_principal
+        self.evento_principal.setStyle('Fusion')
+        self.evento_principal.setWindowIcon(QIcon("Logo.ico"))
 
-        self.showMinimized()
-        self.showMaximized()
+        wc = QWidget()
+        self.setCentralWidget(wc)
 
         self.barra_menu = QMenuBar()
-        self.setMenuBar(self.barra_menu)
         self.menu_archivo = self.barra_menu.addMenu("Archivo")
 
         self.accion_guardar = QAction("Guardar")
@@ -237,10 +236,11 @@ class VentanaPrincipal(QMainWindow):
         self.actualizar_texto()
         self.modo_oscuro = False
 
-        self.setCentralWidget(wc)
         evento_principal.setStyleSheet(evento_principal.styleSheet()
                                        + "QMainWindow {border-style: outset; border-width: 1px; border-color: black;}")
-        self.show()
+
+        self.showMaximized()
+        self.setMenuBar(self.barra_menu)
 
     def elegir_puntos_recta(self):
         self.punto_recta_1.clear()
@@ -523,15 +523,15 @@ class VentanaPrincipal(QMainWindow):
         except OSError:
             QMessageBox.critical(self, "Error al abrir", "Se ha producido un error al abrir el archivo")
 
-    def cambiar_modo(self, evento_principal):
+    def cambiar_modo(self):
         if self.modo_oscuro:
             # Cambiar a modo claro
             self.vista.setStyleSheet("background-color: rgb(240, 240, 240)")
             self.diedrico.setStyleSheet("background-color: white")
             self.diedrico.pen_base.setColor(QColor(0, 0, 0))
-            modo_claro = QPalette(evento_principal.style().standardPalette())
-            evento_principal.setPalette(modo_claro)
-            evento_principal.setStyleSheet(evento_principal.styleSheet()
+            modo_claro = QPalette(self.evento_principal.style().standardPalette())
+            self.evento_principal.setPalette(modo_claro)
+            self.evento_principal.setStyleSheet(self.evento_principal.styleSheet()
             + "QMainWindow {border-style: outset; border-width: 1px; border-color: black;}")
             self.modo_oscuro = False
             self.accion_modo_oscuro.setText("Establecer modo nocturno")
@@ -551,8 +551,8 @@ class VentanaPrincipal(QMainWindow):
             modo_oscuro.setColor(QPalette.Link, QColor(200, 130, 218))
             modo_oscuro.setColor(QPalette.Highlight, QColor(42, 130, 218))
             modo_oscuro.setColor(QPalette.HighlightedText, Qt.black)
-            evento_principal.setPalette(modo_oscuro)
-            evento_principal.setStyleSheet(evento_principal.styleSheet()
+            self.evento_principal.setPalette(modo_oscuro)
+            self.evento_principal.setStyleSheet(self.evento_principal.styleSheet()
             + "QMainWindow {border-style: outset; border-width: 1px; border-color: black;}")
             self.modo_oscuro = True
             self.accion_modo_oscuro.setText("Establecer modo diurno")
@@ -584,6 +584,3 @@ class VentanaPrincipal(QMainWindow):
                 evento.ignore()
         else:
             exit()
-
-    def sizeHint(self):
-        return QSize(1200, 800)
