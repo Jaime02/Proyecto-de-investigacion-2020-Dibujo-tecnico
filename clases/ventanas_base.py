@@ -752,6 +752,10 @@ class Controles(QMainWindow):
         raton = QLabel("Arrastrar el ratón: Rotar libremente la cámara",
                        wc, geometry=QRect(11, 419, 271, 16), font=f)
 
+    def show(self):
+        QMainWindow.show(self)
+        self.activateWindow()
+
 
 class AcercaDe(QMainWindow):
     def __init__(self):
@@ -779,6 +783,10 @@ class AcercaDe(QMainWindow):
                        "<br>También está disponible el trabajo de investigación realizado que explica cómo funciona el "
                        "sistema diédrico.<br>Ante cualquier duda, sugerencia o problema, por favor, contacta con el autor en"
                        " el siguiente email: jresanoais1@educacion.navarra.es")
+
+    def show(self):
+        QMainWindow.show(self)
+        self.activateWindow()
 
 
 class Ajustes(QMainWindow):
@@ -840,3 +848,7 @@ class Ajustes(QMainWindow):
         if color.isValid():
             color = color.getRgb()
             self.color_plano_horizontal = tuple([i / 255 for i in color])
+
+    def show(self):
+        QMainWindow.show(self)
+        self.activateWindow()

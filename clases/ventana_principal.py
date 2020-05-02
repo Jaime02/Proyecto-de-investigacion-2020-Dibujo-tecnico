@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (QWidget, QCheckBox, QPushButton, QMainWindow, QLabe
                              QListWidget, QAction, QDockWidget, QFileDialog)
 from sympy import Point3D, Plane, Line3D
 
-from .diedrico import Diedrico, Renderizador
+from .widgets_de_dibujo import Diedrico, Renderizador
 from .entidades_geometricas import Punto, Recta, Plano
 from .ventanas_base import (PuntoMedio, Interseccion, Bisectriz, Distancia, Proyectar, RectaParalelaARecta,
                             RectaPerpendicularAPlano, RectaPerpendicularARecta, PlanoParaleloAPlano,
@@ -238,10 +238,8 @@ class VentanaPrincipal(QMainWindow):
         self.modo_oscuro = False
 
         self.setCentralWidget(wc)
-
         evento_principal.setStyleSheet(evento_principal.styleSheet()
                                        + "QMainWindow {border-style: outset; border-width: 1px; border-color: black;}")
-
         self.show()
 
     def elegir_puntos_recta(self):
