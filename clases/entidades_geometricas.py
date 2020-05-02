@@ -88,7 +88,7 @@ class EntidadGeometrica(QWidget):
 
     def cambiar_nombre(self):
         nombre = self.ventana_cambiar_nombre.widget_texto.toPlainText()
-        if self.nombre:
+        if nombre:
             nombres = []
             for i in range(self.programa.lista_puntos.count()):
                 nombres.append(self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
@@ -102,7 +102,7 @@ class EntidadGeometrica(QWidget):
                                      "Ha introducido un nombre que ya está siendo usado")
             else:
                 self.nombre = nombre
-                self.etiqueta.setText(self.ventana_cambiar_nombre.widget_texto.toPlainText())
+                self.etiqueta.setText(nombre)
                 self.programa.elegir_puntos_recta()
                 self.programa.elegir_puntos_plano()
         else:

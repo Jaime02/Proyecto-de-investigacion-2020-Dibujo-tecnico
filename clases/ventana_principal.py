@@ -62,7 +62,7 @@ class VentanaPrincipal(QMainWindow):
         self.barra_menu.addAction(self.accion_acerca_de)
 
         self.accion_modo_oscuro = QAction("Establecer modo nocturno")
-        self.accion_modo_oscuro.triggered.connect(lambda: self.cambiar_modo(evento_principal))
+        self.accion_modo_oscuro.triggered.connect(self.cambiar_modo)
         self.barra_menu.addAction(self.accion_modo_oscuro)
 
         self.renderizador = Renderizador(self)
@@ -556,13 +556,6 @@ class VentanaPrincipal(QMainWindow):
             + "QMainWindow {border-style: outset; border-width: 1px; border-color: black;}")
             self.modo_oscuro = True
             self.accion_modo_oscuro.setText("Establecer modo diurno")
-
-        # Por alguna extraña razón, el tamaño de la fuente se pone muy pequeño al cambiar el estilo
-        fuente = QFont()
-        fuente.setPointSize(12)
-        self.acerca_de.acerca_de.setFont(fuente)
-        self.acerca_de.t.setFont(fuente)
-        self.controles.setFont(fuente)
 
     def closeEvent(self, evento):
         if self.recolectar_elementos():
