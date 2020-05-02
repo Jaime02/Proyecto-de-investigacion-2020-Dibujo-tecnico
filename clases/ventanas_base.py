@@ -611,6 +611,13 @@ class Bisectriz(VentanaBaseConNombre):
         self.show()
         self.activateWindow()
 
+    @staticmethod
+    def normalizar(vector: list):
+        # Normaliza los vectores para que tengan la misma longitud
+        length = (vector[0] ** 2 + vector[1] ** 2 + vector[2] ** 2) ** 0.5
+        vector = [x / length for x in vector]
+        return vector
+
     def crear_recta(self):
         recta1 = self.elegir_entidad_1.currentText()
         recta2 = self.elegir_entidad_2.currentText()
@@ -635,14 +642,8 @@ class Bisectriz(VentanaBaseConNombre):
                     direccion1 = recta1.sympy.direction_ratio
                     direccion2 = recta2.sympy.direction_ratio
 
-                    def normalizar(vector: list):
-                        # Normaliza los vectores para que tengan la misma longitud
-                        length = (vector[0] ** 2 + vector[1] ** 2 + vector[2] ** 2) ** 0.5
-                        vector = [x / length for x in vector]
-                        return vector
-
-                    d1 = normalizar(direccion1)
-                    d2 = normalizar(direccion2)
+                    d1 = self.normalizar(direccion1)
+                    d2 = self.normalizar(direccion2)
 
                     direccion1 = [d1[i] + d2[i] for i in range(3)]
                     direccion2 = [d1[i] - d2[i] for i in range(3)]
@@ -655,6 +656,7 @@ class Bisectriz(VentanaBaseConNombre):
 
                     self.programa.crear_recta(nombre, bis1)
                     self.programa.crear_recta(nombre2, bis2)
+
             else:
                 QMessageBox.critical(self, "Error al crear la bisectriz",
                                      "Las rectas no se cortan, no tienen ningún punto en común")
