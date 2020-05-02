@@ -1,0 +1,1 @@
+pyinstaller --onefile --windowed --icon Logo.ico Codigo_fuente.py
