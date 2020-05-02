@@ -1,1 +1,1 @@
-pyinstaller --onefile --windowed --icon Logo.ico Codigo_fuente.py
+pyinstaller --onefile --windowed -i "Logo.ico" --add-data Logo.ico;. Codigo_fuente.py
