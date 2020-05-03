@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QMessageBox, QAction, 
 
 from math import atan2
 from sympy import Point3D, Line3D, Plane, Segment3D, intersection
-
+from .rodri import calcular_circunferencia
 from .ventanas_base import VentanaRenombrar
 
 
@@ -341,7 +341,7 @@ class Plano(EntidadGeometrica):
     def __init__(self, programa, internal_id: int, nombre: str, sympy: Plane, puntos: list = None):
         EntidadGeometrica.__init__(self, programa, internal_id, nombre, sympy)
 
-        self.vector_normal = self.sympy.normal_vector
+        self.vector_normal = sympy.normal_vector
         self.infinito = QAction("Infinito", checkable=True, checked=True)
         self.menu.addAction(self.infinito)
 

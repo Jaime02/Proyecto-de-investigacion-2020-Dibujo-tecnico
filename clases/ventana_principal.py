@@ -98,19 +98,16 @@ class VentanaPrincipal(QMainWindow):
         self.angulo_vertical = QLabel(wc, font=fuente, geometry=QRect(0, 50, 121, 16))
         self.angulo_horizontal = QLabel(wc, font=fuente, geometry=QRect(120, 50, 130, 16))
 
-        vista = QLabel("Vista:", wc, font=fuente, geometry=QRect(0, 70, 91, 16))
+        vista = QLabel("Vista:", wc, font=fuente, geometry=QRect(0, 71, 91, 16))
         crear_puntos = QLabel("Crear puntos:", wc, font=fuente, geometry=QRect(0, 120, 91, 16))
-        nombre_punto = QLabel("Nombre:", wc, geometry=QRect(0, 200, 91, 16))
         distancia_al_origen = QLabel("Distancia al origen:", wc, geometry=QRect(0, 140, 91, 16))
         alejamiento = QLabel("Alejamiento:", wc, geometry=QRect(0, 160, 91, 16))
         cota = QLabel("Cota:", wc, geometry=QRect(0, 180, 91, 16))
 
-        nombre_recta = QLabel("Nombre:", wc, geometry=QRect(160, 180, 91, 21))
         crear_rectas = QLabel("Crear rectas:", wc, font=fuente, geometry=QRect(160, 120, 91, 16))
         punto_1_recta = QLabel("Punto 1:", wc, geometry=QRect(160, 140, 51, 16))
         punto_2_recta = QLabel("Punto 2:", wc, geometry=QRect(160, 160, 51, 16))
 
-        nombre_plano = QLabel("Nombre:", wc, geometry=QRect(320, 200, 91, 21))
         crear_planos = QLabel("Crear planos:", wc, font=fuente, geometry=QRect(320, 120, 91, 16))
         punto_1_plano = QLabel("Punto 1:", wc, geometry=QRect(320, 140, 51, 16))
         punto_2_plano = QLabel("Punto 2:", wc, geometry=QRect(320, 160, 51, 16))
@@ -125,11 +122,11 @@ class VentanaPrincipal(QMainWindow):
         boton_perfil = QPushButton("Perfil (3) '''", wc, geometry=QRect(270, 90, 81, 23))
         boton_perfil.clicked.connect(self.renderizador.ver_perfil)
 
-        boton_punto = QPushButton("Crear", wc, geometry=QRect(0, 248, 151, 20))
+        boton_punto = QPushButton("Crear", wc, geometry=QRect(0, 232, 151, 22))
         boton_punto.clicked.connect(self.comprobar_punto)
-        boton_recta = QPushButton("Crear", wc, geometry=QRect(160, 228, 151, 20))
+        boton_recta = QPushButton("Crear", wc, geometry=QRect(160, 232, 151, 22))
         boton_recta.clicked.connect(self.comprobar_recta)
-        boton_plano = QPushButton("Crear", wc, geometry=QRect(320, 248, 151, 20))
+        boton_plano = QPushButton("Crear", wc, geometry=QRect(320, 232, 151, 22))
         boton_plano.clicked.connect(self.comprobar_plano)
 
         self.valor_distancia_origen = QSpinBox(wc, geometry=QRect(100, 140, 51, 20))
@@ -147,35 +144,34 @@ class VentanaPrincipal(QMainWindow):
         self.punto_plano_2 = QComboBox(wc, geometry=QRect(365, 160, 105, 22))
         self.punto_plano_3 = QComboBox(wc, geometry=QRect(365, 180, 105, 22))
 
-        self.punto_nombre = QPlainTextEdit(wc, geometry=QRect(0, 220, 151, 25))
-        self.recta_nombre = QPlainTextEdit(wc, geometry=QRect(160, 200, 151, 25))
-        self.plano_nombre = QPlainTextEdit(wc, geometry=QRect(320, 220, 151, 25))
+        self.punto_nombre = QPlainTextEdit(wc, geometry=QRect(0, 205, 151, 25), placeholderText="Nombre del punto")
+        self.recta_nombre = QPlainTextEdit(wc, geometry=QRect(160, 205, 151, 25), placeholderText="Nombre de la recta")
+        self.plano_nombre = QPlainTextEdit(wc, geometry=QRect(320, 205, 151, 25), placeholderText="Nombre del plano")
 
-        self.tercera_proyeccion = QCheckBox("Tercera proyección", dock_diedrico, geometry=QRect(58, 3, 111, 17))
+        self.tercera_proyeccion = QCheckBox("Tercera proyección", dock_diedrico, geometry=QRect(55, 2, 111, 17))
+        self.ver_puntos = QCheckBox("Puntos", dock_diedrico, checked=True, geometry=QRect(169, 2, 61, 17))
+        self.ver_rectas = QCheckBox("Rectas", dock_diedrico, checked=True, geometry=QRect(227, 2, 61, 17))
+        self.ver_planos = QCheckBox("Planos", dock_diedrico, checked=True, geometry=QRect(285, 2, 70, 17))
 
-        self.ver_puntos = QCheckBox("Puntos", dock_diedrico, checked=True, geometry=QRect(172, 3, 61, 17))
-        self.ver_rectas = QCheckBox("Rectas", dock_diedrico, checked=True, geometry=QRect(230, 3, 61, 17))
-        self.ver_planos = QCheckBox("Planos", dock_diedrico, checked=True, geometry=QRect(288, 3, 70, 17))
-
-        widget_punto = QWidget(wc, geometry=QRect(0, 270, 150, 210))
+        widget_punto = QWidget(wc, geometry=QRect(0, 255, 150, 230))
         vertical_punto = QVBoxLayout(widget_punto)
         vertical_punto.setContentsMargins(0, 0, 0, 0)
         self.lista_puntos = QListWidget(widget_punto)
         vertical_punto.addWidget(self.lista_puntos)
 
-        widget_recta = QWidget(wc, geometry=QRect(160, 250, 150, 230))
+        widget_recta = QWidget(wc, geometry=QRect(160, 255, 150, 230))
         vertical_recta = QVBoxLayout(widget_recta)
         vertical_recta.setContentsMargins(0, 0, 0, 0)
         self.lista_rectas = QListWidget(widget_recta)
         vertical_recta.addWidget(self.lista_rectas)
 
-        widget_planos = QWidget(wc, geometry=QRect(320, 270, 151, 210))
+        widget_planos = QWidget(wc, geometry=QRect(320, 255, 151, 230))
         vertical_planos = QVBoxLayout(widget_planos)
         vertical_planos.setContentsMargins(0, 0, 0, 0)
         self.lista_planos = QListWidget(widget_planos)
         vertical_planos.addWidget(self.lista_planos)
 
-        herramientas = QLabel("Herramientas:", wc, font=fuente, geometry=QRect(0, 485, 100, 16))
+        herramientas = QLabel("Herramientas:", wc, font=fuente, geometry=QRect(0, 486, 100, 16))
 
         punto_medio = QPushButton("Punto medio", wc, geometry=QRect(0, 505, 91, 31))
         self.punto_medio = PuntoMedio(self)
@@ -531,8 +527,6 @@ class VentanaPrincipal(QMainWindow):
             self.diedrico.pen_base.setColor(QColor(0, 0, 0))
             modo_claro = QPalette(self.evento_principal.style().standardPalette())
             self.evento_principal.setPalette(modo_claro)
-            self.evento_principal.setStyleSheet(self.evento_principal.styleSheet()
-            + "QMainWindow {border-style: outset; border-width: 1px; border-color: black;}")
             self.modo_oscuro = False
             self.accion_modo_oscuro.setText("Establecer modo nocturno")
         else:
@@ -552,11 +546,9 @@ class VentanaPrincipal(QMainWindow):
             modo_oscuro.setColor(QPalette.Highlight, QColor(42, 130, 218))
             modo_oscuro.setColor(QPalette.HighlightedText, Qt.black)
             self.evento_principal.setPalette(modo_oscuro)
-            self.evento_principal.setStyleSheet(self.evento_principal.styleSheet()
-            + "QMainWindow {border-style: outset; border-width: 1px; border-color: black;}")
             self.modo_oscuro = True
             self.accion_modo_oscuro.setText("Establecer modo diurno")
-
+        self.evento_principal.setStyleSheet(self.evento_principal.styleSheet()+"QMainWindow{border: 1px outset black;}")
     def closeEvent(self, evento):
         if self.recolectar_elementos():
             reply = QMessageBox()

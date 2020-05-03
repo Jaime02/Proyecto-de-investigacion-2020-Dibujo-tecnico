@@ -1,7 +1,8 @@
 from math import sin, cos, radians, acos
+from sympy import Plane, Point3D
+from pprint import pprint
 
-
-def circunferencia(plano, radio, n=16):
+def calcular_circunferencia(plano, radio, centro, n=16):
     # Redefino estas funciones trigonométricas para evitar estar continuamente convirtiendo el ángulo a radianes
     def coseno(angulo):
         return cos(radians(angulo))
@@ -44,10 +45,10 @@ def circunferencia(plano, radio, n=16):
             return sum([coord**2 for coord in self.coords])**0.5
 
     # Vector E, eje Z
-    vector_e = Vec(0, 0, 1)
+    vector_e = Vec(0, 1, 0)
 
     # El vector normal al plano
-    vector_u = Vec(*p.normal_vector)
+    vector_u = Vec(*plano.normal_vector)
 
     # Rotación de rodrigues
     def rodri(v: Vec, k: Vec, t: int):
@@ -70,6 +71,9 @@ def circunferencia(plano, radio, n=16):
     for i in range(1, n+1):
         vec_v = calcular_vector_v(1, i * 360 / n)
         punto = rodri(vec_v, calcular_k(vector_e, vector_u), theta)
-        puntos.append(punto.coords)
+        puntos.append(tuple([round(punto.coords[i] + centro[i], 3) for i in range(len(punto.coords))]))
 
     return puntos
+
+# p = Plane(Point3D(0, 0, 0), normal_vector=(0, 1, 0))
+# pprint(calcular_circunferencia(p, 1, Point3D(0, 0, 0)))
