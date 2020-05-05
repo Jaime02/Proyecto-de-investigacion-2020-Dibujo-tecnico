@@ -28,9 +28,9 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-    - name: Prueba a importar sympy
+    - name: Muestra los módulos
       run: |
-        python -m "import sympy"
+        pip list
     - name: Prueba a correr el código
       run: |
         python Codigo_fuente.py
