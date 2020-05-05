@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QMessageBox, QAction, 
 from math import atan2
 from sympy import Point3D, Line3D, Plane, Segment3D, intersection
 from .rodri import calcular_circunferencia
-from .ventanas_base import VentanaRenombrar
+from . import ventanas_base
 
 
 class EntidadGeometrica(QWidget):
@@ -22,7 +22,7 @@ class EntidadGeometrica(QWidget):
         self.render = QAction("Visible", checkable=True, checked=True)
         self.actualizar_nombre = QAction("Renombrar")
 
-        self.ventana_cambiar_nombre = VentanaRenombrar()
+        self.ventana_cambiar_nombre = ventanas_base.VentanaRenombrar()
         self.actualizar_nombre.triggered.connect(self.ventana_cambiar_nombre.abrir)
         self.ventana_cambiar_nombre.boton_crear.clicked.connect(self.cambiar_nombre)
 
@@ -65,16 +65,6 @@ class EntidadGeometrica(QWidget):
 
         self.plano_vertical = Plane(Point3D(0, 0, 1), Point3D(0, 0, 0), Point3D(1, 0, 0))
         self.plano_horizontal = Plane(Point3D(0, 1, 0), Point3D(0, 0, 0), Point3D(1, 0, 0))
-
-        self.plano_vertical_bordes = (Segment3D(Point3D(500, 0, 500), Point3D(-500, 0, 500)),
-                                      Segment3D(Point3D(-500, 0, 500), Point3D(-500, 0, -500)),
-                                      Segment3D(Point3D(-500, 0, -500), Point3D(500, 0, -500)),
-                                      Segment3D(Point3D(500, 0, -500), Point3D(500, 0, 500)))
-
-        self.plano_horizontal_bordes = (Segment3D(Point3D(500, 500, 0), Point3D(-500, 500, 0)),
-                                        Segment3D(Point3D(-500, 500, 0), Point3D(-500, -500, 0)),
-                                        Segment3D(Point3D(-500, -500, 0), Point3D(500, -500, 0)),
-                                        Segment3D(Point3D(500, -500, 0), Point3D(500, 500, 0)))
 
     def cambiar_color(self):
         color_dialog = QColorDialog()
@@ -341,6 +331,16 @@ class Plano(EntidadGeometrica):
     def __init__(self, programa, internal_id: int, nombre: str, sympy: Plane, puntos: list = None):
         EntidadGeometrica.__init__(self, programa, internal_id, nombre, sympy)
 
+        self.plano_vertical_bordes = (Segment3D(Point3D(500, 0, 500), Point3D(-500, 0, 500)),
+                                      Segment3D(Point3D(-500, 0, 500), Point3D(-500, 0, -500)),
+                                      Segment3D(Point3D(-500, 0, -500), Point3D(500, 0, -500)),
+                                      Segment3D(Point3D(500, 0, -500), Point3D(500, 0, 500)))
+
+        self.plano_horizontal_bordes = (Segment3D(Point3D(500, 500, 0), Point3D(-500, 500, 0)),
+                                        Segment3D(Point3D(-500, 500, 0), Point3D(-500, -500, 0)),
+                                        Segment3D(Point3D(-500, -500, 0), Point3D(500, -500, 0)),
+                                        Segment3D(Point3D(500, -500, 0), Point3D(500, 500, 0)))
+
         self.vector_normal = sympy.normal_vector
         self.infinito = QAction("Infinito", checkable=True, checked=True)
         self.menu.addAction(self.infinito)
@@ -546,3 +546,11 @@ class Plano(EntidadGeometrica):
                     "Punto_3": self.punto_3, "Sympy": self.sympy}
         else:
             return {"Nombre": self.nombre, "Sympy": self.sympy}
+
+
+class Circunferencia(EntidadGeometrica):
+    def __init__(self, programa, internal_id: int, nombre: str, vector_normal, radio, centro):
+        EntidadGeometrica.__init__(self, programa, internal_id, nombre, None)
+        self.puntos = calcular_circunferencia(vector_normal, radio, centro)
+
+

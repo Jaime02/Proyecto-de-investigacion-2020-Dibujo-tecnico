@@ -374,6 +374,9 @@ class Renderizador(QOpenGLWidget):
         self.bordes_plano_horizontal()
         self.bordes_plano_vertical()
 
+        # TODO: fixea esta wea
+        self.dibujar_circunferencias()
+
         # Observador en:
         # Línea de tierra:
         if (self.phi == 0 or self.phi == 180) and self.theta == 0:
@@ -472,6 +475,16 @@ class Renderizador(QOpenGLWidget):
             self.plano_vertical_debajo()
             self.dibujar_ejes()
             self.dibujar_entidades("IV")
+
+    def dibujar_circunferencias(self):
+        for i in range(self.programa.lista_circunferencias.count()):
+            circ = self.programa.lista_circunferencias.itemWidget(self.programa.lista_circunferencias.item(i))
+            if circ.render.isChecked():
+                glColor(circ.color)
+                glBegin(GL_LINE_LOOP)
+                for punto in circ.puntos:
+                    glVertex(*punto)
+                glEnd()
 
     def keyPressEvent(self, evento):
         if evento.key() == Qt.Key_W:

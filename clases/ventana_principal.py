@@ -6,14 +6,14 @@ from PyQt5.QtCore import Qt, QSize, QRect
 from PyQt5.QtGui import QFont, QColor, QIcon, QPalette
 from PyQt5.QtWidgets import (QWidget, QCheckBox, QPushButton, QMainWindow, QLabel, QVBoxLayout, QSpinBox, QMenuBar,
                              QPlainTextEdit, QComboBox, QMessageBox, QGraphicsScene, QGraphicsView, QListWidgetItem,
-                             QListWidget, QAction, QDockWidget, QFileDialog)
+                             QListWidget, QAction, QDockWidget, QFileDialog, QStackedWidget)
 from sympy import Point3D, Plane, Line3D
 
 from .widgets_de_dibujo import Diedrico, Renderizador
 from .entidades_geometricas import Punto, Recta, Plano
 from .ventanas_base import (PuntoMedio, Interseccion, Bisectriz, Distancia, Proyectar, RectaParalelaARecta,
                             RectaPerpendicularAPlano, RectaPerpendicularARecta, PlanoParaleloAPlano,
-                            PlanoPerpendicularAPlano, Ajustes, AcercaDe, Controles)
+                            PlanoPerpendicularAPlano, Ajustes, AcercaDe, Controles, VentanaCircunferencia)
 
 
 class VentanaPrincipal(QMainWindow):
@@ -91,6 +91,32 @@ class VentanaPrincipal(QMainWindow):
         fuente = QFont("Arial")
         fuente.setPointSize(10)
 
+        self.widget_stack = QStackedWidget(wc)
+        self.widget_stack.setGeometry(0, 90, 500, 470)
+
+        p1 = QWidget()
+        p2 = QWidget()
+        self.widget_stack.addWidget(p1)
+        self.widget_stack.addWidget(p2)
+
+        boton_cambiar_tab = QPushButton("Figuras", p1, geometry=QRect(400, 0, 70, 23))
+        boton_cambiar_tab.clicked.connect(lambda: self.widget_stack.setCurrentIndex(1))
+
+        boton_cambiar_a_tab_2 = QPushButton("Volver", p2, geometry=QRect(400, 0, 70, 23))
+        boton_cambiar_a_tab_2.clicked.connect(lambda: self.widget_stack.setCurrentIndex(0))
+
+        circunferencia = QLabel("Circunferencia:", p2, font=fuente, geometry=QRect(0, 30, 91, 16))
+
+        boton_circunferencia = QPushButton("Crear circunferencia", p2, geometry=QRect(0, 50, 140, 20))
+        self.ventana_circunferencia = VentanaCircunferencia(self)
+        boton_circunferencia.clicked.connect(self.ventana_circunferencia.abrir)
+
+        widget_circunferencia = QWidget(p2, geometry=QRect(0, 75, 140, 140))
+        vertical_circunferencia = QVBoxLayout(widget_circunferencia)
+        vertical_circunferencia.setContentsMargins(0, 0, 0, 0)
+        self.lista_circunferencias = QListWidget(widget_circunferencia)
+        vertical_circunferencia.addWidget(self.lista_circunferencias)
+
         informacion = QLabel("Información:", wc, font=fuente, geometry=QRect(0, 10, 91, 16))
         posicion = QLabel("Posición:", wc, font=fuente, geometry=QRect(0, 30, 71, 16))
 
@@ -99,20 +125,6 @@ class VentanaPrincipal(QMainWindow):
         self.angulo_horizontal = QLabel(wc, font=fuente, geometry=QRect(120, 50, 130, 16))
 
         vista = QLabel("Vista:", wc, font=fuente, geometry=QRect(0, 71, 91, 16))
-        crear_puntos = QLabel("Crear puntos:", wc, font=fuente, geometry=QRect(0, 120, 91, 16))
-        distancia_al_origen = QLabel("Distancia al origen:", wc, geometry=QRect(0, 140, 91, 16))
-        alejamiento = QLabel("Alejamiento:", wc, geometry=QRect(0, 160, 91, 16))
-        cota = QLabel("Cota:", wc, geometry=QRect(0, 180, 91, 16))
-
-        crear_rectas = QLabel("Crear rectas:", wc, font=fuente, geometry=QRect(160, 120, 91, 16))
-        punto_1_recta = QLabel("Punto 1:", wc, geometry=QRect(160, 140, 51, 16))
-        punto_2_recta = QLabel("Punto 2:", wc, geometry=QRect(160, 160, 51, 16))
-
-        crear_planos = QLabel("Crear planos:", wc, font=fuente, geometry=QRect(320, 120, 91, 16))
-        punto_1_plano = QLabel("Punto 1:", wc, geometry=QRect(320, 140, 51, 16))
-        punto_2_plano = QLabel("Punto 2:", wc, geometry=QRect(320, 160, 51, 16))
-        punto_3_plano = QLabel("Punto 3:", wc, geometry=QRect(320, 180, 51, 16))
-
         boton_reset = QPushButton("Reset (R)", wc, geometry=QRect(0, 90, 81, 23))
         boton_reset.clicked.connect(self.renderizador.ver_reset)
         boton_alzado = QPushButton("Alzado (1) ''", wc, geometry=QRect(90, 90, 81, 23))
@@ -122,54 +134,66 @@ class VentanaPrincipal(QMainWindow):
         boton_perfil = QPushButton("Perfil (3) '''", wc, geometry=QRect(270, 90, 81, 23))
         boton_perfil.clicked.connect(self.renderizador.ver_perfil)
 
-        boton_punto = QPushButton("Crear", wc, geometry=QRect(0, 232, 151, 22))
+        crear_puntos = QLabel("Crear puntos:", p1, font=fuente, geometry=QRect(0, 30, 91, 16))
+        distancia_al_origen = QLabel("Distancia al origen:", p1, geometry=QRect(0, 50, 91, 16))
+        alejamiento = QLabel("Alejamiento:", p1, geometry=QRect(0, 70, 91, 16))
+        cota = QLabel("Cota:", p1, geometry=QRect(0, 90, 91, 16))
+
+        crear_rectas = QLabel("Crear rectas:", p1, font=fuente, geometry=QRect(160, 30, 91, 16))
+        punto_1_recta = QLabel("Punto 1:", p1, geometry=QRect(160, 50, 51, 16))
+        punto_2_recta = QLabel("Punto 2:", p1, geometry=QRect(160, 70, 51, 16))
+
+        crear_planos = QLabel("Crear planos:", p1, font=fuente, geometry=QRect(320, 30, 91, 16))
+        punto_1_plano = QLabel("Punto 1:", p1, geometry=QRect(320, 50, 51, 16))
+        punto_2_plano = QLabel("Punto 2:", p1, geometry=QRect(320, 70, 51, 16))
+        punto_3_plano = QLabel("Punto 3:", p1, geometry=QRect(320, 90, 51, 16))
+
+        self.punto_nombre = QPlainTextEdit(p1, geometry=QRect(0, 115, 151, 25), placeholderText="Nombre del punto")
+        self.recta_nombre = QPlainTextEdit(p1, geometry=QRect(160, 115, 151, 25), placeholderText="Nombre de la recta")
+        self.plano_nombre = QPlainTextEdit(p1, geometry=QRect(320, 115, 151, 25), placeholderText="Nombre del plano")
+
+        boton_punto = QPushButton("Crear", p1, geometry=QRect(0, 142, 151, 22))
         boton_punto.clicked.connect(self.comprobar_punto)
-        boton_recta = QPushButton("Crear", wc, geometry=QRect(160, 232, 151, 22))
+        boton_recta = QPushButton("Crear", p1, geometry=QRect(160, 142, 151, 22))
         boton_recta.clicked.connect(self.comprobar_recta)
-        boton_plano = QPushButton("Crear", wc, geometry=QRect(320, 232, 151, 22))
+        boton_plano = QPushButton("Crear", p1, geometry=QRect(320, 142, 151, 22))
         boton_plano.clicked.connect(self.comprobar_plano)
 
-        self.valor_distancia_origen = QSpinBox(wc, geometry=QRect(100, 140, 51, 20))
+        self.valor_distancia_origen = QSpinBox(p1, geometry=QRect(100, 50, 51, 20))
         self.valor_distancia_origen.setRange(-499, 499)
-
-        self.valor_alejamiento = QSpinBox(wc, geometry=QRect(100, 160, 51, 20))
+        self.valor_alejamiento = QSpinBox(p1, geometry=QRect(100, 70, 51, 20))
         self.valor_alejamiento.setRange(-499, 499)
-
-        self.valor_cota = QSpinBox(wc, geometry=QRect(100, 180, 51, 20))
+        self.valor_cota = QSpinBox(p1, geometry=QRect(100, 90, 51, 20))
         self.valor_cota.setRange(-499, 499)
 
-        self.punto_recta_1 = QComboBox(wc, geometry=QRect(205, 140, 105, 22))
-        self.punto_recta_2 = QComboBox(wc, geometry=QRect(205, 160, 105, 21))
-        self.punto_plano_1 = QComboBox(wc, geometry=QRect(365, 140, 105, 22))
-        self.punto_plano_2 = QComboBox(wc, geometry=QRect(365, 160, 105, 22))
-        self.punto_plano_3 = QComboBox(wc, geometry=QRect(365, 180, 105, 22))
+        self.punto_recta_1 = QComboBox(p1, geometry=QRect(205, 50, 105, 22))
+        self.punto_recta_2 = QComboBox(p1, geometry=QRect(205, 70, 105, 21))
+        self.punto_plano_1 = QComboBox(p1, geometry=QRect(365, 50, 105, 22))
+        self.punto_plano_2 = QComboBox(p1, geometry=QRect(365, 70, 105, 22))
+        self.punto_plano_3 = QComboBox(p1, geometry=QRect(365, 90, 105, 22))
 
-        self.punto_nombre = QPlainTextEdit(wc, geometry=QRect(0, 205, 151, 25), placeholderText="Nombre del punto")
-        self.recta_nombre = QPlainTextEdit(wc, geometry=QRect(160, 205, 151, 25), placeholderText="Nombre de la recta")
-        self.plano_nombre = QPlainTextEdit(wc, geometry=QRect(320, 205, 151, 25), placeholderText="Nombre del plano")
-
-        self.tercera_proyeccion = QCheckBox("Tercera proyección", dock_diedrico, geometry=QRect(55, 2, 111, 17))
-        self.ver_puntos = QCheckBox("Puntos", dock_diedrico, checked=True, geometry=QRect(169, 2, 61, 17))
-        self.ver_rectas = QCheckBox("Rectas", dock_diedrico, checked=True, geometry=QRect(227, 2, 61, 17))
-        self.ver_planos = QCheckBox("Planos", dock_diedrico, checked=True, geometry=QRect(285, 2, 70, 17))
-
-        widget_punto = QWidget(wc, geometry=QRect(0, 255, 150, 230))
+        widget_punto = QWidget(p1, geometry=QRect(0, 165, 150, 230))
         vertical_punto = QVBoxLayout(widget_punto)
         vertical_punto.setContentsMargins(0, 0, 0, 0)
         self.lista_puntos = QListWidget(widget_punto)
         vertical_punto.addWidget(self.lista_puntos)
 
-        widget_recta = QWidget(wc, geometry=QRect(160, 255, 150, 230))
+        widget_recta = QWidget(p1, geometry=QRect(160, 165, 150, 230))
         vertical_recta = QVBoxLayout(widget_recta)
         vertical_recta.setContentsMargins(0, 0, 0, 0)
         self.lista_rectas = QListWidget(widget_recta)
         vertical_recta.addWidget(self.lista_rectas)
 
-        widget_planos = QWidget(wc, geometry=QRect(320, 255, 151, 230))
+        widget_planos = QWidget(p1, geometry=QRect(320, 165, 151, 230))
         vertical_planos = QVBoxLayout(widget_planos)
         vertical_planos.setContentsMargins(0, 0, 0, 0)
         self.lista_planos = QListWidget(widget_planos)
         vertical_planos.addWidget(self.lista_planos)
+
+        self.tercera_proyeccion = QCheckBox("Tercera proyección", dock_diedrico, geometry=QRect(55, 2, 111, 17))
+        self.ver_puntos = QCheckBox("Puntos", dock_diedrico, checked=True, geometry=QRect(169, 2, 61, 17))
+        self.ver_rectas = QCheckBox("Rectas", dock_diedrico, checked=True, geometry=QRect(227, 2, 61, 17))
+        self.ver_planos = QCheckBox("Planos", dock_diedrico, checked=True, geometry=QRect(285, 2, 70, 17))
 
         herramientas = QLabel("Herramientas:", wc, font=fuente, geometry=QRect(0, 486, 100, 16))
 
@@ -221,6 +245,7 @@ class VentanaPrincipal(QMainWindow):
         self.id_punto = 1
         self.id_recta = 1
         self.id_plano = 1
+        self.id_circunferencia = 1
 
         self.mayusculas = cycle("PQRSTUVWXYZABCDEFGHIJKLMNO")
         self.minusculas = cycle("rstuvwxyzabcdefghijklmnopq")
@@ -231,10 +256,7 @@ class VentanaPrincipal(QMainWindow):
         self.alfabeto_griego = cycle(alfabeto_griego)
         self.actualizar_texto()
         self.modo_oscuro = False
-
-        evento_principal.setStyleSheet(evento_principal.styleSheet()
-                                       + "QMainWindow {border-style: outset; border-width: 1px; border-color: black;}")
-
+        evento_principal.setStyleSheet(evento_principal.styleSheet() + "QMainWindow{border: 1px outset black;}")
         self.showMaximized()
         self.setMenuBar(self.barra_menu)
 
@@ -548,7 +570,9 @@ class VentanaPrincipal(QMainWindow):
             self.evento_principal.setPalette(modo_oscuro)
             self.modo_oscuro = True
             self.accion_modo_oscuro.setText("Establecer modo diurno")
-        self.evento_principal.setStyleSheet(self.evento_principal.styleSheet()+"QMainWindow{border: 1px outset black;}")
+        self.evento_principal.setStyleSheet(self.evento_principal.styleSheet() +
+                                            "QMainWindow{border: 1px outset black;}")
+
     def closeEvent(self, evento):
         if self.recolectar_elementos():
             reply = QMessageBox()
