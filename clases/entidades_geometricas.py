@@ -2,11 +2,10 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QMessageBox, QAction, QColorDialog, QMenu
 
-from math import atan2
+from math import atan2, sin, cos, acos, radians
 from sympy import Point3D, Line3D, Plane, Segment3D, intersection
-from .rodri import calcular_circunferencia
 from . import ventanas_base
-
+from itertools import cycle
 
 class EntidadGeometrica(QWidget):
     def __init__(self, programa, internal_id: int, nombre: str, sympy):
@@ -18,7 +17,8 @@ class EntidadGeometrica(QWidget):
         self.customContextMenuRequested.connect(self.context_menu)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.menu = QMenu()
-        self.borrar = QAction("Borrar")
+        self.accion_borrar = QAction("Borrar")
+        self.accion_borrar.triggered.connect(lambda: self.borrar(self.id))
         self.render = QAction("Visible", checkable=True, checked=True)
         self.actualizar_nombre = QAction("Renombrar")
 
@@ -26,7 +26,7 @@ class EntidadGeometrica(QWidget):
         self.actualizar_nombre.triggered.connect(self.ventana_cambiar_nombre.abrir)
         self.ventana_cambiar_nombre.boton_crear.clicked.connect(self.cambiar_nombre)
 
-        self.menu.addAction(self.borrar)
+        self.menu.addAction(self.accion_borrar)
         self.menu.addAction(self.render)
         self.menu.addAction(self.actualizar_nombre)
 
@@ -108,7 +108,6 @@ class Punto(EntidadGeometrica):
         self.y = sympy.y
         self.z = sympy.z
 
-        self.borrar.triggered.connect(lambda: self.programa.borrar_punto(self.id))
         self.cuadrante = self.calcular_cuadrante(self.coordenadas)
 
     @staticmethod
@@ -131,12 +130,21 @@ class Punto(EntidadGeometrica):
     def guardar(self) -> dict:
         return {"Nombre": self.nombre, "Sympy": self.sympy}
 
+    def borrar(self, borrar_id: int):
+        for indice in range(self.programa.lista_puntos.count()):
+            item = self.programa.lista_puntos.item(indice)
+            widget = self.programa.lista_puntos.itemWidget(item)
+            if widget.id == borrar_id:
+                self.programa.lista_puntos.takeItem(self.programa.lista_puntos.row(item))
+                break
+        self.programa.elegir_puntos_recta()
+        self.programa.elegir_puntos_plano()
+
+
 
 class Recta(EntidadGeometrica):
     def __init__(self, programa, internal_id: int, nombre: str, sympy: Line3D, puntos: list = None):
         EntidadGeometrica.__init__(self, programa, internal_id, nombre, sympy)
-
-        self.borrar.triggered.connect(lambda: self.programa.borrar_recta(self.id))
 
         self.ver_traza_horizontal = QAction("Traza en PH", checkable=True, checked=True)
         self.menu.addAction(self.ver_traza_horizontal)
@@ -326,6 +334,14 @@ class Recta(EntidadGeometrica):
         else:
             return {"Nombre": self.nombre, "Sympy": self.sympy}
 
+    def borrar(self, borrar_id: int):
+        for indice in range(self.programa.lista_rectas.count()):
+            item = self.programa.lista_rectas.item(indice)
+            widget = self.programa.lista_rectas.itemWidget(item)
+            if widget.id == borrar_id:
+                self.programa.lista_rectas.takeItem(self.programa.lista_rectas.row(item))
+                break
+
 
 class Plano(EntidadGeometrica):
     def __init__(self, programa, internal_id: int, nombre: str, sympy: Plane, puntos: list = None):
@@ -353,8 +369,6 @@ class Plano(EntidadGeometrica):
             self.punto_1, self.punto_2, self.punto_3 = puntos[0], puntos[1], puntos[2]
 
         self.limites = self.limites()
-
-        self.borrar.triggered.connect(lambda: self.programa.borrar_plano(self.id))
 
         # Color por defecto del plano, azul
         self.color = (0, 0, 200, 0.4)
@@ -547,10 +561,94 @@ class Plano(EntidadGeometrica):
         else:
             return {"Nombre": self.nombre, "Sympy": self.sympy}
 
+    def borrar(self, borrar_id: int):
+        for indice in range(self.programa.lista_planos.count()):
+            item = self.programa.lista_planos.item(indice)
+            widget = self.programa.lista_planos.itemWidget(item)
+            if widget.id == borrar_id:
+                self.programa.lista_planos.takeItem(self.programa.lista_planos.row(item))
+                break
+
 
 class Circunferencia(EntidadGeometrica):
     def __init__(self, programa, internal_id: int, nombre: str, vector_normal, radio, centro):
         EntidadGeometrica.__init__(self, programa, internal_id, nombre, None)
-        self.puntos = calcular_circunferencia(vector_normal, radio, centro)
+        self.puntos = self.calcular_circunferencia(vector_normal, radio, centro)
+
+    @staticmethod
+    def calcular_circunferencia(vector_normal, radio, centro):
+        # Rotación de rodrigues
+        def rodri(v: Vector, k: Vector, theta):
+            return v * cos(theta) + k.cross(v) * sin(theta) + k * (k.dot(v)) * (1 - cos(theta))
+
+        def calcular_vector_v(r: int, t: int):
+            return Vector([r * cos(radians(t)), r * sin(radians(t)), 0])
+
+        # Vector E, eje Z
+        vector_e = Vector([0, 0, 1])
+        # El vector normal al plano paralelo a la circunferencia
+        vector_u = Vector(vector_normal, normalizar=True)
+        angulo_theta = acos((vector_e.dot(vector_u)/(vector_e.modulo()*vector_u.modulo())))
+        vector_k = vector_e.cross(vector_u)
+
+        # Hacer que el número de segmentos dependa de r, mejora la resolución de la circunferencia cuando el r es grande
+        numero_de_lados = radio + 10
+
+        # Lista que guarda los puntos
+        puntos = []
+
+        for i in range(1, numero_de_lados + 1):
+            vector_v = calcular_vector_v(radio, i * 360 / numero_de_lados)
+            punto = rodri(vector_v, vector_k, angulo_theta)
+            for j in range(3):
+                punto.coords[j] = round(punto.coords[j] + centro.coordinates[j], 4)
+            puntos.append(punto.coords)
+
+        return puntos
 
 
+class Vector:
+    def __init__(self, coords, normalizar=False):
+        if normalizar:
+            self.coords = self.normalizar(coords)
+        else:
+            self.coords = coords
+
+    def __mul__(self, scalar):
+        # Producto escalar
+        return Vector([coord * scalar for coord in self.coords])
+
+    def __add__(self, other):
+        if isinstance(other, (int, float)):
+            # Suma de un vector con un escalar
+            return Vector(self.coords[0] + other, self.coords[1] + other, self.coords[2] + other)
+        else:
+            # Suma de un vector mas otro
+            return Vector([self.coords[0] + other.coords[0],
+                           self.coords[1] + other.coords[1],
+                           self.coords[2] + other.coords[2]])
+
+    def __repr__(self):
+        return str(self.coords)
+
+    def dot(self, vec):
+        # Producto escalar
+        return sum([self.coords[indx] * vec.coords[indx] for indx in range(3)])
+
+    def cross(self, vec):
+        # Producto vectorial
+        return Vector([self.coords[1] * vec.coords[2] - self.coords[2] * vec.coords[1],
+                       self.coords[2] * vec.coords[0] - self.coords[0] * vec.coords[2],
+                       self.coords[0] * vec.coords[1] - self.coords[1] * vec.coords[0]])
+
+    def modulo(self):
+        return sum([coord ** 2 for coord in self.coords]) ** 0.5
+
+    @staticmethod
+    def normalizar(vector: list):
+        # Normaliza los vectores para que tengan la misma longitud
+        length = (vector[0] ** 2 + vector[1] ** 2 + vector[2] ** 2) ** 0.5
+        if length == 0:
+            return [0, 0, 0]
+        vector = [x / length for x in vector]
+        return vector

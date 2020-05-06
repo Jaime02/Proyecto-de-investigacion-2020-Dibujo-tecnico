@@ -446,32 +446,6 @@ class VentanaPrincipal(QMainWindow):
         self.lista_planos.setItemWidget(item, plano)
         self.id_plano += 1
 
-    def borrar_punto(self, borrar_id: int):
-        for indice in range(self.lista_puntos.count()):
-            item = self.lista_puntos.item(indice)
-            widget = self.lista_puntos.itemWidget(item)
-            if widget.id == borrar_id:
-                self.lista_puntos.takeItem(self.lista_puntos.row(item))
-                break
-        self.elegir_puntos_recta()
-        self.elegir_puntos_plano()
-
-    def borrar_recta(self, borrar_id: int):
-        for indice in range(self.lista_rectas.count()):
-            item = self.lista_rectas.item(indice)
-            widget = self.lista_rectas.itemWidget(item)
-            if widget.id == borrar_id:
-                self.lista_rectas.takeItem(self.lista_rectas.row(item))
-                break
-
-    def borrar_plano(self, borrar_id: int):
-        for indice in range(self.lista_planos.count()):
-            item = self.lista_planos.item(indice)
-            widget = self.lista_planos.itemWidget(item)
-            if widget.id == borrar_id:
-                self.lista_planos.takeItem(self.lista_planos.row(item))
-                break
-
     def borrar_todos_los_elementos(self):
         self.lista_puntos.clear()
         self.lista_rectas.clear()

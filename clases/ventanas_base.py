@@ -4,7 +4,6 @@ from PyQt5.QtWidgets import (QWidget, QCheckBox, QPushButton, QMainWindow, QLabe
                              QMessageBox, QColorDialog, QSpinBox, QListWidgetItem)
 from sympy import Point3D, Line3D, Plane, intersection
 
-from .rodri import calcular_circunferencia
 from . import entidades_geometricas
 
 
@@ -849,7 +848,7 @@ class VentanaCircunferencia(QMainWindow):
         self.boton_crear.clicked.connect(self.crear_circunferencia)
         radio = QLabel("Radio:", cw, geometry=QRect(10, 110, 47, 13))
         self.radio = QSpinBox(cw, geometry=QRect(10, 130, 161, 22))
-
+        self.radio.setRange(0, 250)
         self.setCentralWidget(cw)
 
     def abrir(self):
