@@ -1,6 +1,6 @@
 from PyQt5.QtCore import Qt, QRect
 from PyQt5.QtGui import QFont, QIcon
-from PyQt5.QtWidgets import (QWidget, QCheckBox, QPushButton, QMainWindow, QLabel, QPlainTextEdit, QComboBox,
+from PyQt5.QtWidgets import (QWidget, QCheckBox, QPushButton, QMainWindow, QLabel, QLineEdit, QComboBox,
                              QMessageBox, QColorDialog, QSpinBox, QListWidgetItem)
 from sympy import Point3D, Line3D, Plane, intersection
 
@@ -40,7 +40,7 @@ class VentanaBaseConNombre(VentanaBase):
         self.boton_crear.setGeometry(10, 160, 80, 23)
         self.boton_cerrar.setGeometry(90, 160, 80, 23)
 
-        self.nombre = QPlainTextEdit(self.widget_central, geometry=QRect(10, 125, 160, 28))
+        self.nombre = QLineEdit(self.widget_central, geometry=QRect(10, 125, 160, 28))
 
 
 class PuntoMedio(VentanaBaseConNombre):
@@ -78,7 +78,7 @@ class PuntoMedio(VentanaBaseConNombre):
             QMessageBox.critical(self, "Error al crear el punto medio",
                                  "Debes crear al menos dos puntos para calcular su punto medio")
         else:
-            nombre = self.programa.evitar_nombre_punto_blanco(self.nombre.toPlainText())
+            nombre = self.programa.evitar_nombre_punto_blanco(self.nombre.text())
             punto_medio = punto.sympy.midpoint(punto2.sympy)
             nombre = f"{nombre} ({punto_medio.x}, {punto_medio.y}, {punto_medio.z})"
             self.programa.crear_punto(nombre, punto_medio)
@@ -122,7 +122,7 @@ class RectaPerpendicularAPlano(VentanaBaseConNombre):
             QMessageBox.critical(self, "Error al crear la recta",
                                  "Debes crear al menos un plano y un punto para crear una recta")
         else:
-            nombre = self.programa.evitar_nombre_recta_blanco(self.nombre.toPlainText())
+            nombre = self.programa.evitar_nombre_recta_blanco(self.nombre.text())
             nombre = f"{nombre}({punto.nombre}⊥{plano.nombre})"
             recta = plano.sympy.perpendicular_line(punto.sympy)
             self.programa.crear_recta(nombre, recta)
@@ -183,7 +183,7 @@ class PlanoPerpendicularAPlano(VentanaBaseConNombre):
         elif punto.sympy == punto2.sympy:
             QMessageBox.critical(self, "Error al crear el plano", "Los puntos son coincidentes")
         else:
-            nombre = self.programa.evitar_nombre_plano_blanco(self.nombre.toPlainText())
+            nombre = self.programa.evitar_nombre_plano_blanco(self.nombre.text())
             nombre = f"{nombre}⊥{plano.nombre}"
             plano_perpendicular = plano.sympy.perpendicular_plane(punto.sympy, punto2.sympy)
             self.programa.crear_plano(nombre, plano_perpendicular)
@@ -227,7 +227,7 @@ class PlanoParaleloAPlano(VentanaBaseConNombre):
             QMessageBox.critical(self, "Error al crear el plano",
                                  "Debes crear al menos un plano y un punto para crear un plano paralelo a este")
         else:
-            nombre = self.programa.evitar_nombre_plano_blanco(self.nombre.toPlainText())
+            nombre = self.programa.evitar_nombre_plano_blanco(self.nombre.text())
             nombre = f"{nombre}║{plano.nombre}"
             plano_paralelo = plano.sympy.parallel_plane(punto.sympy)
             self.programa.crear_plano(nombre, plano_paralelo)
@@ -269,7 +269,7 @@ class RectaPerpendicularARecta(VentanaBaseConNombre):
             QMessageBox.critical(self, "Error al crear la recta",
                                  "Debes crear al menos una recta y un punto para crear una recta")
         else:
-            nombre = self.programa.evitar_nombre_recta_blanco(self.nombre.toPlainText())
+            nombre = self.programa.evitar_nombre_recta_blanco(self.nombre.text())
             nombre = f"{nombre}({recta.nombre}⊥{punto.nombre})"
             recta_perpendicular = recta.sympy.perpendicular_line(punto.sympy)
             self.programa.crear_recta(nombre, recta_perpendicular)
@@ -313,7 +313,7 @@ class RectaParalelaARecta(VentanaBaseConNombre):
             QMessageBox.critical(self, "Error al crear la recta",
                                  "Debes crear al menos una recta y un punto para crear una recta")
         else:
-            nombre = self.programa.evitar_nombre_recta_blanco(self.nombre.toPlainText())
+            nombre = self.programa.evitar_nombre_recta_blanco(self.nombre.text())
             nombre = f"{nombre}({recta.nombre}║{punto.nombre})"
             recta_perpendicular = recta.sympy.parallel_line(punto.sympy)
             self.programa.crear_recta(nombre, recta_perpendicular)
@@ -556,7 +556,7 @@ class Proyectar(VentanaBaseConNombre):
                                              "El punto no puede proyectarse en esa dirección")
                         return
 
-                nombre = self.programa.evitar_nombre_punto_blanco(self.nombre.toPlainText())
+                nombre = self.programa.evitar_nombre_punto_blanco(self.nombre.text())
                 nombre = f"{nombre}({proyectado.x}, {proyectado.y}, {proyectado.z})"
                 self.programa.crear_punto(nombre, proyectado)
                 self.cerrar()
@@ -623,8 +623,8 @@ class Bisectriz(VentanaBaseConNombre):
                     bis1 = Line3D(punto, direction_ratio=direccion1)
                     bis2 = Line3D(punto, direction_ratio=direccion2)
 
-                    nombre = "bis. 1 " + self.programa.evitar_nombre_recta_blanco(self.nombre.toPlainText())
-                    nombre2 = "bis. 2 " + self.programa.evitar_nombre_recta_blanco(self.nombre.toPlainText())
+                    nombre = "bis. 1 " + self.programa.evitar_nombre_recta_blanco(self.nombre.text())
+                    nombre2 = "bis. 2 " + self.programa.evitar_nombre_recta_blanco(self.nombre.text())
 
                     self.programa.crear_recta(nombre, bis1)
                     self.programa.crear_recta(nombre2, bis2)
@@ -650,8 +650,8 @@ class VentanaRenombrar(QMainWindow):
         widget_central = QWidget(self)
         self.setCentralWidget(widget_central)
 
-        nombre = QLabel("Nombre:", widget_central, geometry=QRect(5, 0, 50, 20))
-        self.widget_texto = QPlainTextEdit(widget_central, geometry=QRect(5, 25, 170, 30))
+        nombre = QLabel("Nombre:", widget_central, geometry=QRect(5, 4, 50, 20))
+        self.widget_texto = QLineEdit(widget_central, geometry=QRect(5, 25, 170, 30))
 
         self.boton_crear = QPushButton("Renombrar", widget_central, geometry=QRect(5, 58, 85, 23))
         self.boton_crear.clicked.connect(self.close)
@@ -841,7 +841,7 @@ class VentanaCircunferencia(QMainWindow):
         etiqueta_plano = QLabel("Paralela al plano:", cw, geometry=QRect(10, 60, 171, 16))
         self.plano = QComboBox(cw, geometry=QRect(10, 80, 161, 22))
         nombre = QLabel("Nombre:", cw, geometry=QRect(10, 160, 47, 13))
-        self.nombre = QPlainTextEdit(cw, geometry=QRect(10, 180, 161, 31))
+        self.nombre = QLineEdit(cw, geometry=QRect(10, 180, 161, 31))
         self.boton_cancelar = QPushButton("Cancelar", cw, geometry=QRect(94, 220, 81, 23))
         self.boton_cancelar.clicked.connect(self.close)
         self.boton_crear = QPushButton("Crear", cw, geometry=QRect(10, 220, 81, 23))
@@ -864,7 +864,7 @@ class VentanaCircunferencia(QMainWindow):
         self.activateWindow()
 
     def crear_circunferencia(self):
-        nombre = self.nombre.toPlainText()
+        nombre = self.nombre.text()
         if not nombre:
             QMessageBox.critical(self, "Error al crear la circunferencia", "No ha introducido un nombre")
         else:

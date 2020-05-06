@@ -5,8 +5,8 @@ from sys import exit
 from PyQt5.QtCore import Qt, QSize, QRect
 from PyQt5.QtGui import QFont, QColor, QIcon, QPalette
 from PyQt5.QtWidgets import (QWidget, QCheckBox, QPushButton, QMainWindow, QLabel, QVBoxLayout, QSpinBox, QMenuBar,
-                             QPlainTextEdit, QComboBox, QMessageBox, QGraphicsScene, QGraphicsView, QListWidgetItem,
-                             QListWidget, QAction, QDockWidget, QFileDialog, QStackedWidget)
+                             QComboBox, QMessageBox, QGraphicsScene, QGraphicsView, QListWidgetItem, QListWidget,
+                             QAction, QDockWidget, QFileDialog, QStackedWidget, QLineEdit)
 from sympy import Point3D, Plane, Line3D
 
 from .widgets_de_dibujo import Diedrico, Renderizador
@@ -148,9 +148,9 @@ class VentanaPrincipal(QMainWindow):
         punto_2_plano = QLabel("Punto 2:", p1, geometry=QRect(320, 70, 51, 16))
         punto_3_plano = QLabel("Punto 3:", p1, geometry=QRect(320, 90, 51, 16))
 
-        self.punto_nombre = QPlainTextEdit(p1, geometry=QRect(0, 115, 151, 25), placeholderText="Nombre del punto")
-        self.recta_nombre = QPlainTextEdit(p1, geometry=QRect(160, 115, 151, 25), placeholderText="Nombre de la recta")
-        self.plano_nombre = QPlainTextEdit(p1, geometry=QRect(320, 115, 151, 25), placeholderText="Nombre del plano")
+        self.punto_nombre = QLineEdit(p1, geometry=QRect(0, 115, 151, 25), placeholderText="Nombre del punto")
+        self.recta_nombre = QLineEdit(p1, geometry=QRect(160, 115, 151, 25), placeholderText="Nombre de la recta")
+        self.plano_nombre = QLineEdit(p1, geometry=QRect(320, 115, 151, 25), placeholderText="Nombre del plano")
 
         boton_punto = QPushButton("Crear", p1, geometry=QRect(0, 142, 151, 22))
         boton_punto.clicked.connect(self.comprobar_punto)
@@ -260,14 +260,13 @@ class VentanaPrincipal(QMainWindow):
         self.showMaximized()
         self.setMenuBar(self.barra_menu)
 
-    def elegir_puntos_recta(self):
+    def actualizar_opciones(self):
         self.punto_recta_1.clear()
         self.punto_recta_2.clear()
         for i in range(self.lista_puntos.count()):
             self.punto_recta_1.addItem(self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre)
             self.punto_recta_2.addItem(self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre)
 
-    def elegir_puntos_plano(self):
         self.punto_plano_1.clear()
         self.punto_plano_2.clear()
         self.punto_plano_3.clear()
@@ -313,25 +312,16 @@ class VentanaPrincipal(QMainWindow):
         return nombre
 
     def evitar_nombre_recta_blanco(self, nombre: str):
-        # Genera nombres genéricos si no se provee uno
         if nombre == "":
             nombre = self.minusculas.__next__()
         return nombre
 
     def evitar_nombre_plano_blanco(self, nombre: str):
-        # Genera nombres genéricos si no se provee uno
         if nombre == "":
             nombre = self.alfabeto_griego.__next__()
         return nombre
 
-    def comprobar_punto(self):
-        nombre = self.punto_nombre.toPlainText()
-        do = self.valor_distancia_origen.value()
-        alejamiento = self.valor_alejamiento.value()
-        cota = self.valor_cota.value()
-        nombre = self.evitar_nombre_punto_blanco(nombre)
-        nombre = f"{nombre}({do}, {alejamiento}, {cota})"
-
+    def evitar_nombre_duplicado(self, nombre):
         nombres = []
         for i in range(self.lista_puntos.count()):
             nombres.append(self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre)
@@ -343,6 +333,16 @@ class VentanaPrincipal(QMainWindow):
         if nombre in nombres:
             QMessageBox.critical(self, "Error al crear el punto", "Ha introducido un nombre que ya está siendo usado")
         else:
+            return True
+
+    def comprobar_punto(self):
+        nombre = self.punto_nombre.text()
+        do = self.valor_distancia_origen.value()
+        alejamiento = self.valor_alejamiento.value()
+        cota = self.valor_cota.value()
+        nombre = self.evitar_nombre_punto_blanco(nombre)
+        nombre = f"{nombre}({do}, {alejamiento}, {cota})"
+        if self.evitar_nombre_duplicado(nombre):
             self.crear_punto(nombre, Point3D(do, alejamiento, cota))
 
     def crear_punto(self, nombre: str, sympy: Point3D):
@@ -352,8 +352,7 @@ class VentanaPrincipal(QMainWindow):
         self.lista_puntos.addItem(item)
         self.lista_puntos.setItemWidget(item, punto)
         self.id_punto += 1
-        self.elegir_puntos_recta()
-        self.elegir_puntos_plano()
+        self.actualizar_opciones()
 
     def comprobar_recta(self):
         punto1 = self.punto_recta_1.currentText()
@@ -370,21 +369,10 @@ class VentanaPrincipal(QMainWindow):
             QMessageBox.critical(self, "Error al crear la recta",
                                  "La recta debe ser creada a partir de dos puntos no coincidentes")
         else:
-            nombre = self.evitar_nombre_recta_blanco(self.recta_nombre.toPlainText())
+            nombre = self.evitar_nombre_recta_blanco(self.recta_nombre.text())
             nombre = f"{nombre}({punto1.nombre}, {punto2.nombre})"
 
-            nombres = []
-            for i in range(self.lista_puntos.count()):
-                nombres.append(self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre)
-            for i in range(self.lista_rectas.count()):
-                nombres.append(self.lista_rectas.itemWidget(self.lista_rectas.item(i)).nombre)
-            for i in range(self.lista_planos.count()):
-                nombres.append(self.lista_planos.itemWidget(self.lista_planos.item(i)).nombre)
-
-            if nombre in nombres:
-                QMessageBox.critical(self, "Error al crear la recta",
-                                     "Ha introducido un nombre que ya está siendo usado")
-            else:
+            if self.evitar_nombre_duplicado(nombre):
                 sympy = Line3D(punto1.sympy, punto2.sympy)
                 self.crear_recta(nombre, sympy, [punto1.sympy, punto2.sympy])
 
@@ -420,21 +408,10 @@ class VentanaPrincipal(QMainWindow):
             QMessageBox.critical(self, "Error al crear el plano",
                                  "El plano debe ser creado por tres puntos no alineados")
         else:
-            nombre = self.evitar_nombre_plano_blanco(self.plano_nombre.toPlainText())
+            nombre = self.evitar_nombre_plano_blanco(self.plano_nombre.text())
             nombre = f"{nombre}({punto1.nombre}, {punto3.nombre}, {punto2.nombre})"
 
-            nombres = []
-            for i in range(self.lista_puntos.count()):
-                nombres.append(self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre)
-            for i in range(self.lista_rectas.count()):
-                nombres.append(self.lista_rectas.itemWidget(self.lista_rectas.item(i)).nombre)
-            for i in range(self.lista_planos.count()):
-                nombres.append(self.lista_planos.itemWidget(self.lista_planos.item(i)).nombre)
-
-            if nombre in nombres:
-                QMessageBox.critical(self, "Error al crear el plano",
-                                     "Ha introducido un nombre que ya está siendo usado")
-            else:
+            if self.evitar_nombre_duplicado(nombre):
                 plano = Plane(punto1.sympy, punto2.sympy, punto3.sympy)
                 self.crear_plano(nombre, plano, puntos=[punto1.coordenadas, punto2.coordenadas, punto3.coordenadas])
 
@@ -450,8 +427,7 @@ class VentanaPrincipal(QMainWindow):
         self.lista_puntos.clear()
         self.lista_rectas.clear()
         self.lista_planos.clear()
-        self.elegir_puntos_recta()
-        self.elegir_puntos_plano()
+        self.actualizar_opciones()
 
     def guardar(self):
         try:

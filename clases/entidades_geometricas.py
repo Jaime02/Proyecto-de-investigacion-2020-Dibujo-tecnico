@@ -77,7 +77,7 @@ class EntidadGeometrica(QWidget):
         self.menu.exec(QCursor.pos())
 
     def cambiar_nombre(self):
-        nombre = self.ventana_cambiar_nombre.widget_texto.toPlainText()
+        nombre = self.ventana_cambiar_nombre.widget_texto.text()
         if nombre:
             nombres = []
             for i in range(self.programa.lista_puntos.count()):
@@ -93,8 +93,7 @@ class EntidadGeometrica(QWidget):
             else:
                 self.nombre = nombre
                 self.etiqueta.setText(nombre)
-                self.programa.elegir_puntos_recta()
-                self.programa.elegir_puntos_plano()
+                self.programa.actualizar_opciones()
         else:
             QMessageBox.critical(self, "Error al cambiar el nombre", "Ha introducido un nombre en blanco")
 
@@ -137,9 +136,7 @@ class Punto(EntidadGeometrica):
             if widget.id == borrar_id:
                 self.programa.lista_puntos.takeItem(self.programa.lista_puntos.row(item))
                 break
-        self.programa.elegir_puntos_recta()
-        self.programa.elegir_puntos_plano()
-
+        self.programa.actualizar_opciones()
 
 
 class Recta(EntidadGeometrica):
