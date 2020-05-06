@@ -51,6 +51,3 @@ jobs:
     - name: build with pyinstaller
       run: |
         generar_exe.bat
-    - name: Prueba a correr el código
-      run: |
-        python Codigo_fuente.py
