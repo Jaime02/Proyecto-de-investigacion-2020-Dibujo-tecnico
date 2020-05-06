@@ -598,6 +598,7 @@ class Diedrico(QWidget):
             self.dibujar_rectas(qp)
         if self.programa.ver_puntos.checkState():
             self.dibujar_puntos(qp)
+        self.dibujar_circunferencia(qp)
         self.update()
 
     def keyPressEvent(self, evento):
@@ -634,26 +635,22 @@ class Diedrico(QWidget):
         for i in range(self.programa.lista_puntos.count()):
             punto = self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i))
             if punto.render.isChecked():
-                self.punto_prima(qp, punto)
-                self.punto_prima2(qp, punto)
+                # Dibuja la proyección ' del punto
+                qp.setPen(self.pen_punto_prima)
+                qp.drawPoint(QPointF(punto.x, -punto.y))
+
+                # Dibuja la proyección " del punto
+                qp.setPen(self.pen_punto_prima2)
+                qp.drawPoint(QPointF(punto.x, punto.z))
+
+                # Si la tercera proyección del punto está activada, la dibuja
                 if self.programa.tercera_proyeccion.checkState():
-                    self.punto_prima3(qp, punto)
-
-    def punto_prima(self, qp, punto):
-        qp.setPen(self.pen_punto_prima)
-        qp.drawPoint(QPointF(punto.x, -punto.y))
-
-    def punto_prima2(self, qp, punto):
-        qp.setPen(self.pen_punto_prima2)
-        qp.drawPoint(QPointF(punto.x, punto.z))
-
-    def punto_prima3(self, qp, punto):
-        if self.programa.modo_oscuro:
-            self.pen_prima3.setColor(QColor(200, 200, 200))
-        else:
-            self.pen_prima3.setColor(QColor(0, 0, 0))
-        qp.setPen(self.pen_prima3)
-        qp.drawPoint(QPointF(-punto.y, punto.z))
+                    if self.programa.modo_oscuro:
+                        self.pen_prima3.setColor(QColor(200, 200, 200))
+                    else:
+                        self.pen_prima3.setColor(QColor(0, 0, 0))
+                    qp.setPen(self.pen_prima3)
+                    qp.drawPoint(QPointF(-punto.y, punto.z))
 
     def dibujar_rectas(self, qp):
         for i in range(self.programa.lista_rectas.count()):
@@ -797,3 +794,16 @@ class Diedrico(QWidget):
                         if plano.ver_trazas_negativas.isChecked():
                             qp.setPen(self.pen_plano_prima2_discontinuo)
                             self.recta_prima2(qp, (plano.traza_v[1], plano.traza_v[2]))
+
+    def dibujar_circunferencia(self, qp):
+        for i in range(self.programa.lista_circunferencias.count()):
+            circ = self.programa.lista_circunferencias.itemWidget(self.programa.lista_circunferencias.item(i))
+            if circ.render.isChecked():
+                segmentos = circ.puntos
+                for j in range(len(segmentos)):
+                    segmento = segmentos[j-1], segmentos[j]
+
+                    qp.setPen(self.pen_recta_prima_continuo)
+                    self.recta_prima(qp, segmento)
+                    qp.setPen(self.pen_recta_prima2_continuo)
+                    self.recta_prima2(qp, segmento)

@@ -1,5 +1,5 @@
 from PyQt5.QtCore import Qt, QRect
-from PyQt5.QtGui import QFont, QIcon
+from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (QWidget, QCheckBox, QPushButton, QMainWindow, QLabel, QLineEdit, QComboBox,
                              QMessageBox, QColorDialog, QSpinBox, QListWidgetItem)
 from sympy import Point3D, Line3D, Plane, intersection
@@ -848,7 +848,7 @@ class VentanaCircunferencia(QMainWindow):
         self.boton_crear.clicked.connect(self.crear_circunferencia)
         radio = QLabel("Radio:", cw, geometry=QRect(10, 110, 47, 13))
         self.radio = QSpinBox(cw, geometry=QRect(10, 130, 161, 22))
-        self.radio.setRange(0, 250)
+        self.radio.setRange(1, 250)
         self.setCentralWidget(cw)
 
     def abrir(self):

@@ -1,11 +1,12 @@
+from math import atan2, sin, cos, acos, radians
+
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QMessageBox, QAction, QColorDialog, QMenu
-
-from math import atan2, sin, cos, acos, radians
 from sympy import Point3D, Line3D, Plane, Segment3D, intersection
+
 from . import ventanas_base
-from itertools import cycle
+
 
 class EntidadGeometrica(QWidget):
     def __init__(self, programa, internal_id: int, nombre: str, sympy):
@@ -585,11 +586,11 @@ class Circunferencia(EntidadGeometrica):
         vector_e = Vector([0, 0, 1])
         # El vector normal al plano paralelo a la circunferencia
         vector_u = Vector(vector_normal, normalizar=True)
-        angulo_theta = acos((vector_e.dot(vector_u)/(vector_e.modulo()*vector_u.modulo())))
+        angulo_theta = acos((vector_e.dot(vector_u))/(vector_u.modulo()))
         vector_k = vector_e.cross(vector_u)
 
         # Hacer que el número de segmentos dependa de r, mejora la resolución de la circunferencia cuando el r es grande
-        numero_de_lados = radio + 10
+        numero_de_lados = radio + 20
 
         # Lista que guarda los puntos
         puntos = []
@@ -603,6 +604,13 @@ class Circunferencia(EntidadGeometrica):
 
         return puntos
 
+    def borrar(self, borrar_id: int):
+        for indice in range(self.programa.lista_circunferencias.count()):
+            item = self.programa.lista_circunferencias.item(indice)
+            widget = self.programa.lista_circunferencias.itemWidget(item)
+            if widget.id == borrar_id:
+                self.programa.lista_circunferencias.takeItem(self.programa.lista_circunferencias.row(item))
+                break
 
 class Vector:
     def __init__(self, coords, normalizar=False):

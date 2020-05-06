@@ -2,18 +2,18 @@ from itertools import cycle
 from pickle import dump, loads
 from sys import exit
 
-from PyQt5.QtCore import Qt, QSize, QRect
+from PyQt5.QtCore import Qt, QRect
 from PyQt5.QtGui import QFont, QColor, QIcon, QPalette
 from PyQt5.QtWidgets import (QWidget, QCheckBox, QPushButton, QMainWindow, QLabel, QVBoxLayout, QSpinBox, QMenuBar,
                              QComboBox, QMessageBox, QGraphicsScene, QGraphicsView, QListWidgetItem, QListWidget,
                              QAction, QDockWidget, QFileDialog, QStackedWidget, QLineEdit)
 from sympy import Point3D, Plane, Line3D
 
-from .widgets_de_dibujo import Diedrico, Renderizador
 from .entidades_geometricas import Punto, Recta, Plano
 from .ventanas_base import (PuntoMedio, Interseccion, Bisectriz, Distancia, Proyectar, RectaParalelaARecta,
                             RectaPerpendicularAPlano, RectaPerpendicularARecta, PlanoParaleloAPlano,
                             PlanoPerpendicularAPlano, Ajustes, AcercaDe, Controles, VentanaCircunferencia)
+from .widgets_de_dibujo import Diedrico, Renderizador
 
 
 class VentanaPrincipal(QMainWindow):
@@ -106,7 +106,6 @@ class VentanaPrincipal(QMainWindow):
         boton_cambiar_a_tab_2.clicked.connect(lambda: self.widget_stack.setCurrentIndex(0))
 
         circunferencia = QLabel("Circunferencia:", p2, font=fuente, geometry=QRect(0, 30, 91, 16))
-
         boton_circunferencia = QPushButton("Crear circunferencia", p2, geometry=QRect(0, 50, 140, 20))
         self.ventana_circunferencia = VentanaCircunferencia(self)
         boton_circunferencia.clicked.connect(self.ventana_circunferencia.abrir)
@@ -427,6 +426,7 @@ class VentanaPrincipal(QMainWindow):
         self.lista_puntos.clear()
         self.lista_rectas.clear()
         self.lista_planos.clear()
+        self.lista_circunferencias.clear()
         self.actualizar_opciones()
 
     def guardar(self):
