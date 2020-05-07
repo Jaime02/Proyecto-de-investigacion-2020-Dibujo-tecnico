@@ -82,7 +82,7 @@ class PuntoMedio(VentanaBaseConNombre):
             punto_medio = punto.sympy.midpoint(punto2.sympy)
             nombre = f"{nombre} ({punto_medio.x}, {punto_medio.y}, {punto_medio.z})"
             self.programa.crear_punto(nombre, punto_medio)
-            self.cerrar()
+            self.close()
 
 
 class RectaPerpendicularAPlano(VentanaBaseConNombre):
@@ -126,7 +126,7 @@ class RectaPerpendicularAPlano(VentanaBaseConNombre):
             nombre = f"{nombre}({punto.nombre}⊥{plano.nombre})"
             recta = plano.sympy.perpendicular_line(punto.sympy)
             self.programa.crear_recta(nombre, recta)
-            self.cerrar()
+            self.close()
 
 
 class PlanoPerpendicularAPlano(VentanaBaseConNombre):
@@ -187,7 +187,7 @@ class PlanoPerpendicularAPlano(VentanaBaseConNombre):
             nombre = f"{nombre}⊥{plano.nombre}"
             plano_perpendicular = plano.sympy.perpendicular_plane(punto.sympy, punto2.sympy)
             self.programa.crear_plano(nombre, plano_perpendicular)
-            self.cerrar()
+            self.close()
 
 
 class PlanoParaleloAPlano(VentanaBaseConNombre):
@@ -231,7 +231,7 @@ class PlanoParaleloAPlano(VentanaBaseConNombre):
             nombre = f"{nombre}║{plano.nombre}"
             plano_paralelo = plano.sympy.parallel_plane(punto.sympy)
             self.programa.crear_plano(nombre, plano_paralelo)
-            self.cerrar()
+            self.close()
 
 
 class RectaPerpendicularARecta(VentanaBaseConNombre):
@@ -273,7 +273,7 @@ class RectaPerpendicularARecta(VentanaBaseConNombre):
             nombre = f"{nombre}({recta.nombre}⊥{punto.nombre})"
             recta_perpendicular = recta.sympy.perpendicular_line(punto.sympy)
             self.programa.crear_recta(nombre, recta_perpendicular)
-            self.cerrar()
+            self.close()
 
 
 class RectaParalelaARecta(VentanaBaseConNombre):
@@ -317,7 +317,7 @@ class RectaParalelaARecta(VentanaBaseConNombre):
             nombre = f"{nombre}({recta.nombre}║{punto.nombre})"
             recta_perpendicular = recta.sympy.parallel_line(punto.sympy)
             self.programa.crear_recta(nombre, recta_perpendicular)
-            self.cerrar()
+            self.close()
 
 
 class Distancia(VentanaBase):
@@ -559,7 +559,7 @@ class Proyectar(VentanaBaseConNombre):
                 nombre = self.programa.evitar_nombre_punto_blanco(self.nombre.text())
                 nombre = f"{nombre}({proyectado.x}, {proyectado.y}, {proyectado.z})"
                 self.programa.crear_punto(nombre, proyectado)
-                self.cerrar()
+                self.close()
 
 
 class Bisectriz(VentanaBaseConNombre):
