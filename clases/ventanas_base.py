@@ -30,6 +30,10 @@ class VentanaBase(QMainWindow):
         self.entidad_1 = QComboBox(self.widget_central, geometry=QRect(10, 30, 160, 25))
         self.entidad_2 = QComboBox(self.widget_central, geometry=QRect(10, 80, 160, 25))
 
+    def keyPressEvent(self, evento):
+        if evento.key() == Qt.Key_Return:
+            self.boton_crear.click()
+
 
 class VentanaBaseConNombre(VentanaBase):
     def __init__(self, programa):
@@ -325,6 +329,7 @@ class Distancia(VentanaBase):
         VentanaBase.__init__(self, programa)
 
         self.setWindowTitle("Calcular distancia")
+        self.boton_crear.setText("Calcular")
         self.etiqueta_1.setText("Entidad geométrica 1:")
         self.etiqueta_2.setText("Entidad geométrica 2:")
 
