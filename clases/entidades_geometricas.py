@@ -575,6 +575,7 @@ class Circunferencia(EntidadGeometrica):
 
     @staticmethod
     def calcular_circunferencia(vector_normal, radio, centro):
+        # TODO: Mejorar el punto en el que la circunferencia toca a los planos de proyección
         # Rotación de rodrigues
         def rodri(v: Vector, k: Vector, theta):
             return v * cos(theta) + k.cross(v) * sin(theta) + k * (k.dot(v)) * (1 - cos(theta))

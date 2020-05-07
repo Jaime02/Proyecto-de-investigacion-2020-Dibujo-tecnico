@@ -666,6 +666,7 @@ class Diedrico(QWidget):
                         self.dibujar_discontinuo(qp, partes['III'])
                     if 'IV' in partes:
                         self.dibujar_discontinuo(qp, partes['IV'])
+                    self.recta_prima3(qp, recta.extremos)
                 else:
                     if recta.cuadrante_punto_1 == recta.cuadrante_punto_2 == "I":
                         self.dibujar_continuo(qp, (recta.punto_1.coordinates, recta.punto_2.coordinates))
@@ -704,15 +705,7 @@ class Diedrico(QWidget):
                                     self.dibujar_discontinuo(qp, (recta.traza_h, recta.punto_2.coordinates))
 
                                 self.dibujar_continuo(qp, (recta.traza_v, recta.traza_h))
-
-                # Tercera proyección
-                if self.programa.tercera_proyeccion.checkState():
-                    if self.programa.modo_oscuro:
-                        self.pen_prima3.setColor(QColor(200, 200, 200))
-                    else:
-                        self.pen_prima3.setColor(QColor(0, 0, 0))
-                    qp.setPen(self.pen_prima3)
-                    self.recta_prima3(qp, recta.extremos)
+                    self.recta_prima3(qp, recta.puntos)
 
                 self.dibujar_trazas_recta(qp, recta)
 
@@ -746,13 +739,19 @@ class Diedrico(QWidget):
         if not (x0 == x and y0 == y):
             qp.drawLine(QPointF(x0, y0), QPointF(x, y))
 
-    @staticmethod
-    def recta_prima3(qp, extremos):
-        x0 = -extremos[0][1]
-        x = -extremos[1][1]
-        y0 = extremos[0][2]
-        y = extremos[1][2]
-        qp.drawLine(QPointF(x0, y0), QPointF(x, y))
+    def recta_prima3(self, qp, extremos):
+        # Tercera proyección
+        if self.programa.tercera_proyeccion.checkState():
+            if self.programa.modo_oscuro:
+                self.pen_prima3.setColor(QColor(200, 200, 200))
+            else:
+                self.pen_prima3.setColor(QColor(0, 0, 0))
+            qp.setPen(self.pen_prima3)
+            x0 = -extremos[0][1]
+            x = -extremos[1][1]
+            y0 = extremos[0][2]
+            y = extremos[1][2]
+            qp.drawLine(QPointF(x0, y0), QPointF(x, y))
 
     def dibujar_trazas_recta(self, qp, recta):
         qp.setPen(self.pen_trazas)
@@ -800,10 +799,25 @@ class Diedrico(QWidget):
             circ = self.programa.lista_circunferencias.itemWidget(self.programa.lista_circunferencias.item(i))
             if circ.render.isChecked():
                 segmentos = circ.puntos
+
+                # Tercera proyección
+                if self.programa.tercera_proyeccion.checkState():
+                    if self.programa.modo_oscuro:
+                        self.pen_prima3.setColor(QColor(200, 200, 200))
+                    else:
+                        self.pen_prima3.setColor(QColor(0, 0, 0))
+
                 for j in range(len(segmentos)):
                     segmento = segmentos[j-1], segmentos[j]
+                    if segmento[0][1] >= 0 and segmento[0][2] >= 0 and segmento[1][1] >= 0 and segmento[1][2] >= 0:
+                        qp.setPen(self.pen_recta_prima_continuo)
+                        self.recta_prima(qp, segmento)
+                        qp.setPen(self.pen_recta_prima2_continuo)
+                        self.recta_prima2(qp, segmento)
+                    else:
+                        qp.setPen(self.pen_recta_prima)
+                        self.recta_prima(qp, segmento)
+                        qp.setPen(self.pen_recta_prima2)
+                        self.recta_prima2(qp, segmento)
 
-                    qp.setPen(self.pen_recta_prima_continuo)
-                    self.recta_prima(qp, segmento)
-                    qp.setPen(self.pen_recta_prima2_continuo)
-                    self.recta_prima2(qp, segmento)
+                    self.recta_prima3(qp, segmento)
