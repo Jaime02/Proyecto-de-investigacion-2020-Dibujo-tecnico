@@ -586,8 +586,8 @@ class Circunferencia(EntidadGeometrica):
         vector_e = Vector([0, 0, 1])
         # El vector normal al plano paralelo a la circunferencia
         vector_u = Vector(vector_normal, normalizar=True)
-        angulo_theta = acos((vector_e.dot(vector_u))/(vector_u.modulo()))
-        vector_k = vector_e.cross(vector_u)
+        angulo_theta = acos(vector_e.dot(vector_u)/vector_u.modulo())
+        vector_k = vector_e.cross(vector_u)/(vector_e.cross(vector_u).modulo())
 
         # Hacer que el número de segmentos dependa de r, mejora la resolución de la circunferencia cuando el r es grande
         numero_de_lados = radio + 20
@@ -612,6 +612,7 @@ class Circunferencia(EntidadGeometrica):
                 self.programa.lista_circunferencias.takeItem(self.programa.lista_circunferencias.row(item))
                 break
 
+
 class Vector:
     def __init__(self, coords, normalizar=False):
         if normalizar:
@@ -635,6 +636,9 @@ class Vector:
 
     def __repr__(self):
         return str(self.coords)
+
+    def __truediv__(self, scalar):
+        return Vector([coord / scalar for coord in self.coords])
 
     def dot(self, vec):
         # Producto escalar
