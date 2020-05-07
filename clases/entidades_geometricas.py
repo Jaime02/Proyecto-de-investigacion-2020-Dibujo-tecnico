@@ -588,7 +588,11 @@ class Circunferencia(EntidadGeometrica):
         # El vector normal al plano paralelo a la circunferencia
         vector_u = Vector(vector_normal, normalizar=True)
         angulo_theta = acos(vector_e.dot(vector_u)/vector_u.modulo())
-        vector_k = vector_e.cross(vector_u)/(vector_e.cross(vector_u).modulo())
+        denominador = vector_e.cross(vector_u).modulo()
+        if denominador != 0:
+            vector_k = vector_e.cross(vector_u)/(vector_e.cross(vector_u).modulo())
+        else:
+            vector_k = Vector([0, 0, 1])
 
         # Hacer que el número de segmentos dependa de r, mejora la resolución de la circunferencia cuando el r es grande
         numero_de_lados = radio + 20
