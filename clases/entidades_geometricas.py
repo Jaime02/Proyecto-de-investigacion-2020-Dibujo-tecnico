@@ -399,7 +399,7 @@ class Plano(EntidadGeometrica):
             punto_en_LT = intersection(self.sympy, Segment3D(Point3D(500, 0, 0), Point3D(-500, 0, 0)))
             if punto_en_LT:
                 if not isinstance(punto_en_LT[0], Segment3D):
-                    if abs(punto_en_LT[0][0]) < 500:
+                    if abs(punto_en_LT[0][0]) <= 500:
                         self.punto_en_LT = punto_en_LT[0]
 
                     if self.traza_h[0][1] < self.traza_h[1][1]:
