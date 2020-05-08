@@ -17,7 +17,7 @@ from .widgets_de_dibujo import Diedrico, Renderizador
 
 
 class VentanaPrincipal(QMainWindow):
-    def __init__(self, evento_principal):
+    def __init__(self, evento_principal, archivo=None):
         QMainWindow.__init__(self)
         self.setWindowTitle("Dibujo técnico")
         self.evento_principal = evento_principal
@@ -35,7 +35,7 @@ class VentanaPrincipal(QMainWindow):
         self.menu_archivo.addAction(self.accion_guardar)
 
         self.accion_abrir = QAction("Abrir")
-        self.accion_abrir.triggered.connect(self.abrir)
+        self.accion_abrir.triggered.connect(self.elegir_archivo)
         self.menu_archivo.addAction(self.accion_abrir)
 
         self.borrar_todo = QAction("Borrar todo")
@@ -259,6 +259,9 @@ class VentanaPrincipal(QMainWindow):
         self.showMaximized()
         self.setMenuBar(self.barra_menu)
 
+        if archivo:
+            self.cargar_archivo(archivo)
+
     def actualizar_opciones(self):
         self.punto_recta_1.clear()
         self.punto_recta_2.clear()
@@ -463,33 +466,35 @@ class VentanaPrincipal(QMainWindow):
         else:
             return False
 
-    def abrir(self):
+    def elegir_archivo(self):
         try:
             nombre, extension = QFileDialog.getOpenFileName(self, "Abrir", "", "Diédrico (*.diedrico)")
-
-            with open(nombre, 'rb') as archivo:
-                elementos = loads(archivo.read())
-
-                for punto in elementos["Puntos"]:
-                    self.crear_punto(punto["Nombre"], punto["Sympy"])
-
-                for recta in elementos["Rectas"]:
-                    if "Punto_1" in recta:
-                        puntos = (recta["Punto_1"], recta["Punto_2"])
-                        self.crear_recta(recta["Nombre"], recta["Sympy"], puntos)
-                    else:
-                        self.crear_recta(recta["Nombre"], recta["Sympy"])
-
-                for plano in elementos["Planos"]:
-                    if "Punto_1" in plano:
-                        puntos = (plano["Punto_1"], plano["Punto_2"], plano["Punto_3"])
-                        self.crear_plano(plano["Nombre"], plano["Sympy"], puntos)
-                    else:
-                        self.crear_plano(plano["Nombre"], plano["Sympy"])
+            self.cargar_archivo(nombre)
         except FileNotFoundError:
             pass
         except OSError:
             QMessageBox.critical(self, "Error al abrir", "Se ha producido un error al abrir el archivo")
+
+    def cargar_archivo(self, nombre):
+        with open(nombre, 'rb') as archivo:
+            elementos = loads(archivo.read())
+
+            for punto in elementos["Puntos"]:
+                self.crear_punto(punto["Nombre"], punto["Sympy"])
+
+            for recta in elementos["Rectas"]:
+                if "Punto_1" in recta:
+                    puntos = (recta["Punto_1"], recta["Punto_2"])
+                    self.crear_recta(recta["Nombre"], recta["Sympy"], puntos)
+                else:
+                    self.crear_recta(recta["Nombre"], recta["Sympy"])
+
+            for plano in elementos["Planos"]:
+                if "Punto_1" in plano:
+                    puntos = (plano["Punto_1"], plano["Punto_2"], plano["Punto_3"])
+                    self.crear_plano(plano["Nombre"], plano["Sympy"], puntos)
+                else:
+                    self.crear_plano(plano["Nombre"], plano["Sympy"])
 
     def cambiar_modo(self):
         if self.modo_oscuro:
