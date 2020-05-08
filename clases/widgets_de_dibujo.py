@@ -186,7 +186,7 @@ class Renderizador(QOpenGLWidget):
             punto = self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i))
             if punto.render.isChecked() and punto.cuadrante == cuadrante:
                 glColor(punto.color)
-                glPointSize(5)
+                glPointSize(punto.grosor)
                 glEnable(GL_POINT_SMOOTH)
                 glBegin(GL_POINTS)
                 glVertex(punto.x, punto.y, punto.z)
@@ -203,7 +203,7 @@ class Renderizador(QOpenGLWidget):
             recta = self.programa.lista_rectas.itemWidget(self.programa.lista_rectas.item(i))
             if recta.render.isChecked():
                 glColor(recta.color)
-                glLineWidth(2)
+                glLineWidth(recta.grosor)
                 if recta.infinita.isChecked():
                     if "I" in recta.partes and cuadrante == "I":
                         glBegin(GL_LINES)

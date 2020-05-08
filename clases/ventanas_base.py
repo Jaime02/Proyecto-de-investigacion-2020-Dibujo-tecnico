@@ -891,3 +891,43 @@ class VentanaCircunferencia(QMainWindow):
             self.programa.lista_circunferencias.addItem(item)
             self.programa.lista_circunferencias.setItemWidget(item, circ)
             self.programa.id_circunferencia += 1
+
+
+class VentanaCambiarGrosorPunto(QMainWindow):
+    def __init__(self):
+        QMainWindow.__init__(self)
+        self.resize(170, 100)
+        self.setWindowModality(Qt.ApplicationModal)
+        self.setWindowFlags(Qt.Tool)
+        cw = QWidget()
+        self.setCentralWidget(cw)
+        self.setWindowTitle("Cambiar el grosor")
+        etiqueta = QLabel("Grosor:", cw, geometry=QRect(10, 10, 47, 13))
+        self.spinbox_grosor = QSpinBox(cw, geometry=QRect(10, 30, 151, 21))
+        self.spinbox_grosor.setRange(1, 10)
+        self.boton_crear = QPushButton("Cambiar", cw, geometry=QRect(10, 60, 75, 23))
+        self.boton_cancelar = QPushButton("Candelar", cw, geometry=QRect(90, 60, 75, 23), clicked=self.close)
+
+    def abrir(self):
+        self.show()
+        self.activateWindow()
+
+
+class VentanaCambiarGrosorRecta(QMainWindow):
+    def __init__(self):
+        QMainWindow.__init__(self)
+        self.resize(170, 100)
+        self.setWindowModality(Qt.ApplicationModal)
+        self.setWindowFlags(Qt.Tool)
+        cw = QWidget()
+        self.setCentralWidget(cw)
+        self.setWindowTitle("Cambiar el grosor")
+        etiqueta = QLabel("Grosor:", cw, geometry=QRect(10, 10, 47, 13))
+        self.spinbox_grosor = QSpinBox(cw, geometry=QRect(10, 30, 151, 21))
+        self.spinbox_grosor.setRange(1, 10)
+        self.boton_crear = QPushButton("Cambiar", cw, geometry=QRect(10, 60, 75, 23))
+        self.boton_cancelar = QPushButton("Candelar", cw, geometry=QRect(90, 60, 75, 23), clicked=self.close)
+
+    def abrir(self):
+        self.show()
+        self.activateWindow()

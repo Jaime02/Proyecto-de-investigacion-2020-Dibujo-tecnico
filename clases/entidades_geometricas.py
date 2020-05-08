@@ -110,6 +110,13 @@ class Punto(EntidadGeometrica):
 
         self.cuadrante = self.calcular_cuadrante(self.coordenadas)
 
+        self.grosor = 5
+        self.accion_grosor = QAction("Cambiar grosor")
+        self.ventana_cambiar_grosor = ventanas_base.VentanaCambiarGrosorPunto()
+        self.ventana_cambiar_grosor.boton_crear.clicked.connect(self.cambiar_grosor)
+        self.accion_grosor.triggered.connect(self.ventana_cambiar_grosor.abrir)
+        self.menu.addAction(self.accion_grosor)
+
     @staticmethod
     def calcular_cuadrante(coordenadas) -> str:
         # Se considera que los puntos contenidos en el plano vertical positivo
@@ -139,10 +146,20 @@ class Punto(EntidadGeometrica):
                 break
         self.programa.actualizar_opciones()
 
+    def cambiar_grosor(self):
+        self.grosor = self.ventana_cambiar_grosor.spinbox_grosor.value()
+
 
 class Recta(EntidadGeometrica):
     def __init__(self, programa, internal_id: int, nombre: str, sympy: Line3D, puntos: list = None):
         EntidadGeometrica.__init__(self, programa, internal_id, nombre, sympy)
+
+        self.grosor = 2
+        self.accion_grosor = QAction("Cambiar grosor")
+        self.ventana_cambiar_grosor = ventanas_base.VentanaCambiarGrosorRecta()
+        self.ventana_cambiar_grosor.boton_crear.clicked.connect(self.cambiar_grosor)
+        self.accion_grosor.triggered.connect(self.ventana_cambiar_grosor.abrir)
+        self.menu.addAction(self.accion_grosor)
 
         self.ver_traza_horizontal = QAction("Traza en PH", checkable=True, checked=True)
         self.menu.addAction(self.ver_traza_horizontal)
@@ -339,6 +356,9 @@ class Recta(EntidadGeometrica):
             if widget.id == borrar_id:
                 self.programa.lista_rectas.takeItem(self.programa.lista_rectas.row(item))
                 break
+
+    def cambiar_grosor(self):
+        self.grosor = self.ventana_cambiar_grosor.spinbox_grosor.value()
 
 
 class Plano(EntidadGeometrica):
