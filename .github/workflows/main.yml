@@ -32,7 +32,7 @@ jobs:
       run: |
         pip list
     - uses: actions/checkout@v2
-	- name: Instala weas de OpenGL
+    - name: Instala weas de OpenGL
     - run: |
         curl -LJO https://github.com/pal1000/mesa-dist-win/releases/download/19.1.0/mesa3d-19.1.0-release-msvc.exe
         7z x mesa3d-19.1.0-release-msvc.exe
