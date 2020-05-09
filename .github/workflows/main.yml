@@ -56,7 +56,7 @@ jobs:
         commit_options: '--no-verify --signoff'
 
         # Optional glob pattern of files which should be added to the commit
-        file_pattern: dis/*.exe
+        file_pattern: dist/*.exe
 
         # Optional local file path to the repository
         repository: .
