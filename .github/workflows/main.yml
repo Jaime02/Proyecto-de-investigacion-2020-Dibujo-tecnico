@@ -46,10 +46,11 @@ jobs:
     - name: Commit files
       run: |
         cd dist
+        rename Codigo_fuente.exe Dibujo_tecnico.exe
         move *.* ..
         cd ..
         git pull
-        git add *.exe
+        git add Dibujo_tecnico.exe
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git commit -m "Actualizado el .exe" -a
