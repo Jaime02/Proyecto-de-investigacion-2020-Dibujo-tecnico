@@ -17,10 +17,12 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.8.2
+    
     - name: Instala las dependencias
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+    
     - name: Instala weas de OpenGL
       run: |
         curl -LJO https://github.com/pal1000/mesa-dist-win/releases/download/19.1.0/mesa3d-19.1.0-release-msvc.exe
@@ -36,6 +38,15 @@ jobs:
         REG ADD "HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\Windows NT\CurrentVersion\OpenGLDrivers\MSOGL" /v DriverVersion /t REG_DWORD /d 1 /f
         REG ADD "HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\Windows NT\CurrentVersion\OpenGLDrivers\MSOGL" /v Flags /t REG_DWORD /d 1 /f
         REG ADD "HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\Windows NT\CurrentVersion\OpenGLDrivers\MSOGL" /v Version /t REG_DWORD /d 2 /f
+    
     - name: Utiliza PyInstaller
       run: |
         pyinstaller --onefile -i "Logo.ico" Codigo_fuente.py
+    
+    - uses: actions/upload-release-asset@v1
+    - name: Sube el .exe
+      run: |
+        cd dist
+        git add *
+        git commit -m "Actualizado el .exe"
+        git push
