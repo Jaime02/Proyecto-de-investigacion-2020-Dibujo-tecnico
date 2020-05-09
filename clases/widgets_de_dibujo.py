@@ -331,6 +331,7 @@ class Renderizador(QOpenGLWidget):
                     for j in puntos:
                         glVertex(j)
                     glEnd()
+                    glLineWidth(2)
                     glBegin(GL_LINE_LOOP)
                     for j in plano.limites:
                         glVertex(j)
@@ -359,7 +360,7 @@ class Renderizador(QOpenGLWidget):
         glLoadMatrixf(self.m)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        self.dibujar_elementos()
+        self.ordenar_elementos()
         self.update()
 
     def dibujar_entidades(self, cuadrante: str):
@@ -370,7 +371,7 @@ class Renderizador(QOpenGLWidget):
         if self.programa.ajustes.ver_puntos.isChecked():
             self.dibujar_puntos(cuadrante)
 
-    def dibujar_elementos(self):
+    def ordenar_elementos(self):
         self.bordes_plano_horizontal()
         self.bordes_plano_vertical()
 

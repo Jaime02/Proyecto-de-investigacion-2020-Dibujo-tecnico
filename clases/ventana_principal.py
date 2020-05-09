@@ -278,7 +278,8 @@ class VentanaPrincipal(QMainWindow):
             self.punto_plano_3.addItem(self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre)
 
     def actualizar_texto(self):
-        self.angulo_vertical.setText("Ángulo vertical: " + str(self.renderizador.theta - 360))
+        # self.angulo_vertical.setText("Ángulo vertical: " + str(self.renderizador.theta - 360))
+        self.angulo_vertical.setText("Ángulo vertical: " + str(self.renderizador.theta))
         self.angulo_horizontal.setText("Ángulo horizontal: " + str(self.renderizador.phi))
 
         y = self.renderizador.y
