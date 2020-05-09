@@ -43,29 +43,12 @@ jobs:
       run: |
         pyinstaller --onefile -i "Logo.ico" Codigo_fuente.py
     
-    - uses: stefanzweifel/git-auto-commit-action@v4.1.6
+    - name: Commit files
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git commit -m "Actualizado el .exe" -a
+    - name: Push changes
+      uses: ad-m/github-push-action@master
       with:
-        commit_message: Añade el .exe automáticamente
-
-        # Optional name of the branch the commit should be pushed to
-        # Required if Action is used in Workflow listening to the `pull_request` event.
-        # Also required for almost all other events (eg. `schedule`)
-        branch: ${{ github.head_ref }}
-
-        # Optional git params
-        commit_options: '--no-verify --signoff'
-
-        # Optional glob pattern of files which should be added to the commit
-        file_pattern: dist/*.exe
-
-        # Optional local file path to the repository
-        repository: .
-
-        # Optional commit user and author settings
-        commit_user_name: My GitHub Actions Bot
-        commit_user_email: my-github-actions-bot@example.org
-        commit_author: Author <actions@github.com>
-
-        # Optional tag message. 
-        # Action will create and push a new tag to the remote repository and the defined branch
-        tagging_message: 'v1.0.0'
+        github_token: ${{ secrets.GITHUB_TOKEN }}
