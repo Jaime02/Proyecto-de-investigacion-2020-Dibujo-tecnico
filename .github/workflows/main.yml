@@ -41,4 +41,4 @@ jobs:
         REG ADD "HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\Windows NT\CurrentVersion\OpenGLDrivers\MSOGL" /v Version /t REG_DWORD /d 2 /f
     - name: Utiliza PyInstaller
       run: |
-        generar_exe.bat
+        pyinstaller --onefile -i "Logo.ico" Codigo_fuente.py
