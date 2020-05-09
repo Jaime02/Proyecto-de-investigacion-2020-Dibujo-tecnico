@@ -1,8 +1,10 @@
 from PyQt5.QtCore import Qt, QRect
-from PyQt5.QtGui import QFont, QIcon
-from PyQt5.QtWidgets import (QWidget, QCheckBox, QPushButton, QMainWindow, QLabel, QPlainTextEdit, QComboBox,
-                             QMessageBox, QColorDialog)
+from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import (QWidget, QCheckBox, QPushButton, QMainWindow, QLabel, QLineEdit, QComboBox,
+                             QMessageBox, QColorDialog, QSpinBox, QListWidgetItem)
 from sympy import Point3D, Line3D, Plane, intersection
+
+from . import entidades_geometricas
 
 
 class VentanaBase(QMainWindow):
@@ -25,8 +27,12 @@ class VentanaBase(QMainWindow):
         self.boton_cerrar = QPushButton("Cancelar", self.widget_central, geometry=QRect(90, 110, 80, 23))
         self.boton_cerrar.clicked.connect(self.close)
 
-        self.elegir_entidad_1 = QComboBox(self.widget_central, geometry=QRect(10, 30, 160, 25))
-        self.elegir_entidad_2 = QComboBox(self.widget_central, geometry=QRect(10, 80, 160, 25))
+        self.entidad_1 = QComboBox(self.widget_central, geometry=QRect(10, 30, 160, 25))
+        self.entidad_2 = QComboBox(self.widget_central, geometry=QRect(10, 80, 160, 25))
+
+    def keyPressEvent(self, evento):
+        if evento.key() == Qt.Key_Return:
+            self.boton_crear.click()
 
 
 class VentanaBaseConNombre(VentanaBase):
@@ -38,7 +44,7 @@ class VentanaBaseConNombre(VentanaBase):
         self.boton_crear.setGeometry(10, 160, 80, 23)
         self.boton_cerrar.setGeometry(90, 160, 80, 23)
 
-        self.nombre = QPlainTextEdit(self.widget_central, geometry=QRect(10, 125, 160, 28))
+        self.nombre = QLineEdit(self.widget_central, geometry=QRect(10, 125, 160, 28))
 
 
 class PuntoMedio(VentanaBaseConNombre):
@@ -50,22 +56,20 @@ class PuntoMedio(VentanaBaseConNombre):
         self.boton_crear.clicked.connect(self.crear_punto)
 
     def abrir(self):
-        self.elegir_entidad_1.clear()
-        self.elegir_entidad_2.clear()
+        self.entidad_1.clear()
+        self.entidad_2.clear()
         for i in range(self.programa.lista_puntos.count()):
-            self.elegir_entidad_1.addItem(
-                self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
+            self.entidad_1.addItem(self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
 
         for i in range(self.programa.lista_puntos.count()):
-            self.elegir_entidad_2.addItem(
-                self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
+            self.entidad_2.addItem(self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
 
         self.show()
         self.activateWindow()
 
     def crear_punto(self):
-        punto = self.elegir_entidad_1.currentText()
-        punto2 = self.elegir_entidad_2.currentText()
+        punto = self.entidad_1.currentText()
+        punto2 = self.entidad_2.currentText()
         for i in range(self.programa.lista_puntos.count()):
             if self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre == punto:
                 punto = self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i))
@@ -78,11 +82,11 @@ class PuntoMedio(VentanaBaseConNombre):
             QMessageBox.critical(self, "Error al crear el punto medio",
                                  "Debes crear al menos dos puntos para calcular su punto medio")
         else:
-            nombre = self.programa.evitar_nombre_punto_blanco(self.nombre.toPlainText())
+            nombre = self.programa.evitar_nombre_punto_blanco(self.nombre.text())
             punto_medio = punto.sympy.midpoint(punto2.sympy)
             nombre = f"{nombre} ({punto_medio.x}, {punto_medio.y}, {punto_medio.z})"
             self.programa.crear_punto(nombre, punto_medio)
-            self.cerrar()
+            self.close()
 
 
 class RectaPerpendicularAPlano(VentanaBaseConNombre):
@@ -95,22 +99,20 @@ class RectaPerpendicularAPlano(VentanaBaseConNombre):
         self.boton_crear.clicked.connect(self.crear_recta)
 
     def abrir(self):
-        self.elegir_entidad_1.clear()
-        self.elegir_entidad_2.clear()
+        self.entidad_1.clear()
+        self.entidad_2.clear()
         for i in range(self.programa.lista_puntos.count()):
-            self.elegir_entidad_1.addItem(
-                self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
+            self.entidad_1.addItem(self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
 
         for i in range(self.programa.lista_planos.count()):
-            self.elegir_entidad_2.addItem(
-                self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre)
+            self.entidad_2.addItem(self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre)
 
         self.show()
         self.activateWindow()
 
     def crear_recta(self):
-        punto = self.elegir_entidad_1.currentText()
-        plano = self.elegir_entidad_2.currentText()
+        punto = self.entidad_1.currentText()
+        plano = self.entidad_2.currentText()
 
         for i in range(self.programa.lista_puntos.count()):
             if self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre == punto:
@@ -124,11 +126,11 @@ class RectaPerpendicularAPlano(VentanaBaseConNombre):
             QMessageBox.critical(self, "Error al crear la recta",
                                  "Debes crear al menos un plano y un punto para crear una recta")
         else:
-            nombre = self.programa.evitar_nombre_recta_blanco(self.nombre.toPlainText())
+            nombre = self.programa.evitar_nombre_recta_blanco(self.nombre.text())
             nombre = f"{nombre}({punto.nombre}⊥{plano.nombre})"
             recta = plano.sympy.perpendicular_line(punto.sympy)
             self.programa.crear_recta(nombre, recta)
-            self.cerrar()
+            self.close()
 
 
 class PlanoPerpendicularAPlano(VentanaBaseConNombre):
@@ -142,7 +144,7 @@ class PlanoPerpendicularAPlano(VentanaBaseConNombre):
         self.etiqueta_2.setGeometry(10, 110, 41, 16)
         self.etiqueta_3 = QLabel("Punto:", self.widget_central, geometry=QRect(10, 60, 41, 16))
 
-        self.elegir_entidad_3 = QComboBox(self.widget_central, geometry=QRect(10, 130, 160, 25))
+        self.entidad_3 = QComboBox(self.widget_central, geometry=QRect(10, 130, 160, 25))
         self.etiqueta_nombre.setGeometry(10, 155, 50, 20)
         self.nombre.setGeometry(10, 175, 160, 28)
 
@@ -152,25 +154,22 @@ class PlanoPerpendicularAPlano(VentanaBaseConNombre):
         self.boton_crear.clicked.connect(self.crear_plano)
 
     def abrir(self):
-        self.elegir_entidad_1.clear()
-        self.elegir_entidad_2.clear()
-        self.elegir_entidad_3.clear()
+        self.entidad_1.clear()
+        self.entidad_2.clear()
+        self.entidad_3.clear()
         for i in range(self.programa.lista_puntos.count()):
-            self.elegir_entidad_1.addItem(
-                self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
-            self.elegir_entidad_2.addItem(
-                self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
+            self.entidad_1.addItem(self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
+            self.entidad_2.addItem(self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
         for i in range(self.programa.lista_planos.count()):
-            self.elegir_entidad_3.addItem(
-                self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre)
+            self.entidad_3.addItem(self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre)
 
         self.show()
         self.activateWindow()
 
     def crear_plano(self):
-        punto = self.elegir_entidad_1.currentText()
-        punto2 = self.elegir_entidad_2.currentText()
-        plano = self.elegir_entidad_3.currentText()
+        punto = self.entidad_1.currentText()
+        punto2 = self.entidad_2.currentText()
+        plano = self.entidad_3.currentText()
 
         for i in range(self.programa.lista_puntos.count()):
             if self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre == punto:
@@ -188,11 +187,11 @@ class PlanoPerpendicularAPlano(VentanaBaseConNombre):
         elif punto.sympy == punto2.sympy:
             QMessageBox.critical(self, "Error al crear el plano", "Los puntos son coincidentes")
         else:
-            nombre = self.programa.evitar_nombre_plano_blanco(self.nombre.toPlainText())
+            nombre = self.programa.evitar_nombre_plano_blanco(self.nombre.text())
             nombre = f"{nombre}⊥{plano.nombre}"
             plano_perpendicular = plano.sympy.perpendicular_plane(punto.sympy, punto2.sympy)
             self.programa.crear_plano(nombre, plano_perpendicular)
-            self.cerrar()
+            self.close()
 
 
 class PlanoParaleloAPlano(VentanaBaseConNombre):
@@ -206,21 +205,19 @@ class PlanoParaleloAPlano(VentanaBaseConNombre):
         self.boton_crear.clicked.connect(self.crear_plano)
 
     def abrir(self):
-        self.elegir_entidad_1.clear()
-        self.elegir_entidad_2.clear()
+        self.entidad_1.clear()
+        self.entidad_2.clear()
         for i in range(self.programa.lista_puntos.count()):
-            self.elegir_entidad_1.addItem(
-                self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
+            self.entidad_1.addItem(self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
         for i in range(self.programa.lista_planos.count()):
-            self.elegir_entidad_2.addItem(
-                self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre)
+            self.entidad_2.addItem(self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre)
 
         self.show()
         self.activateWindow()
 
     def crear_plano(self):
-        punto = self.elegir_entidad_1.currentText()
-        plano = self.elegir_entidad_2.currentText()
+        punto = self.entidad_1.currentText()
+        plano = self.entidad_2.currentText()
 
         for i in range(self.programa.lista_puntos.count()):
             if self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre == punto:
@@ -234,11 +231,11 @@ class PlanoParaleloAPlano(VentanaBaseConNombre):
             QMessageBox.critical(self, "Error al crear el plano",
                                  "Debes crear al menos un plano y un punto para crear un plano paralelo a este")
         else:
-            nombre = self.programa.evitar_nombre_plano_blanco(self.nombre.toPlainText())
+            nombre = self.programa.evitar_nombre_plano_blanco(self.nombre.text())
             nombre = f"{nombre}║{plano.nombre}"
             plano_paralelo = plano.sympy.parallel_plane(punto.sympy)
             self.programa.crear_plano(nombre, plano_paralelo)
-            self.cerrar()
+            self.close()
 
 
 class RectaPerpendicularARecta(VentanaBaseConNombre):
@@ -251,21 +248,19 @@ class RectaPerpendicularARecta(VentanaBaseConNombre):
         self.boton_crear.clicked.connect(self.crear_recta)
 
     def abrir(self):
-        self.elegir_entidad_1.clear()
-        self.elegir_entidad_2.clear()
+        self.entidad_1.clear()
+        self.entidad_2.clear()
         for i in range(self.programa.lista_puntos.count()):
-            self.elegir_entidad_1.addItem(
-                self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
+            self.entidad_1.addItem(self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
         for i in range(self.programa.lista_rectas.count()):
-            self.elegir_entidad_2.addItem(
-                self.programa.lista_rectas.itemWidget(self.programa.lista_rectas.item(i)).nombre)
+            self.entidad_2.addItem(self.programa.lista_rectas.itemWidget(self.programa.lista_rectas.item(i)).nombre)
 
         self.show()
         self.activateWindow()
 
     def crear_recta(self):
-        punto = self.elegir_entidad_1.currentText()
-        recta = self.elegir_entidad_2.currentText()
+        punto = self.entidad_1.currentText()
+        recta = self.entidad_2.currentText()
 
         for i in range(self.programa.lista_puntos.count()):
             if self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre == punto:
@@ -278,11 +273,11 @@ class RectaPerpendicularARecta(VentanaBaseConNombre):
             QMessageBox.critical(self, "Error al crear la recta",
                                  "Debes crear al menos una recta y un punto para crear una recta")
         else:
-            nombre = self.programa.evitar_nombre_recta_blanco(self.nombre.toPlainText())
+            nombre = self.programa.evitar_nombre_recta_blanco(self.nombre.text())
             nombre = f"{nombre}({recta.nombre}⊥{punto.nombre})"
             recta_perpendicular = recta.sympy.perpendicular_line(punto.sympy)
             self.programa.crear_recta(nombre, recta_perpendicular)
-            self.cerrar()
+            self.close()
 
 
 class RectaParalelaARecta(VentanaBaseConNombre):
@@ -296,22 +291,20 @@ class RectaParalelaARecta(VentanaBaseConNombre):
         self.boton_crear.clicked.connect(self.crear_recta)
 
     def abrir(self):
-        self.elegir_entidad_1.clear()
-        self.elegir_entidad_2.clear()
+        self.entidad_1.clear()
+        self.entidad_2.clear()
         for i in range(self.programa.lista_puntos.count()):
-            self.elegir_entidad_1.addItem(
-                self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
+            self.entidad_1.addItem(self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
 
         for i in range(self.programa.lista_rectas.count()):
-            self.elegir_entidad_2.addItem(
-                self.programa.lista_rectas.itemWidget(self.programa.lista_rectas.item(i)).nombre)
+            self.entidad_2.addItem(self.programa.lista_rectas.itemWidget(self.programa.lista_rectas.item(i)).nombre)
 
         self.show()
         self.activateWindow()
 
     def crear_recta(self):
-        punto = self.elegir_entidad_1.currentText()
-        recta = self.elegir_entidad_2.currentText()
+        punto = self.entidad_1.currentText()
+        recta = self.entidad_2.currentText()
         for i in range(self.programa.lista_puntos.count()):
             if self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre == punto:
                 punto = self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i))
@@ -324,11 +317,11 @@ class RectaParalelaARecta(VentanaBaseConNombre):
             QMessageBox.critical(self, "Error al crear la recta",
                                  "Debes crear al menos una recta y un punto para crear una recta")
         else:
-            nombre = self.programa.evitar_nombre_recta_blanco(self.nombre.toPlainText())
+            nombre = self.programa.evitar_nombre_recta_blanco(self.nombre.text())
             nombre = f"{nombre}({recta.nombre}║{punto.nombre})"
             recta_perpendicular = recta.sympy.parallel_line(punto.sympy)
             self.programa.crear_recta(nombre, recta_perpendicular)
-            self.cerrar()
+            self.close()
 
 
 class Distancia(VentanaBase):
@@ -336,39 +329,34 @@ class Distancia(VentanaBase):
         VentanaBase.__init__(self, programa)
 
         self.setWindowTitle("Calcular distancia")
+        self.boton_crear.setText("Calcular")
         self.etiqueta_1.setText("Entidad geométrica 1:")
         self.etiqueta_2.setText("Entidad geométrica 2:")
 
         self.boton_crear.clicked.connect(self.calcular_distancia)
 
     def abrir(self):
-        self.elegir_entidad_1.clear()
-        self.elegir_entidad_2.clear()
+        self.entidad_1.clear()
+        self.entidad_2.clear()
 
         for i in range(self.programa.lista_puntos.count()):
-            self.elegir_entidad_1.addItem(
-                self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
-            self.elegir_entidad_2.addItem(
-                self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
+            self.entidad_1.addItem(self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
+            self.entidad_2.addItem(self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
 
         for i in range(self.programa.lista_planos.count()):
-            self.elegir_entidad_1.addItem(
-                self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre)
-            self.elegir_entidad_2.addItem(
-                self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre)
+            self.entidad_1.addItem(self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre)
+            self.entidad_2.addItem(self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre)
 
         for i in range(self.programa.lista_rectas.count()):
-            self.elegir_entidad_1.addItem(
-                self.programa.lista_rectas.itemWidget(self.programa.lista_rectas.item(i)).nombre)
-            self.elegir_entidad_2.addItem(
-                self.programa.lista_rectas.itemWidget(self.programa.lista_rectas.item(i)).nombre)
+            self.entidad_1.addItem(self.programa.lista_rectas.itemWidget(self.programa.lista_rectas.item(i)).nombre)
+            self.entidad_2.addItem(self.programa.lista_rectas.itemWidget(self.programa.lista_rectas.item(i)).nombre)
 
         self.show()
         self.activateWindow()
 
     def calcular_distancia(self):
-        entidad_1 = self.elegir_entidad_1.currentText()
-        entidad_2 = self.elegir_entidad_2.currentText()
+        entidad_1 = self.entidad_1.currentText()
+        entidad_2 = self.entidad_2.currentText()
 
         for i in range(self.programa.lista_puntos.count()):
             if self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre == entidad_1:
@@ -411,27 +399,23 @@ class Interseccion(VentanaBase):
         self.boton_crear.clicked.connect(self.calcular_interseccion)
 
     def abrir(self):
-        self.elegir_entidad_1.clear()
-        self.elegir_entidad_2.clear()
+        self.entidad_1.clear()
+        self.entidad_2.clear()
 
         for i in range(self.programa.lista_planos.count()):
-            self.elegir_entidad_1.addItem(
-                self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre)
-            self.elegir_entidad_2.addItem(
-                self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre)
+            self.entidad_1.addItem(self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre)
+            self.entidad_2.addItem(self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre)
 
         for i in range(self.programa.lista_rectas.count()):
-            self.elegir_entidad_1.addItem(
-                self.programa.lista_rectas.itemWidget(self.programa.lista_rectas.item(i)).nombre)
-            self.elegir_entidad_2.addItem(
-                self.programa.lista_rectas.itemWidget(self.programa.lista_rectas.item(i)).nombre)
+            self.entidad_1.addItem(self.programa.lista_rectas.itemWidget(self.programa.lista_rectas.item(i)).nombre)
+            self.entidad_2.addItem(self.programa.lista_rectas.itemWidget(self.programa.lista_rectas.item(i)).nombre)
 
         self.show()
         self.activateWindow()
 
     def calcular_interseccion(self):
-        entidad_1 = self.elegir_entidad_1.currentText()
-        entidad_2 = self.elegir_entidad_2.currentText()
+        entidad_1 = self.entidad_1.currentText()
+        entidad_2 = self.entidad_2.currentText()
 
         for i in range(self.programa.lista_rectas.count()):
             if self.programa.lista_rectas.itemWidget(self.programa.lista_rectas.item(i)).nombre == entidad_1:
@@ -526,23 +510,21 @@ class Proyectar(VentanaBaseConNombre):
         self.boton_crear.clicked.connect(self.crear_punto)
 
     def abrir(self):
-        self.elegir_entidad_1.clear()
-        self.elegir_entidad_2.clear()
+        self.entidad_1.clear()
+        self.entidad_2.clear()
 
         for i in range(self.programa.lista_puntos.count()):
-            self.elegir_entidad_1.addItem(
-                self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
+            self.entidad_1.addItem(self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
 
         for i in range(self.programa.lista_planos.count()):
-            self.elegir_entidad_2.addItem(
-                self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre)
+            self.entidad_2.addItem(self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre)
 
         self.show()
         self.activateWindow()
 
     def crear_punto(self):
-        punto = self.elegir_entidad_1.currentText()
-        plano = self.elegir_entidad_2.currentText()
+        punto = self.entidad_1.currentText()
+        plano = self.entidad_2.currentText()
 
         for i in range(self.programa.lista_puntos.count()):
             if self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre == punto:
@@ -579,10 +561,10 @@ class Proyectar(VentanaBaseConNombre):
                                              "El punto no puede proyectarse en esa dirección")
                         return
 
-                nombre = self.programa.evitar_nombre_punto_blanco(self.nombre.toPlainText())
+                nombre = self.programa.evitar_nombre_punto_blanco(self.nombre.text())
                 nombre = f"{nombre}({proyectado.x}, {proyectado.y}, {proyectado.z})"
                 self.programa.crear_punto(nombre, proyectado)
-                self.cerrar()
+                self.close()
 
 
 class Bisectriz(VentanaBaseConNombre):
@@ -596,14 +578,12 @@ class Bisectriz(VentanaBaseConNombre):
         self.boton_crear.clicked.connect(self.crear_recta)
 
     def abrir(self):
-        self.elegir_entidad_1.clear()
-        self.elegir_entidad_2.clear()
+        self.entidad_1.clear()
+        self.entidad_2.clear()
 
         for i in range(self.programa.lista_rectas.count()):
-            self.elegir_entidad_1.addItem(
-                self.programa.lista_rectas.itemWidget(self.programa.lista_rectas.item(i)).nombre)
-            self.elegir_entidad_2.addItem(
-                self.programa.lista_rectas.itemWidget(self.programa.lista_rectas.item(i)).nombre)
+            self.entidad_1.addItem(self.programa.lista_rectas.itemWidget(self.programa.lista_rectas.item(i)).nombre)
+            self.entidad_2.addItem(self.programa.lista_rectas.itemWidget(self.programa.lista_rectas.item(i)).nombre)
 
         self.show()
         self.activateWindow()
@@ -616,8 +596,8 @@ class Bisectriz(VentanaBaseConNombre):
         return vector
 
     def crear_recta(self):
-        recta1 = self.elegir_entidad_1.currentText()
-        recta2 = self.elegir_entidad_2.currentText()
+        recta1 = self.entidad_1.currentText()
+        recta2 = self.entidad_2.currentText()
 
         for i in range(self.programa.lista_rectas.count()):
             if self.programa.lista_rectas.itemWidget(self.programa.lista_rectas.item(i)).nombre == recta1:
@@ -648,8 +628,8 @@ class Bisectriz(VentanaBaseConNombre):
                     bis1 = Line3D(punto, direction_ratio=direccion1)
                     bis2 = Line3D(punto, direction_ratio=direccion2)
 
-                    nombre = "bis. 1 " + self.programa.evitar_nombre_recta_blanco(self.nombre.toPlainText())
-                    nombre2 = "bis. 2 " + self.programa.evitar_nombre_recta_blanco(self.nombre.toPlainText())
+                    nombre = "bis. 1 " + self.programa.evitar_nombre_recta_blanco(self.nombre.text())
+                    nombre2 = "bis. 2 " + self.programa.evitar_nombre_recta_blanco(self.nombre.text())
 
                     self.programa.crear_recta(nombre, bis1)
                     self.programa.crear_recta(nombre2, bis2)
@@ -675,8 +655,8 @@ class VentanaRenombrar(QMainWindow):
         widget_central = QWidget(self)
         self.setCentralWidget(widget_central)
 
-        nombre = QLabel("Nombre:", widget_central, geometry=QRect(5, 0, 50, 20))
-        self.widget_texto = QPlainTextEdit(widget_central, geometry=QRect(5, 25, 170, 30))
+        nombre = QLabel("Nombre:", widget_central, geometry=QRect(5, 4, 50, 20))
+        self.widget_texto = QLineEdit(widget_central, geometry=QRect(5, 25, 170, 30))
 
         self.boton_crear = QPushButton("Renombrar", widget_central, geometry=QRect(5, 58, 85, 23))
         self.boton_crear.clicked.connect(self.close)
@@ -848,4 +828,110 @@ class Ajustes(QMainWindow):
 
     def show(self):
         QMainWindow.show(self)
+        self.activateWindow()
+
+
+class VentanaCircunferencia(QMainWindow):
+    def __init__(self, programa):
+        QMainWindow.__init__(self)
+        self.setWindowModality(Qt.ApplicationModal)
+        self.setWindowFlags(Qt.Tool)
+        self.resize(185, 250)
+        self.setWindowTitle("Crear circunferencia")
+        self.programa = programa
+        cw = QWidget()
+
+        etiqueta_centro = QLabel("Centro:", cw, geometry=QRect(10, 10, 51, 16))
+        self.centro = QComboBox(cw, geometry=QRect(10, 30, 161, 22))
+        etiqueta_plano = QLabel("Paralela al plano:", cw, geometry=QRect(10, 60, 171, 16))
+        self.plano = QComboBox(cw, geometry=QRect(10, 80, 161, 22))
+        nombre = QLabel("Nombre:", cw, geometry=QRect(10, 160, 47, 13))
+        self.nombre = QLineEdit(cw, geometry=QRect(10, 180, 161, 31))
+        self.boton_cancelar = QPushButton("Cancelar", cw, geometry=QRect(94, 220, 81, 23))
+        self.boton_cancelar.clicked.connect(self.close)
+        self.boton_crear = QPushButton("Crear", cw, geometry=QRect(10, 220, 81, 23))
+        self.boton_crear.clicked.connect(self.comprobar_circunferencia)
+        radio = QLabel("Radio:", cw, geometry=QRect(10, 110, 47, 13))
+        self.radio = QSpinBox(cw, geometry=QRect(10, 130, 161, 22))
+        self.radio.setRange(1, 250)
+        self.setCentralWidget(cw)
+
+    def abrir(self):
+        self.centro.clear()
+        self.plano.clear()
+
+        for i in range(self.programa.lista_puntos.count()):
+            self.centro.addItem(self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
+        for i in range(self.programa.lista_planos.count()):
+            self.plano.addItem(self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre)
+
+        self.show()
+        self.activateWindow()
+
+    def comprobar_circunferencia(self):
+        nombre = self.nombre.text()
+        if not nombre:
+            QMessageBox.critical(self, "Error al crear la circunferencia", "No ha introducido un nombre")
+        else:
+            centro = self.centro.currentText()
+            plano = self.plano.currentText()
+            radio = self.radio.value()
+            for i in range(self.programa.lista_puntos.count()):
+                if self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre == centro:
+                    centro = self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i))
+            for i in range(self.programa.lista_planos.count()):
+                if self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre == plano:
+                    plano = self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i))
+            nombre = f"{nombre}⊂{plano.nombre}, r={radio}"
+            self.crear_circunferencia(nombre, plano.sympy.normal_vector, radio, centro.sympy)
+
+    def crear_circunferencia(self, nombre, vector_normal=None, radio=None, centro: Point3D=None, puntos=None):
+        if not puntos:
+            circ = entidades_geometricas.Circunferencia(self.programa, nombre, vector_normal=vector_normal,
+                                                        radio=radio, centro=centro)
+        else:
+            circ = entidades_geometricas.Circunferencia(self.programa, nombre, puntos=puntos)
+        item = QListWidgetItem()
+        item.setSizeHint(circ.minimumSizeHint())
+        self.programa.lista_circunferencias.addItem(item)
+        self.programa.lista_circunferencias.setItemWidget(item, circ)
+
+
+class VentanaCambiarGrosorPunto(QMainWindow):
+    def __init__(self):
+        QMainWindow.__init__(self)
+        self.resize(170, 100)
+        self.setWindowModality(Qt.ApplicationModal)
+        self.setWindowFlags(Qt.Tool)
+        cw = QWidget()
+        self.setCentralWidget(cw)
+        self.setWindowTitle("Cambiar el grosor")
+        etiqueta = QLabel("Grosor:", cw, geometry=QRect(10, 10, 47, 13))
+        self.spinbox_grosor = QSpinBox(cw, geometry=QRect(10, 30, 151, 21))
+        self.spinbox_grosor.setRange(1, 10)
+        self.boton_crear = QPushButton("Cambiar", cw, geometry=QRect(10, 60, 75, 23))
+        self.boton_cancelar = QPushButton("Candelar", cw, geometry=QRect(90, 60, 75, 23), clicked=self.close)
+
+    def abrir(self):
+        self.show()
+        self.activateWindow()
+
+
+class VentanaCambiarGrosorRecta(QMainWindow):
+    def __init__(self):
+        QMainWindow.__init__(self)
+        self.resize(170, 100)
+        self.setWindowModality(Qt.ApplicationModal)
+        self.setWindowFlags(Qt.Tool)
+        cw = QWidget()
+        self.setCentralWidget(cw)
+        self.setWindowTitle("Cambiar el grosor")
+        etiqueta = QLabel("Grosor:", cw, geometry=QRect(10, 10, 47, 13))
+        self.spinbox_grosor = QSpinBox(cw, geometry=QRect(10, 30, 151, 21))
+        self.spinbox_grosor.setRange(1, 10)
+        self.boton_crear = QPushButton("Cambiar", cw, geometry=QRect(10, 60, 75, 23))
+        self.boton_cancelar = QPushButton("Candelar", cw, geometry=QRect(90, 60, 75, 23), clicked=self.close)
+
+    def abrir(self):
+        self.show()
         self.activateWindow()
