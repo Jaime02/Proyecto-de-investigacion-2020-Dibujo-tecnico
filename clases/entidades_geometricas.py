@@ -80,18 +80,7 @@ class EntidadGeometrica(QWidget):
     def cambiar_nombre(self):
         nombre = self.ventana_cambiar_nombre.widget_texto.text()
         if nombre:
-            nombres = []
-            for i in range(self.programa.lista_puntos.count()):
-                nombres.append(self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
-            for i in range(self.programa.lista_rectas.count()):
-                nombres.append(self.programa.lista_rectas.itemWidget(self.programa.lista_rectas.item(i)).nombre)
-            for i in range(self.programa.lista_planos.count()):
-                nombres.append(self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre)
-
-            if nombre in nombres:
-                QMessageBox.critical(self, "Error al cambiar el nombre",
-                                     "Ha introducido un nombre que ya está siendo usado")
-            else:
+            if self.programa.evitar_nombre_duplicado(nombre):
                 self.nombre = nombre
                 self.etiqueta.setText(nombre)
                 self.programa.actualizar_opciones()
@@ -589,9 +578,13 @@ class Plano(EntidadGeometrica):
 
 
 class Circunferencia(EntidadGeometrica):
-    def __init__(self, programa, internal_id: int, nombre: str, vector_normal, radio, centro):
-        EntidadGeometrica.__init__(self, programa, internal_id, nombre, None)
-        self.puntos = self.calcular_circunferencia(vector_normal, radio, centro)
+    def __init__(self, programa, nombre: str, vector_normal=None, radio=None, centro=None, puntos=None):
+        EntidadGeometrica.__init__(self, programa, programa.id_circunferencia, nombre, None)
+        programa.id_circunferencia += 1
+        if not puntos:
+            self.puntos = self.calcular_circunferencia(vector_normal, radio, centro)
+        else:
+            self.puntos = puntos
 
     @staticmethod
     def calcular_circunferencia(vector_normal, radio, centro):
@@ -636,6 +629,9 @@ class Circunferencia(EntidadGeometrica):
             if widget.id == borrar_id:
                 self.programa.lista_circunferencias.takeItem(self.programa.lista_circunferencias.row(item))
                 break
+
+    def guardar(self) -> dict:
+        return {"Nombre": self.nombre, "Puntos": self.puntos}
 
 
 class Vector:

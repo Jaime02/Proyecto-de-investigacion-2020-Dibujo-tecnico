@@ -850,7 +850,7 @@ class VentanaCircunferencia(QMainWindow):
         self.boton_cancelar = QPushButton("Cancelar", cw, geometry=QRect(94, 220, 81, 23))
         self.boton_cancelar.clicked.connect(self.close)
         self.boton_crear = QPushButton("Crear", cw, geometry=QRect(10, 220, 81, 23))
-        self.boton_crear.clicked.connect(self.crear_circunferencia)
+        self.boton_crear.clicked.connect(self.comprobar_circunferencia)
         radio = QLabel("Radio:", cw, geometry=QRect(10, 110, 47, 13))
         self.radio = QSpinBox(cw, geometry=QRect(10, 130, 161, 22))
         self.radio.setRange(1, 250)
@@ -868,7 +868,7 @@ class VentanaCircunferencia(QMainWindow):
         self.show()
         self.activateWindow()
 
-    def crear_circunferencia(self):
+    def comprobar_circunferencia(self):
         nombre = self.nombre.text()
         if not nombre:
             QMessageBox.critical(self, "Error al crear la circunferencia", "No ha introducido un nombre")
@@ -882,15 +882,19 @@ class VentanaCircunferencia(QMainWindow):
             for i in range(self.programa.lista_planos.count()):
                 if self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre == plano:
                     plano = self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i))
-
             nombre = f"{nombre}⊂{plano.nombre}, r={radio}"
-            circ = entidades_geometricas.Circunferencia(self.programa, self.programa.id_circunferencia,
-                                                        nombre, plano.sympy.normal_vector, radio, centro.sympy)
-            item = QListWidgetItem()
-            item.setSizeHint(circ.minimumSizeHint())
-            self.programa.lista_circunferencias.addItem(item)
-            self.programa.lista_circunferencias.setItemWidget(item, circ)
-            self.programa.id_circunferencia += 1
+            self.crear_circunferencia(nombre, plano.sympy.normal_vector, radio, centro.sympy)
+
+    def crear_circunferencia(self, nombre, vector_normal=None, radio=None, centro: Point3D=None, puntos=None):
+        if not puntos:
+            circ = entidades_geometricas.Circunferencia(self.programa, nombre, vector_normal=vector_normal,
+                                                        radio=radio, centro=centro)
+        else:
+            circ = entidades_geometricas.Circunferencia(self.programa, nombre, puntos=puntos)
+        item = QListWidgetItem()
+        item.setSizeHint(circ.minimumSizeHint())
+        self.programa.lista_circunferencias.addItem(item)
+        self.programa.lista_circunferencias.setItemWidget(item, circ)
 
 
 class VentanaCambiarGrosorPunto(QMainWindow):

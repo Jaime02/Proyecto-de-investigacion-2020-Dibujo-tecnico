@@ -434,20 +434,20 @@ class VentanaPrincipal(QMainWindow):
 
     def guardar(self):
         try:
-            nombre, extension = QFileDialog.getSaveFileName(self, "Guardar", "", "Diédrico (*.diedrico)")
-            with open(nombre, 'wb') as archivo:
-                elementos = self.recolectar_elementos()
-                if elementos:
+            elementos = self.recolectar_elementos()
+            if elementos:
+                nombre, extension = QFileDialog.getSaveFileName(self, "Guardar", "", "Diédrico (*.diedrico)")
+                with open(nombre, 'wb') as archivo:
                     dump(elementos, archivo)
-                else:
-                    QMessageBox.critical(self, "Error al guardar", "No se ha creado ningún elemento")
+            else:
+                QMessageBox.critical(self, "Error al guardar", "No se ha creado ningún elemento")
         except FileNotFoundError:
             return False
         except OSError:
             QMessageBox.critical(self, "Error al guardar", "Se ha producido un error al guardar el archivo")
 
     def recolectar_elementos(self) -> dict:
-        elementos = {"Puntos": [], "Rectas": [], "Planos": []}
+        elementos = {"Puntos": [], "Rectas": [], "Planos": [], "Circunferencias": []}
 
         for i in range(self.lista_puntos.count()):
             punto = self.lista_puntos.itemWidget(self.lista_puntos.item(i)).guardar()
@@ -461,7 +461,11 @@ class VentanaPrincipal(QMainWindow):
             plano = self.lista_planos.itemWidget(self.lista_planos.item(i)).guardar()
             elementos["Planos"].append(plano)
 
-        if elementos != {"Puntos": [], "Rectas": [], "Planos": []}:
+        for i in range(self.lista_circunferencias.count()):
+            circunferencia = self.lista_circunferencias.itemWidget(self.lista_circunferencias.item(i)).guardar()
+            elementos["Circunferencias"].append(circunferencia)
+
+        if elementos != {"Puntos": [], "Rectas": [], "Planos": [], "Circunferencias": []}:
             return elementos
         else:
             return False
@@ -495,6 +499,9 @@ class VentanaPrincipal(QMainWindow):
                     self.crear_plano(plano["Nombre"], plano["Sympy"], puntos)
                 else:
                     self.crear_plano(plano["Nombre"], plano["Sympy"])
+
+            for circ in elementos["Circunferencias"]:
+                self.ventana_circunferencia.crear_circunferencia(circ["Nombre"], puntos=circ["Puntos"])
 
     def cambiar_modo(self):
         if self.modo_oscuro:

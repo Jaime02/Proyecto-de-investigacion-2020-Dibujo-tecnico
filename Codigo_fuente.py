@@ -5,6 +5,7 @@ from sys import argv
 
 if __name__ == "__main__":
     evento_principal = QApplication([])
+    # Si se ha introducido decidido abrir un archivo directamente, se pasa su dirección como argumento
     if len(argv) > 1:
         programa = VentanaPrincipal(evento_principal, argv[1])
     else:
