@@ -45,10 +45,12 @@ jobs:
 
     - name: Commit files
       run: |
+        dir
         cd dist
         ren Codigo_fuente.exe Dibujo_tecnico.exe
         move Dibujo_tecnico.exe ..
         cd ..
+        dir
         git pull
         git add Dibujo_tecnico.exe
         git config --local user.email "action@github.com"

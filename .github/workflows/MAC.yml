@@ -29,11 +29,13 @@ jobs:
 
     - name: Commit files
       run: |
+        ls
         cd dist
         mv Codigo_fuente.app ..Dibujo_tecnico.app
         cd ..
+        ls
         git pull
-        git add Dibujo_tecnico.exe
+        git add Dibujo_tecnico.app
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git commit -m "Actualizado el .exe" -a
