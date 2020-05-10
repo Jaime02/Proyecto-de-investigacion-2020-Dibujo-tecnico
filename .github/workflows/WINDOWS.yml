@@ -48,7 +48,7 @@ jobs:
         dir
         cd dist
         ren Codigo_fuente.exe Dibujo_tecnico.exe
-        move Dibujo_tecnico.exe ..
+        move Dibujo_tecnico.exe .. /Y
         cd ..
         dir
         git pull
