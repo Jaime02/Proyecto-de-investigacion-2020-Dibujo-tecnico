@@ -377,6 +377,7 @@ class Renderizador(QOpenGLWidget):
 
         # TODO: fixea esta wea
         self.dibujar_circunferencias()
+        self.dibujar_poligonos()
 
         # Observador en:
         # Línea de tierra:
@@ -484,6 +485,16 @@ class Renderizador(QOpenGLWidget):
                 glColor(circ.color)
                 glBegin(GL_LINE_LOOP)
                 for punto in circ.puntos:
+                    glVertex(*punto)
+                glEnd()
+
+    def dibujar_poligonos(self):
+        for i in range(self.programa.lista_poligonos.count()):
+            poligono = self.programa.lista_poligonos.itemWidget(self.programa.lista_poligonos.item(i))
+            if poligono.render.isChecked():
+                glColor(poligono.color)
+                glBegin(GL_LINE_LOOP)
+                for punto in poligono.puntos:
                     glVertex(*punto)
                 glEnd()
 
@@ -599,7 +610,8 @@ class Diedrico(QWidget):
             self.dibujar_rectas(qp)
         if self.programa.ver_puntos.checkState():
             self.dibujar_puntos(qp)
-        self.dibujar_circunferencia(qp)
+        self.dibujar_circunferencias(qp)
+        self.dibujar_poligonos(qp)
         self.update()
 
     def keyPressEvent(self, evento):
@@ -795,7 +807,7 @@ class Diedrico(QWidget):
                             qp.setPen(self.pen_plano_prima2_discontinuo)
                             self.recta_prima2(qp, (plano.traza_v[1], plano.traza_v[2]))
 
-    def dibujar_circunferencia(self, qp):
+    def dibujar_circunferencias(self, qp):
         for i in range(self.programa.lista_circunferencias.count()):
             circ = self.programa.lista_circunferencias.itemWidget(self.programa.lista_circunferencias.item(i))
             if circ.render.isChecked():
@@ -810,6 +822,34 @@ class Diedrico(QWidget):
 
                 for j in range(len(segmentos)):
                     segmento = segmentos[j-1], segmentos[j]
+                    if segmento[0][1] >= 0 and segmento[0][2] >= 0 and segmento[1][1] >= 0 and segmento[1][2] >= 0:
+                        qp.setPen(self.pen_recta_prima_continuo)
+                        self.recta_prima(qp, segmento)
+                        qp.setPen(self.pen_recta_prima2_continuo)
+                        self.recta_prima2(qp, segmento)
+                    else:
+                        qp.setPen(self.pen_recta_prima)
+                        self.recta_prima(qp, segmento)
+                        qp.setPen(self.pen_recta_prima2)
+                        self.recta_prima2(qp, segmento)
+
+                    self.recta_prima3(qp, segmento)
+
+    def dibujar_poligonos(self, qp):
+        for i in range(self.programa.lista_poligonos.count()):
+            poligono = self.programa.lista_poligonos.itemWidget(self.programa.lista_poligonos.item(i))
+            if poligono.render.isChecked():
+                segmentos = poligono.puntos
+
+                # Tercera proyección
+                if self.programa.tercera_proyeccion.checkState():
+                    if self.programa.modo_oscuro:
+                        self.pen_prima3.setColor(QColor(200, 200, 200))
+                    else:
+                        self.pen_prima3.setColor(QColor(0, 0, 0))
+
+                for j in range(len(segmentos)):
+                    segmento = segmentos[j - 1], segmentos[j]
                     if segmento[0][1] >= 0 and segmento[0][2] >= 0 and segmento[1][1] >= 0 and segmento[1][2] >= 0:
                         qp.setPen(self.pen_recta_prima_continuo)
                         self.recta_prima(qp, segmento)

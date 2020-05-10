@@ -1,4 +1,4 @@
-from math import atan2, sin, cos, acos, radians
+from math import atan2, sin, cos, acos, radians, degrees
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QCursor
@@ -634,6 +634,79 @@ class Circunferencia(EntidadGeometrica):
         return {"Nombre": self.nombre, "Puntos": self.puntos}
 
 
+class Poligono(EntidadGeometrica):
+    def __init__(self, programa, nombre: str,
+                 vector_normal=None, vertice=None, centro=None, num_lados=None, puntos=None):
+        EntidadGeometrica.__init__(self, programa, programa.id_circunferencia, nombre, None)
+        programa.id_poligono += 1
+        if not puntos:
+            self.puntos = self.calcular_vertices(vector_normal, vertice, centro, num_lados)
+        else:
+            self.puntos = puntos
+
+    @staticmethod
+    def calcular_vertices(vector_normal, vertice, centro, numero_de_lados):
+
+        def distancia_entre_puntos(p1: list, p2: list):
+            return ((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2 + (p2[2] - p1[2])**2)**0.5
+        radio = distancia_entre_puntos(vertice, centro)
+        assert distancia_entre_puntos(vertice, centro) == distancia_entre_puntos(centro, vertice)
+
+        # Rotación de rodrigues
+        def rodri(v: Vector, k: Vector, theta):
+            return v * cos(theta) + k.cross(v) * sin(theta) + k * (k.dot(v)) * (1 - cos(theta))
+
+        def calcular_vector_v(r: int, t: int):
+            return Vector([r * cos(radians(t)), r * sin(radians(t)), 0])
+
+        def calcular_angulo_entre_vectores(v1, v2, vn):
+            if vn.coords[0] != 0 and vn.coords[1] != 0:
+                alfa = atan2((v1-v2).coords[0], (v1-v2).coords[1])
+            elif vn.coords[0] == 0:
+                alfa = atan2((v1 - v2).coords[1], (v1 - v2).coords[2])
+            else:
+                alfa = atan2((v1 - v2).coords[0], (v1 - v2).coords[2])
+            return degrees(alfa)
+
+        # Vector E, eje Z
+        vector_e = Vector([0, 0, 1])
+        # El vector normal al plano paralelo al polígono
+        vector_u = Vector(vector_normal, normalizar=True)
+        angulo_theta = acos(vector_e.dot(vector_u)/vector_u.modulo())
+        denominador = vector_e.cross(vector_u).modulo()
+        if denominador != 0:
+            vector_k = vector_e.cross(vector_u)/(vector_e.cross(vector_u).modulo())
+        else:
+            vector_k = Vector([0, 0, 1])
+
+        # Lista que guarda los puntos
+        puntos = []
+        desviacion = Vector([vertice.coordinates[i] - centro.coordinates[i] for i in range(3)])
+        angulo_desviacion = calcular_angulo_entre_vectores(desviacion, Vector([1, 0, 0]), vector_u)
+        # angulo_desviacion = degrees(acos(desviacion.dot(Vector([1, 0, 0]))/desviacion.modulo()))
+        print(angulo_desviacion)
+        for i in range(1, numero_de_lados + 1):
+            vector_v = calcular_vector_v(radio, angulo_desviacion + i * 360 / numero_de_lados)
+            # print(vector_v)
+            punto = rodri(vector_v, vector_k, angulo_theta)
+            for j in range(3):
+                punto.coords[j] = round(punto.coords[j] + centro.coordinates[j], 4)
+            puntos.append(punto.coords)
+
+        return puntos
+
+    def borrar(self, borrar_id: int):
+        for indice in range(self.programa.lista_poligonos.count()):
+            item = self.programa.lista_poligonos.item(indice)
+            widget = self.programa.lista_poligonos.itemWidget(item)
+            if widget.id == borrar_id:
+                self.programa.lista_poligonos.takeItem(self.programa.lista_poligonos.row(item))
+                break
+
+    def guardar(self) -> dict:
+        return {"Nombre": self.nombre, "Puntos": self.puntos}
+
+
 class Vector:
     def __init__(self, coords, normalizar=False):
         if normalizar:
@@ -654,6 +727,16 @@ class Vector:
             return Vector([self.coords[0] + other.coords[0],
                            self.coords[1] + other.coords[1],
                            self.coords[2] + other.coords[2]])
+
+    def __sub__(self, other):
+        if isinstance(other, (int, float)):
+            # Suma de un vector con un escalar
+            return Vector(self.coords[0] - other, self.coords[1] - other, self.coords[2] - other)
+        else:
+            # Suma de un vector mas otro
+            return Vector([self.coords[0] - other.coords[0],
+                           self.coords[1] - other.coords[1],
+                           self.coords[2] - other.coords[2]])
 
     def __repr__(self):
         return str(self.coords)

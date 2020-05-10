@@ -10,9 +10,9 @@ from PyQt5.QtWidgets import (QWidget, QCheckBox, QPushButton, QMainWindow, QLabe
 from sympy import Point3D, Plane, Line3D
 
 from .entidades_geometricas import Punto, Recta, Plano
-from .ventanas_base import (PuntoMedio, Interseccion, Bisectriz, Distancia, Proyectar, RectaParalelaARecta,
-                            RectaPerpendicularAPlano, RectaPerpendicularARecta, PlanoParaleloAPlano,
-                            PlanoPerpendicularAPlano, Ajustes, AcercaDe, Controles, VentanaCircunferencia)
+from .ventanas_base import (PuntoMedio, Interseccion, Bisectriz, Distancia, Proyectar, RectaParalelaARecta, Ajustes,
+                            RectaPerpendicularAPlano, RectaPerpendicularARecta, PlanoParaleloAPlano, Controles,
+                            AcercaDe, PlanoPerpendicularAPlano, VentanaCircunferencia, VentanaPoligono)
 from .widgets_de_dibujo import Diedrico, Renderizador
 
 
@@ -105,7 +105,7 @@ class VentanaPrincipal(QMainWindow):
         boton_cambiar_a_tab_2 = QPushButton("Volver", p2, geometry=QRect(400, 0, 70, 23))
         boton_cambiar_a_tab_2.clicked.connect(lambda: self.widget_stack.setCurrentIndex(0))
 
-        circunferencia = QLabel("Circunferencia:", p2, font=fuente, geometry=QRect(0, 30, 91, 16))
+        etiqueta_circunferencia = QLabel("Circunferencia:", p2, font=fuente, geometry=QRect(0, 30, 91, 16))
         boton_circunferencia = QPushButton("Crear circunferencia", p2, geometry=QRect(0, 50, 140, 20))
         self.ventana_circunferencia = VentanaCircunferencia(self)
         boton_circunferencia.clicked.connect(self.ventana_circunferencia.abrir)
@@ -115,6 +115,17 @@ class VentanaPrincipal(QMainWindow):
         vertical_circunferencia.setContentsMargins(0, 0, 0, 0)
         self.lista_circunferencias = QListWidget(widget_circunferencia)
         vertical_circunferencia.addWidget(self.lista_circunferencias)
+
+        etiqueta_poligono = QLabel("Polígono:", p2, font=fuente, geometry=QRect(150, 30, 91, 16))
+        boton_poligono = QPushButton("Crear polígono", p2, geometry=QRect(150, 50, 140, 20))
+        self.ventana_poligono = VentanaPoligono(self)
+        boton_poligono.clicked.connect(self.ventana_poligono.abrir)
+
+        widget_poligono = QWidget(p2, geometry=QRect(150, 75, 140, 140))
+        vertical_poligono = QVBoxLayout(widget_poligono)
+        vertical_poligono.setContentsMargins(0, 0, 0, 0)
+        self.lista_poligonos = QListWidget(widget_poligono)
+        vertical_poligono.addWidget(self.lista_poligonos)
 
         informacion = QLabel("Información:", wc, font=fuente, geometry=QRect(0, 10, 91, 16))
         posicion = QLabel("Posición:", wc, font=fuente, geometry=QRect(0, 30, 71, 16))
@@ -245,6 +256,7 @@ class VentanaPrincipal(QMainWindow):
         self.id_recta = 1
         self.id_plano = 1
         self.id_circunferencia = 1
+        self.id_poligono = 1
 
         self.mayusculas = cycle("PQRSTUVWXYZABCDEFGHIJKLMNO")
         self.minusculas = cycle("rstuvwxyzabcdefghijklmnopq")
@@ -431,6 +443,7 @@ class VentanaPrincipal(QMainWindow):
         self.lista_rectas.clear()
         self.lista_planos.clear()
         self.lista_circunferencias.clear()
+        self.lista_poligonos.clear()
         self.actualizar_opciones()
 
     def guardar(self):
@@ -448,7 +461,7 @@ class VentanaPrincipal(QMainWindow):
             QMessageBox.critical(self, "Error al guardar", "Se ha producido un error al guardar el archivo")
 
     def recolectar_elementos(self) -> dict:
-        elementos = {"Puntos": [], "Rectas": [], "Planos": [], "Circunferencias": []}
+        elementos = {"Puntos": [], "Rectas": [], "Planos": [], "Circunferencias": [], "Poligonos": []}
 
         for i in range(self.lista_puntos.count()):
             punto = self.lista_puntos.itemWidget(self.lista_puntos.item(i)).guardar()
@@ -466,7 +479,11 @@ class VentanaPrincipal(QMainWindow):
             circunferencia = self.lista_circunferencias.itemWidget(self.lista_circunferencias.item(i)).guardar()
             elementos["Circunferencias"].append(circunferencia)
 
-        if elementos != {"Puntos": [], "Rectas": [], "Planos": [], "Circunferencias": []}:
+        for i in range(self.lista_poligonos.count()):
+            poligono = self.lista_poligonos.itemWidget(self.lista_poligonos.item(i)).guardar()
+            elementos["Poligonos"].append(poligono)
+
+        if elementos != {"Puntos": [], "Rectas": [], "Planos": [], "Circunferencias": [], "Poligonos": []}:
             return elementos
         else:
             return False
@@ -503,6 +520,9 @@ class VentanaPrincipal(QMainWindow):
 
             for circ in elementos["Circunferencias"]:
                 self.ventana_circunferencia.crear_circunferencia(circ["Nombre"], puntos=circ["Puntos"])
+
+            for poligono in elementos["Poligonos"]:
+                self.ventana_poligono.crear_poligono(poligono["Nombre"], puntos=poligono["Puntos"])
 
     def cambiar_modo(self):
         if self.modo_oscuro:

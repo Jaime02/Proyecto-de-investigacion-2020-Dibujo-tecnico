@@ -847,12 +847,12 @@ class VentanaCircunferencia(QMainWindow):
         self.plano = QComboBox(cw, geometry=QRect(10, 80, 161, 22))
         nombre = QLabel("Nombre:", cw, geometry=QRect(10, 160, 47, 13))
         self.nombre = QLineEdit(cw, geometry=QRect(10, 180, 161, 31))
+        radio = QLabel("Radio:", cw, geometry=QRect(10, 110, 47, 13))
+        self.radio = QSpinBox(cw, geometry=QRect(10, 130, 161, 22))
         self.boton_cancelar = QPushButton("Cancelar", cw, geometry=QRect(94, 220, 81, 23))
         self.boton_cancelar.clicked.connect(self.close)
         self.boton_crear = QPushButton("Crear", cw, geometry=QRect(10, 220, 81, 23))
         self.boton_crear.clicked.connect(self.comprobar_circunferencia)
-        radio = QLabel("Radio:", cw, geometry=QRect(10, 110, 47, 13))
-        self.radio = QSpinBox(cw, geometry=QRect(10, 130, 161, 22))
         self.radio.setRange(1, 250)
         self.setCentralWidget(cw)
 
@@ -876,21 +876,25 @@ class VentanaCircunferencia(QMainWindow):
             centro = self.centro.currentText()
             plano = self.plano.currentText()
             radio = self.radio.value()
-            for i in range(self.programa.lista_puntos.count()):
-                if self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre == centro:
-                    centro = self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i))
-            for i in range(self.programa.lista_planos.count()):
-                if self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre == plano:
-                    plano = self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i))
-            nombre = f"{nombre}⊂{plano.nombre}, r={radio}"
-            self.crear_circunferencia(nombre, plano.sympy.normal_vector, radio, centro.sympy)
+            if plano == "" or centro == "":
+                QMessageBox.critical(self, "Error al crear la circunferencia", "Debe crear un punto y un plano para "
+                                                                               "definir la circunferencia")
+            else:
+                for i in range(self.programa.lista_puntos.count()):
+                    if self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre == centro:
+                        centro = self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i))
+                for i in range(self.programa.lista_planos.count()):
+                    if self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre == plano:
+                        plano = self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i))
+                nombre = f"{nombre}║{plano.nombre}, r={radio}"
+                self.crear_circunferencia(nombre, plano.sympy.normal_vector, radio, centro.sympy)
 
-    def crear_circunferencia(self, nombre, vector_normal=None, radio=None, centro: Point3D=None, puntos=None):
+    def crear_circunferencia(self, nombre, vector_normal=None, radio=None, centro: Point3D=None, puntos: list = None):
         if not puntos:
-            circ = entidades_geometricas.Circunferencia(self.programa, nombre, vector_normal=vector_normal,
+            circ = entidades_geometricas.Poligono(self.programa, nombre, vector_normal=vector_normal,
                                                         radio=radio, centro=centro)
         else:
-            circ = entidades_geometricas.Circunferencia(self.programa, nombre, puntos=puntos)
+            circ = entidades_geometricas.Poligono(self.programa, nombre, puntos=puntos)
         item = QListWidgetItem()
         item.setSizeHint(circ.minimumSizeHint())
         self.programa.lista_circunferencias.addItem(item)
@@ -935,3 +939,86 @@ class VentanaCambiarGrosorRecta(QMainWindow):
     def abrir(self):
         self.show()
         self.activateWindow()
+
+
+class VentanaPoligono(QMainWindow):
+    def __init__(self, programa):
+        QMainWindow.__init__(self)
+        self.setWindowModality(Qt.ApplicationModal)
+        self.setWindowFlags(Qt.Tool)
+        self.resize(185, 270)
+        self.setWindowTitle("Crear polígono")
+        self.programa = programa
+        cw = QWidget()
+        self.setCentralWidget(cw)
+
+        etiqueta_centro = QLabel("Centro:", cw, geometry=QRect(10, 10, 51, 16))
+        self.centro = QComboBox(cw, geometry=QRect(10, 30, 161, 22))
+        etiqueta_plano = QLabel("Paralelo al plano:", cw, geometry=QRect(10, 60, 171, 16))
+        self.plano = QComboBox(cw, geometry=QRect(10, 80, 161, 22))
+        etiqueta_vertice = QLabel("Vértice:", cw, geometry=QRect(10, 110, 47, 13))
+        self.vertice = QComboBox(cw, geometry=QRect(10, 130, 161, 22))
+        etiqueta_lados = QLabel("Número de lados:", cw, geometry=QRect(10, 160, 80, 10))
+        self.lados = QSpinBox(cw, geometry=QRect(10, 175, 161, 22))
+        self.lados.setRange(3, 20)
+        nombre = QLabel("Nombre:", cw, geometry=QRect(10, 200, 47, 13))
+        self.nombre = QLineEdit(cw, geometry=QRect(10, 215, 161, 20))
+        self.boton_cancelar = QPushButton("Cancelar", cw, geometry=QRect(94, 240, 81, 23))
+        self.boton_cancelar.clicked.connect(self.close)
+        self.boton_crear = QPushButton("Crear", cw, geometry=QRect(10, 240, 81, 23))
+        self.boton_crear.clicked.connect(self.comprobar_poligono)
+
+    def abrir(self):
+        self.centro.clear()
+        self.plano.clear()
+        self.vertice.clear()
+
+        for i in range(self.programa.lista_puntos.count()):
+            self.centro.addItem(self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
+            self.vertice.addItem(self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
+
+        for i in range(self.programa.lista_planos.count()):
+            self.plano.addItem(self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre)
+
+        self.show()
+        self.activateWindow()
+
+    def comprobar_poligono(self):
+        nombre = self.nombre.text()
+        centro = self.centro.currentText()
+        plano = self.plano.currentText()
+        vertice = self.vertice.currentText()
+        if not nombre:
+            QMessageBox.critical(self, "Error al crear el polígono", "No ha introducido un nombre")
+        elif plano == "" or centro == "" or vertice == "":
+            QMessageBox.critical(self, "Error al crear el polígono", "Debe crear dos puntos diferentes y un plano para"
+                                                                     " definir el polígono")
+        else:
+            num_lados = self.lados.value()
+            for i in range(self.programa.lista_puntos.count()):
+                if self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre == centro:
+                    centro = self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i))
+                if self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre == vertice:
+                    vertice = self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i))
+            for i in range(self.programa.lista_planos.count()):
+                if self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre == plano:
+                    plano = self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i))
+            if centro == vertice:
+                QMessageBox.critical(self, "Error al crear el polígono", "El centro coincide con el vértice")
+            else:
+                nombre = f"{nombre}║{plano.nombre}, vertice: {vertice.nombre}"
+                self.crear_poligono(nombre, vector_normal=plano.sympy.normal_vector, vertice=vertice.sympy,
+                                    num_lados=num_lados, centro=centro.sympy)
+
+    def crear_poligono(self, nombre, vector_normal = None, vertice = None, centro = None, num_lados = None,
+                       puntos: list = None):
+        if not puntos:
+            poligono = entidades_geometricas.Poligono(self.programa, nombre, vector_normal=vector_normal,
+                                                      num_lados=num_lados, vertice=vertice, centro=centro)
+        else:
+            poligono = entidades_geometricas.Poligono(self.programa, nombre, puntos=puntos)
+        item = QListWidgetItem()
+        item.setSizeHint(poligono.minimumSizeHint())
+        self.programa.lista_poligonos.addItem(item)
+        self.programa.lista_poligonos.setItemWidget(item, poligono)
+
