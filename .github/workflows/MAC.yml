@@ -29,8 +29,8 @@ jobs:
 
     - name: Commit files
       run: |
-        ls
         cd dist
+        ls
         mv Codigo_fuente.app ..Dibujo_tecnico.app
         cd ..
         ls
