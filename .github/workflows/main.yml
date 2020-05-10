@@ -45,7 +45,7 @@ jobs:
     
     - name: Commit files
       run: |
-        cd dist
+        cd D:\a\Proyecto-de-investigacion-2020-Dibujo-tecnico\Proyecto-de-investigacion-2020-Dibujo-tecnico\dist\
         rename Codigo_fuente.exe Dibujo_tecnico.exe
         move *.* ..
         cd ..
