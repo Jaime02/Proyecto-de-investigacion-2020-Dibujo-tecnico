@@ -29,8 +29,8 @@ jobs:
 
     - name: Commit files
       run: |
-        cd dist
         rm Dibujo_tecnico.app
+        cd dist
         mv Codigo_fuente.app Dibujo_tecnico.app
         mv Dibujo_tecnico.app ..
         cd ..
