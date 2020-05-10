@@ -41,7 +41,7 @@ jobs:
     
     - name: Utiliza PyInstaller
       run: |
-        pyinstaller --onefile -i "Logo.ico" Codigo_fuente.py
+        pyinstaller --onefile --windowed -i "Logo.ico" Codigo_fuente.py
     
     - name: Commit files
       run: |
