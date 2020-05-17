@@ -2,9 +2,6 @@ from PyQt5.QtCore import Qt, QRect
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (QWidget, QCheckBox, QPushButton, QMainWindow, QLabel, QLineEdit, QComboBox,
                              QMessageBox, QColorDialog, QSpinBox, QListWidgetItem)
-from sympy import Point3D, Line3D, Plane, intersection
-
-from . import entidades_geometricas
 
 
 class VentanaBase(QMainWindow):
@@ -440,14 +437,14 @@ class Interseccion(VentanaBase):
             if interseccion:
                 # Si no se produce una intersección es porque los elementos son paralelos
                 interseccion = interseccion[0]
-                if isinstance(entidad_1.sympy, Line3D) and isinstance(entidad_2.sympy, Line3D):
+                if isinstance(entidad_1.sympy, Recta) and isinstance(entidad_2.sympy, Recta):
                     """
                     Intersección recta-recta. Tres opciones: 
                     Ambas son coincidentes -> Se produce un error
                     Secantes -> Se crea un punto de intersección
                     Paralelas -> No tienen ningún punto en común
                     """
-                    if isinstance(interseccion, Point3D):
+                    if isinstance(interseccion, entidades_geometricas.Punto):
                         if any(abs(i) > 499 for i in interseccion.coordinates):
                             QMessageBox.critical(self, "Error al calcular la intersección",
                                                  "Las rectas se cortan en un punto fuera de los límites establecidos en"
@@ -456,14 +453,14 @@ class Interseccion(VentanaBase):
                             self.programa.crear_punto(f"{entidad_1.nombre}∩{entidad_2.nombre}", interseccion)
                     else:
                         QMessageBox.critical(self, "Error al calcular la intersección", "Las rectas son coincidentes")
-                elif isinstance(entidad_1.sympy, Plane) and isinstance(entidad_2.sympy, Plane):
+                elif isinstance(entidad_1.sympy, Plano) and isinstance(entidad_2.sympy, Plano):
                     """
                     Lo mismo, 3 casos:
                     Planos paralelos -> No se crea nada
                     Secantes -> Se crea una recta
                     Coincidentes -> Ambos planos son iguales
                     """
-                    if isinstance(interseccion, Line3D):
+                    if isinstance(interseccion, Recta):
                         try:
                             nombre = f"{entidad_1.nombre}∩{entidad_2.nombre}"
                             self.programa.crear_recta(nombre, interseccion)
@@ -472,7 +469,7 @@ class Interseccion(VentanaBase):
                             QMessageBox.critical(self, "Error al crear la intersección",
                                                  "Se ha producido un grave error debido a limitaciones del programa")
                 else:
-                    if isinstance(interseccion, Point3D):
+                    if isinstance(interseccion, entidades_geometricas.Punto):
                         if any(abs(i) > 499 for i in interseccion.coordinates):
                             QMessageBox.critical(self, "Error al calcular la intersección",
                                                  "Las intersección se encuentra en un punto fuera de los límites "
@@ -546,12 +543,12 @@ class Proyectar(VentanaBaseConNombre):
                     proyectado = plano.sympy.projection(punto.sympy)
                 else:
                     if modo == "Vertical":
-                        segmento = Segment3D(Point3D(punto.x, 500, punto.z), Point3D(punto.x, -500, punto.z))
+                        segmento = Segment3D(entidades_geometricas.Punto(punto.x, 500, punto.z), entidades_geometricas.Punto(punto.x, -500, punto.z))
                     elif modo == "Horizontal":
-                        segmento = Segment3D(Point3D(punto.x, punto.y, 500), Point3D(punto.x, punto.y, -500))
+                        segmento = Segment3D(entidades_geometricas.Punto(punto.x, punto.y, 500), entidades_geometricas.Punto(punto.x, punto.y, -500))
                     else:
                         # modo = perfil
-                        segmento = Segment3D(Point3D(500, punto.y, punto.z), Point3D(-500, punto.y, punto.z))
+                        segmento = Segment3D(entidades_geometricas.Punto(500, punto.y, punto.z), entidades_geometricas.Punto(-500, punto.y, punto.z))
                     proyectado = plano.sympy.intersection(segmento)
 
                     if proyectado:
@@ -611,7 +608,7 @@ class Bisectriz(VentanaBaseConNombre):
         else:
             interseccion = recta1.sympy.intersection(recta2.sympy)
             if interseccion:
-                if isinstance(interseccion[0], Line3D):
+                if isinstance(interseccion[0], Recta):
                     QMessageBox.critical(self, "Error al crear la bisectriz", "Las rectas son coincidentes")
                 else:
                     punto = interseccion[0]
@@ -625,8 +622,8 @@ class Bisectriz(VentanaBaseConNombre):
                     direccion1 = [d1[i] + d2[i] for i in range(3)]
                     direccion2 = [d1[i] - d2[i] for i in range(3)]
 
-                    bis1 = Line3D(punto, direction_ratio=direccion1)
-                    bis2 = Line3D(punto, direction_ratio=direccion2)
+                    bis1 = Recta(punto, direction_ratio=direccion1)
+                    bis2 = Recta(punto, direction_ratio=direccion2)
 
                     nombre = "bis. 1 " + self.programa.evitar_nombre_recta_blanco(self.nombre.text())
                     nombre2 = "bis. 2 " + self.programa.evitar_nombre_recta_blanco(self.nombre.text())
@@ -889,7 +886,7 @@ class VentanaCircunferencia(QMainWindow):
                 nombre = f"{nombre}║{plano.nombre}, r={radio}"
                 self.crear_circunferencia(nombre, plano.sympy.normal_vector, radio, centro.sympy)
 
-    def crear_circunferencia(self, nombre, vector_normal=None, radio=None, centro: Point3D=None, puntos: list = None):
+    def crear_circunferencia(self, nombre, vector_normal=None, radio=None, centro = None, puntos: list = None):
         if not puntos:
             circ = entidades_geometricas.Poligono(self.programa, nombre, vector_normal=vector_normal,
                                                         radio=radio, centro=centro)
@@ -917,6 +914,7 @@ class VentanaCambiarGrosorPunto(QMainWindow):
         self.boton_cancelar = QPushButton("Candelar", cw, geometry=QRect(90, 60, 75, 23), clicked=self.close)
 
     def abrir(self):
+        self.spinbox_grosor.setValue(5)
         self.show()
         self.activateWindow()
 
@@ -937,6 +935,7 @@ class VentanaCambiarGrosorRecta(QMainWindow):
         self.boton_cancelar = QPushButton("Candelar", cw, geometry=QRect(90, 60, 75, 23), clicked=self.close)
 
     def abrir(self):
+        self.spinbox_grosor.setValue(2)
         self.show()
         self.activateWindow()
 

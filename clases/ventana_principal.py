@@ -7,9 +7,8 @@ from PyQt5.QtGui import QFont, QColor, QIcon, QPalette
 from PyQt5.QtWidgets import (QWidget, QCheckBox, QPushButton, QMainWindow, QLabel, QVBoxLayout, QSpinBox, QMenuBar,
                              QComboBox, QMessageBox, QGraphicsScene, QGraphicsView, QListWidgetItem, QListWidget,
                              QAction, QDockWidget, QFileDialog, QStackedWidget, QLineEdit)
-from sympy import Point3D, Plane, Line3D
 
-from .entidades_geometricas import Punto, Recta, Plano
+from .entidades_geometricas import WidgetPunto, WidgetRecta, WidgetPlano, Punto, Recta, Plano
 from .ventanas_base import (PuntoMedio, Interseccion, Bisectriz, Distancia, Proyectar, RectaParalelaARecta, Ajustes,
                             RectaPerpendicularAPlano, RectaPerpendicularARecta, PlanoParaleloAPlano, Controles,
                             AcercaDe, PlanoPerpendicularAPlano, VentanaCircunferencia, VentanaPoligono)
@@ -290,8 +289,7 @@ class VentanaPrincipal(QMainWindow):
             self.punto_plano_3.addItem(self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre)
 
     def actualizar_texto(self):
-        # self.angulo_vertical.setText("Ángulo vertical: " + str(self.renderizador.theta - 360))
-        self.angulo_vertical.setText("Ángulo vertical: " + str(self.renderizador.theta))
+        self.angulo_vertical.setText("Ángulo vertical: " + str(self.renderizador.theta - 360))
         self.angulo_horizontal.setText("Ángulo horizontal: " + str(self.renderizador.phi))
 
         y = self.renderizador.y
@@ -358,10 +356,10 @@ class VentanaPrincipal(QMainWindow):
         nombre = self.evitar_nombre_punto_blanco(nombre)
         nombre = f"{nombre}({do}, {alejamiento}, {cota})"
         if self.evitar_nombre_duplicado(nombre):
-            self.crear_punto(nombre, Point3D(do, alejamiento, cota))
+            self.crear_punto(nombre, Punto(do, alejamiento, cota))
 
-    def crear_punto(self, nombre: str, sympy: Point3D):
-        punto = Punto(self, self.id_punto, nombre, sympy)
+    def crear_punto(self, nombre: str, sympy: Punto):
+        punto = WidgetPunto(self, self.id_punto, nombre, sympy)
         item = QListWidgetItem()
         item.setSizeHint(punto.minimumSizeHint())
         self.lista_puntos.addItem(item)
@@ -388,11 +386,11 @@ class VentanaPrincipal(QMainWindow):
             nombre = f"{nombre}({punto1.nombre}, {punto2.nombre})"
 
             if self.evitar_nombre_duplicado(nombre):
-                sympy = Line3D(punto1.sympy, punto2.sympy)
+                sympy = Recta(punto1.sympy, punto2.sympy)
                 self.crear_recta(nombre, sympy, [punto1.sympy, punto2.sympy])
 
-    def crear_recta(self, nombre: str, sympy: Line3D, puntos: list = None):
-        recta = Recta(self, self.id_recta, nombre, sympy, puntos)
+    def crear_recta(self, nombre: str, sympy: Recta, puntos: list = None):
+        recta = WidgetRecta(self, self.id_recta, nombre, sympy, puntos)
         item = QListWidgetItem()
         self.lista_rectas.addItem(item)
         item.setSizeHint(recta.minimumSizeHint())
@@ -419,7 +417,7 @@ class VentanaPrincipal(QMainWindow):
         elif len({punto1.coordenadas, punto2.coordenadas, punto3.coordenadas}) < 3:
             QMessageBox.critical(self, "Error al crear el plano",
                                  "Dos de los puntos proporcionados son coincidentes")
-        elif Point3D.is_collinear(punto1.sympy, punto2.sympy, punto3.sympy):
+        elif Punto.is_collinear(punto1.sympy, punto2.sympy, punto3.sympy):
             QMessageBox.critical(self, "Error al crear el plano",
                                  "El plano debe ser creado por tres puntos no alineados")
         else:
@@ -427,11 +425,11 @@ class VentanaPrincipal(QMainWindow):
             nombre = f"{nombre}({punto1.nombre}, {punto3.nombre}, {punto2.nombre})"
 
             if self.evitar_nombre_duplicado(nombre):
-                plano = Plane(punto1.sympy, punto2.sympy, punto3.sympy)
+                plano = Plano(punto1.sympy, punto2.sympy, punto3.sympy)
                 self.crear_plano(nombre, plano, puntos=[punto1.coordenadas, punto2.coordenadas, punto3.coordenadas])
 
-    def crear_plano(self, nombre: str, sympy: Plane, puntos: list = None):
-        plano = Plano(self, self.id_plano, nombre, sympy, puntos)
+    def crear_plano(self, nombre: str, sympy: Plano, puntos: list = None):
+        plano = WidgetPlano(self, self.id_plano, nombre, sympy, puntos)
         item = QListWidgetItem()
         self.lista_planos.addItem(item)
         item.setSizeHint(plano.minimumSizeHint())
