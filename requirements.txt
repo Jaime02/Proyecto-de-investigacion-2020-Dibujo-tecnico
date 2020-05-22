@@ -1,5 +1,4 @@
 mpmath==1.1.0
 PyOpenGL==3.1.5
-PyQt5==5.14.0
-PyQt5-sip==12.7.0
-git+git://github.com/sympy/sympy.git#egg=setupegg.py
+PyQt5==5.14.2
+PyQt5-sip==12.7.2
