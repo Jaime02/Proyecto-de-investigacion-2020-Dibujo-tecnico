@@ -386,8 +386,7 @@ class VentanaPrincipal(QMainWindow):
             nombre = f"{nombre}({punto1.nombre}, {punto2.nombre})"
 
             if self.evitar_nombre_duplicado(nombre):
-                sympy = Recta(punto1.sympy, punto2.sympy)
-                self.crear_recta(nombre, sympy, [punto1.sympy, punto2.sympy])
+                self.crear_recta(nombre, Recta(punto1.sympy, punto2.sympy), [punto1.sympy, punto2.sympy])
 
     def crear_recta(self, nombre: str, sympy: Recta, puntos: list = None):
         recta = WidgetRecta(self, self.id_recta, nombre, sympy, puntos)
@@ -417,7 +416,7 @@ class VentanaPrincipal(QMainWindow):
         elif len({punto1.coordenadas, punto2.coordenadas, punto3.coordenadas}) < 3:
             QMessageBox.critical(self, "Error al crear el plano",
                                  "Dos de los puntos proporcionados son coincidentes")
-        elif Punto.is_collinear(punto1.sympy, punto2.sympy, punto3.sympy):
+        elif punto1.sympy.colinear(punto2.sympy, punto3.sympy):
             QMessageBox.critical(self, "Error al crear el plano",
                                  "El plano debe ser creado por tres puntos no alineados")
         else:
@@ -425,8 +424,8 @@ class VentanaPrincipal(QMainWindow):
             nombre = f"{nombre}({punto1.nombre}, {punto3.nombre}, {punto2.nombre})"
 
             if self.evitar_nombre_duplicado(nombre):
-                plano = Plano(punto1.sympy, punto2.sympy, punto3.sympy)
-                self.crear_plano(nombre, plano, puntos=[punto1.coordenadas, punto2.coordenadas, punto3.coordenadas])
+                self.crear_plano(nombre, Plano(punto1.sympy, punto2.sympy, punto3.sympy),
+                                 puntos=[punto1.coordenadas, punto2.coordenadas, punto3.coordenadas])
 
     def crear_plano(self, nombre: str, sympy: Plano, puntos: list = None):
         plano = WidgetPlano(self, self.id_plano, nombre, sympy, puntos)

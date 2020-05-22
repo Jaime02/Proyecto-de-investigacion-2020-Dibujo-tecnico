@@ -327,18 +327,17 @@ class Renderizador(QOpenGLWidget):
                 if plano.infinito.isChecked():
                     puntos = plano.partes[cuadrante]
                     for j in puntos:
-                        glVertex(j)
+                        glVertex(j.coords)
                     glEnd()
                     glLineWidth(2)
                     glBegin(GL_LINE_LOOP)
                     for j in plano.limites:
-                        glVertex(j)
-                    glEnd()
-                else:
-                    glVertex(plano.puntos[0].coords)
-                    glVertex(plano.puntos[1].coords)
-                    glVertex(plano.puntos[2].coords)
-                    glEnd()
+                        glVertex(j.coords)
+                elif cuadrante == "I":
+                    glVertex(plano.puntos[0])
+                    glVertex(plano.puntos[1])
+                    glVertex(plano.puntos[2])
+                glEnd()
 
     def paintGL(self):
         glMatrixMode(GL_PROJECTION)
