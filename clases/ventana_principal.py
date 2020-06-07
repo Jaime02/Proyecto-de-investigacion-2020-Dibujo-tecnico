@@ -358,8 +358,8 @@ class VentanaPrincipal(QMainWindow):
         if self.evitar_nombre_duplicado(nombre):
             self.crear_punto(nombre, Punto(do, alejamiento, cota))
 
-    def crear_punto(self, nombre: str, sympy: Punto):
-        punto = WidgetPunto(self, self.id_punto, nombre, sympy)
+    def crear_punto(self, nombre: str, entidad_geometrica: Punto):
+        punto = WidgetPunto(self, self.id_punto, nombre, entidad_geometrica)
         item = QListWidgetItem()
         item.setSizeHint(punto.minimumSizeHint())
         self.lista_puntos.addItem(item)
@@ -386,10 +386,10 @@ class VentanaPrincipal(QMainWindow):
             nombre = f"{nombre}({punto1.nombre}, {punto2.nombre})"
 
             if self.evitar_nombre_duplicado(nombre):
-                self.crear_recta(nombre, Recta(punto1.sympy, punto2.sympy), [punto1.sympy, punto2.sympy])
+                self.crear_recta(nombre, Recta(punto1.entidad_geometrica, punto2.entidad_geometrica), [punto1.entidad_geometrica, punto2.entidad_geometrica])
 
-    def crear_recta(self, nombre: str, sympy: Recta, puntos: list = None):
-        recta = WidgetRecta(self, self.id_recta, nombre, sympy, puntos)
+    def crear_recta(self, nombre: str, entidad_geometrica: Recta, puntos: list = None):
+        recta = WidgetRecta(self, self.id_recta, nombre, entidad_geometrica, puntos)
         item = QListWidgetItem()
         self.lista_rectas.addItem(item)
         item.setSizeHint(recta.minimumSizeHint())
@@ -416,7 +416,7 @@ class VentanaPrincipal(QMainWindow):
         elif len({punto1.coordenadas, punto2.coordenadas, punto3.coordenadas}) < 3:
             QMessageBox.critical(self, "Error al crear el plano",
                                  "Dos de los puntos proporcionados son coincidentes")
-        elif punto1.sympy.colinear(punto2.sympy, punto3.sympy):
+        elif punto1.entidad_geometrica.colinear(punto2.entidad_geometrica, punto3.entidad_geometrica):
             QMessageBox.critical(self, "Error al crear el plano",
                                  "El plano debe ser creado por tres puntos no alineados")
         else:
@@ -424,11 +424,11 @@ class VentanaPrincipal(QMainWindow):
             nombre = f"{nombre}({punto1.nombre}, {punto3.nombre}, {punto2.nombre})"
 
             if self.evitar_nombre_duplicado(nombre):
-                self.crear_plano(nombre, Plano(punto1.sympy, punto2.sympy, punto3.sympy),
+                self.crear_plano(nombre, Plano(punto1.entidad_geometrica, punto2.entidad_geometrica, punto3.entidad_geometrica),
                                  puntos=[punto1.coordenadas, punto2.coordenadas, punto3.coordenadas])
 
-    def crear_plano(self, nombre: str, sympy: Plano, puntos: list = None):
-        plano = WidgetPlano(self, self.id_plano, nombre, sympy, puntos)
+    def crear_plano(self, nombre: str, entidad_geometrica: Plano, puntos: list = None):
+        plano = WidgetPlano(self, self.id_plano, nombre, entidad_geometrica, puntos)
         item = QListWidgetItem()
         self.lista_planos.addItem(item)
         item.setSizeHint(plano.minimumSizeHint())

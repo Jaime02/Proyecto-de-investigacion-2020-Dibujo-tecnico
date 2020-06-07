@@ -13,6 +13,7 @@ class Vector:
             self.coords = self.normalizar(coords)
         else:
             self.coords = coords
+        self.x, self.y, self.z = self.coords
 
     def __mul__(self, scalar):
         # Producto escalar
@@ -58,25 +59,13 @@ class Vector:
         return sum([coord ** 2 for coord in self.coords]) ** 0.5
 
     @staticmethod
-    def normalizar(vector: list):
+    def normalizar(vector):
         # Normaliza los vectores para que tengan la misma longitud
-        length = (vector[0] ** 2 + vector[1] ** 2 + vector[2] ** 2) ** 0.5
-        if length == 0:
+        longitud = (vector.x ** 2 + vector.y ** 2 + vector.z ** 2) ** 0.5
+        if longitud == 0:
             return [0, 0, 0]
-        vector = [x / length for x in vector]
+        vector = [i / longitud for i in vector.coords]
         return vector
-
-    @property
-    def x(self):
-        return self.coords[0]
-
-    @property
-    def y(self):
-        return self.coords[1]
-
-    @property
-    def z(self):
-        return self.coords[2]
 
 
 class Punto:
@@ -228,7 +217,7 @@ class Plano:
         return False
 
 
-class EntidadGeometrica(QWidget):
+class WidgetFila(QWidget):
     def __init__(self, programa, internal_id: int, nombre: str):
         QWidget.__init__(self)
         self.programa = programa
@@ -301,14 +290,14 @@ class EntidadGeometrica(QWidget):
             QMessageBox.critical(self, "Error al cambiar el nombre", "Ha introducido un nombre en blanco")
 
 
-class WidgetPunto(EntidadGeometrica):
-    def __init__(self, programa, internal_id: int, nombre: str, sympy: Punto):
-        EntidadGeometrica.__init__(self, programa, internal_id, nombre)
-        self.sympy = sympy
-        self.coordenadas = sympy.coords
-        self.x = sympy.x
-        self.y = sympy.y
-        self.z = sympy.z
+class WidgetPunto(WidgetFila):
+    def __init__(self, programa, internal_id: int, nombre: str, entidad_geometrica: Punto):
+        WidgetFila.__init__(self, programa, internal_id, nombre)
+        self.entidad_geometrica = entidad_geometrica
+        self.coordenadas = entidad_geometrica.coords
+        self.x = entidad_geometrica.x
+        self.y = entidad_geometrica.y
+        self.z = entidad_geometrica.z
 
         self.cuadrante = self.calcular_cuadrante(self.coordenadas)
 
@@ -320,7 +309,7 @@ class WidgetPunto(EntidadGeometrica):
         self.menu.addAction(self.accion_grosor)
 
     def guardar(self) -> dict:
-        return {"Nombre": self.nombre, "Sympy": self.sympy}
+        return {"Nombre": self.nombre, "Sympy": self.entidad_geometrica}
 
     def borrar(self, borrar_id: int):
         for indice in range(self.programa.lista_puntos.count()):
@@ -352,10 +341,10 @@ class WidgetPunto(EntidadGeometrica):
         self.grosor = self.ventana_cambiar_grosor.spinbox_grosor.value()
 
 
-class WidgetRecta(EntidadGeometrica):
-    def __init__(self, programa, internal_id: int, nombre: str, sympy: Recta, puntos: list = None):
-        EntidadGeometrica.__init__(self, programa, internal_id, nombre)
-        self.sympy = sympy
+class WidgetRecta(WidgetFila):
+    def __init__(self, programa, internal_id: int, nombre: str, entidad_geometrica: Recta, puntos: list = None):
+        WidgetFila.__init__(self, programa, internal_id, nombre)
+        self.entidad_geometrica = entidad_geometrica
         self.grosor = 2
         self.accion_grosor = QAction("Cambiar grosor")
         self.ventana_cambiar_grosor = ventanas_base.VentanaCambiarGrosorRecta()
@@ -371,7 +360,7 @@ class WidgetRecta(EntidadGeometrica):
         self.infinita = QAction("Infinita", checkable=True, checked=True)
         self.menu.addAction(self.infinita)
 
-        self.e = self.extremos(sympy)
+        self.e = self.extremos(entidad_geometrica)
         # Extremos de la recta separados por cuadrantes
         self.extremos_I = tuple([i for i in self.e if i.y >= 0 and i.z >= 0])
         self.extremos_II = tuple([i for i in self.e if i.z > 0 > i.y or (i.y < 0 and i.z == 0)])
@@ -424,9 +413,9 @@ class WidgetRecta(EntidadGeometrica):
 
     def guardar(self):
         if self.puntos:
-            return {"Nombre": self.nombre, "Punto_1": self.punto_1, "Punto_2": self.punto_2, "Sympy": self.sympy}
+            return {"Nombre": self.nombre, "Punto_1": self.punto_1, "Punto_2": self.punto_2, "Sympy": self.entidad_geometrica}
         else:
-            return {"Nombre": self.nombre, "Sympy": self.sympy}
+            return {"Nombre": self.nombre, "Sympy": self.entidad_geometrica}
 
     def borrar(self, borrar_id: int):
         for indice in range(self.programa.lista_rectas.count()):
@@ -452,7 +441,7 @@ class WidgetRecta(EntidadGeometrica):
         return intersecciones
 
     def calcular_traza_h(self):
-        traza_h = self.plano_horizontal.interseccion_con_recta(self.sympy)
+        traza_h = self.plano_horizontal.interseccion_con_recta(self.entidad_geometrica)
         if traza_h:
             if traza_h != "Recta contenida en plano":
                 if all(abs(i) <= 500 for i in traza_h.coords):
@@ -463,7 +452,7 @@ class WidgetRecta(EntidadGeometrica):
             return False
 
     def calcular_traza_v(self):
-        traza_v = self.plano_vertical.interseccion_con_recta(self.sympy)
+        traza_v = self.plano_vertical.interseccion_con_recta(self.entidad_geometrica)
         if traza_v:
             if traza_v != "Recta contenida en plano":
                 if all(abs(i) <= 500 for i in traza_v.coords):
@@ -561,10 +550,10 @@ class WidgetRecta(EntidadGeometrica):
         return partes
 
 
-class WidgetPlano(EntidadGeometrica):
-    def __init__(self, programa, internal_id: int, nombre: str, sympy: Plano, puntos: list = None):
-        EntidadGeometrica.__init__(self, programa, internal_id, nombre)
-        self.sympy = sympy
+class WidgetPlano(WidgetFila):
+    def __init__(self, programa, internal_id: int, nombre: str, entidad_geometrica: Plano, puntos: list = None):
+        WidgetFila.__init__(self, programa, internal_id, nombre)
+        self.entidad_geometrica = entidad_geometrica
         self.infinito = QAction("Infinito", checkable=True, checked=True)
         self.menu.addAction(self.infinito)
 
@@ -610,7 +599,7 @@ class WidgetPlano(EntidadGeometrica):
             self.ver_traza_horizontal.setDisabled(True)
 
         if self.traza_h and self.traza_v:
-            punto_en_lt = self.sympy.interseccion_con_segmento(Segmento(Punto(500, 0, 0), Punto(-500, 0, 0)))
+            punto_en_lt = self.entidad_geometrica.interseccion_con_segmento(Segmento(Punto(500, 0, 0), Punto(-500, 0, 0)))
             if punto_en_lt and not isinstance(punto_en_lt, Segmento):
                 if self.traza_h[0].y < self.traza_h[1].y:
                     self.traza_h[0], self.traza_h[1] = self.traza_h[1], self.traza_h[0]
@@ -628,9 +617,9 @@ class WidgetPlano(EntidadGeometrica):
     def guardar(self):
         if self.puntos:
             return {"Nombre": self.nombre, "Punto_1": self.punto_1, "Punto_2": self.punto_2,
-                    "Punto_3": self.punto_3, "Sympy": self.sympy}
+                    "Punto_3": self.punto_3, "Sympy": self.entidad_geometrica}
         else:
-            return {"Nombre": self.nombre, "Sympy": self.sympy}
+            return {"Nombre": self.nombre, "Sympy": self.entidad_geometrica}
 
     def borrar(self, borrar_id: int):
         for indice in range(self.programa.lista_planos.count()):
@@ -648,12 +637,12 @@ class WidgetPlano(EntidadGeometrica):
             proyectados = []
             # Proyectar en:
             # Perfil
-            if self.sympy.vector_normal.y == self.sympy.vector_normal.z == 0:
+            if self.entidad_geometrica.vector_normal.y == self.entidad_geometrica.vector_normal.z == 0:
                 for i in puntos:
                     punto = (i.y, i.z)
                     proyectados.append(punto)
             # Vertical
-            elif self.sympy.vector_normal.z == 0:
+            elif self.entidad_geometrica.vector_normal.z == 0:
                 for i in puntos:
                     punto = (i.x, i.z)
                     proyectados.append(punto)
@@ -689,7 +678,7 @@ class WidgetPlano(EntidadGeometrica):
         buenos = []
         # Intersección con las doce aristas del cubo
         for arista in self.aristas:
-            inter = self.sympy.interseccion_con_segmento(arista)
+            inter = self.entidad_geometrica.interseccion_con_segmento(arista)
             if inter and inter != "Recta contenida en plano":
                 buenos.append(inter)
 
@@ -702,7 +691,7 @@ class WidgetPlano(EntidadGeometrica):
         puntos = list(self.limites)
         partes = {'I': [], 'II': [], 'III': [], 'IV': []}
         for segmento in self.plano_vertical_bordes:
-            interseccion = self.sympy.interseccion_con_segmento(segmento)
+            interseccion = self.entidad_geometrica.interseccion_con_segmento(segmento)
             if interseccion:
                 if interseccion == "Recta contenida en plano":
                     puntos.append(segmento.p1)
@@ -710,14 +699,14 @@ class WidgetPlano(EntidadGeometrica):
                 else:
                     puntos.append(interseccion)
         for segmento in self.plano_horizontal_bordes:
-            interseccion = self.sympy.interseccion_con_segmento(segmento)
+            interseccion = self.entidad_geometrica.interseccion_con_segmento(segmento)
             if interseccion:
                 if interseccion == "Recta contenida en plano":
                     puntos.append(segmento.p1)
                     puntos.append(segmento.p2)
                 else:
                     puntos.append(interseccion)
-        interseccion = self.sympy.interseccion_con_segmento(Segmento(Punto(500, 0, 0), Punto(-500, 0, 0)))
+        interseccion = self.entidad_geometrica.interseccion_con_segmento(Segmento(Punto(500, 0, 0), Punto(-500, 0, 0)))
         if interseccion:
             if interseccion == "Recta contenida en plano":
                 puntos.append(Punto(500, 0, 0))
@@ -741,13 +730,13 @@ class WidgetPlano(EntidadGeometrica):
         return partes
 
     def calcular_traza_h(self):
-        if self.sympy.vector_normal.x == 0 and self.sympy.vector_normal.y == 0:
+        if self.entidad_geometrica.vector_normal.x == 0 and self.entidad_geometrica.vector_normal.y == 0:
             return False
         else:
             trazas = []
             for i in range(4):
                 if not len(trazas) == 2:
-                    interseccion = self.sympy.interseccion_con_segmento(self.plano_horizontal_bordes[i])
+                    interseccion = self.entidad_geometrica.interseccion_con_segmento(self.plano_horizontal_bordes[i])
                     if interseccion and interseccion != "Recta contenida en plano":
                         trazas.append(interseccion)
             trazas = list(set(trazas))
@@ -757,13 +746,13 @@ class WidgetPlano(EntidadGeometrica):
                 return trazas
 
     def calcular_traza_v(self):
-        if self.sympy.vector_normal.x == 0 and self.sympy.vector_normal.z == 0:
+        if self.entidad_geometrica.vector_normal.x == 0 and self.entidad_geometrica.vector_normal.z == 0:
             return False
         else:
             trazas = []
             for i in range(4):
                 if not len(trazas) == 2:
-                    interseccion = self.sympy.interseccion_con_segmento(self.plano_vertical_bordes[i])
+                    interseccion = self.entidad_geometrica.interseccion_con_segmento(self.plano_vertical_bordes[i])
                     if interseccion and interseccion != "Recta contenida en plano":
                         trazas.append(interseccion)
             trazas = list(set(trazas))
@@ -773,9 +762,9 @@ class WidgetPlano(EntidadGeometrica):
                 return trazas
 
 
-class Circunferencia(EntidadGeometrica):
+class Circunferencia(WidgetFila):
     def __init__(self, programa, nombre: str, vector_normal=None, radio=None, centro=None, puntos=None):
-        EntidadGeometrica.__init__(self, programa, programa.id_circunferencia, nombre)
+        WidgetFila.__init__(self, programa, programa.id_circunferencia, nombre)
         programa.id_circunferencia += 1
         if not puntos:
             self.puntos = self.calcular_circunferencia(vector_normal, radio, centro)
@@ -813,8 +802,8 @@ class Circunferencia(EntidadGeometrica):
             vector_v = calcular_vector_v(radio, i * 360 / numero_de_lados)
             punto = rodri(vector_v, vector_k, angulo_theta)
             for j in range(3):
-                punto.coords[j] = round(punto.coords[j] + centro.coords[j], 4)
-            puntos.append(punto.coords)
+                punto.coords[j] = round(punto.coords[j] + centro[j], 4)
+            puntos.append(punto)
 
         return puntos
 
@@ -830,10 +819,10 @@ class Circunferencia(EntidadGeometrica):
         return {"Nombre": self.nombre, "Puntos": self.puntos}
 
 
-class Poligono(EntidadGeometrica):
-    def __init__(self, programa, nombre: str,
-                 vector_normal=None, vertice=None, centro=None, num_lados=None, puntos=None):
-        EntidadGeometrica.__init__(self, programa, programa.id_circunferencia, nombre, None)
+class Poligono(WidgetFila):
+    def __init__(self, programa, nombre: str, vector_normal=None,
+                 vertice=None, centro=None, num_lados=None, puntos=None):
+        WidgetFila.__init__(self, programa, programa.id_circunferencia, nombre)
         programa.id_poligono += 1
         if not puntos:
             self.puntos = self.calcular_vertices(vector_normal, vertice, centro, num_lados)
@@ -877,18 +866,16 @@ class Poligono(EntidadGeometrica):
         else:
             vector_k = Vector([0, 0, 1])
 
-        # Lista que guarda los puntos
         puntos = []
-        desviacion = Vector([vertice.coords[i] - centro.coords[i] for i in range(3)])
+        desviacion = Vector([vertice[i] - centro[i] for i in range(3)])
         angulo_desviacion = calcular_angulo_entre_vectores(desviacion, Vector([1, 0, 0]), vector_u)
 
         for i in range(1, numero_de_lados + 1):
             vector_v = calcular_vector_v(radio, angulo_desviacion + i * 360 / numero_de_lados)
             punto = rodri(vector_v, vector_k, angulo_theta)
             for j in range(3):
-                punto.coords[j] = round(punto.coords[j] + centro.coords[j], 4)
-            puntos.append(punto.coords)
-
+                punto.coords[j] = round(punto.coords[j] + centro[j], 4)
+            puntos.append(punto)
         return puntos
 
     def borrar(self, borrar_id: int):

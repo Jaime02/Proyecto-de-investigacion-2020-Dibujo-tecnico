@@ -482,7 +482,7 @@ class Renderizador(QOpenGLWidget):
                 glColor(circ.color)
                 glBegin(GL_LINE_LOOP)
                 for punto in circ.puntos:
-                    glVertex(*punto)
+                    glVertex(*punto.coords)
                 glEnd()
 
     def dibujar_poligonos(self):
@@ -492,7 +492,7 @@ class Renderizador(QOpenGLWidget):
                 glColor(poligono.color)
                 glBegin(GL_LINE_LOOP)
                 for punto in poligono.puntos:
-                    glVertex(*punto)
+                    glVertex(*punto.coords)
                 glEnd()
 
     def keyPressEvent(self, evento):
@@ -810,7 +810,7 @@ class Diedrico(QWidget):
             if circ.render.isChecked():
                 segmentos = circ.puntos
 
-                # Tercera proyección
+                # Cambia el color del trazo en modo oscuro
                 if self.programa.tercera_proyeccion.checkState():
                     if self.programa.modo_oscuro:
                         self.pen_prima3.setColor(QColor(200, 200, 200))
@@ -819,7 +819,7 @@ class Diedrico(QWidget):
 
                 for j in range(len(segmentos)):
                     segmento = segmentos[j-1], segmentos[j]
-                    if segmento[0][1] >= 0 and segmento[0][2] >= 0 and segmento[1][1] >= 0 and segmento[1][2] >= 0:
+                    if segmento[0].y >= 0 and segmento[0].z >= 0 and segmento[1].y >= 0 and segmento[1].z >= 0:
                         qp.setPen(self.pen_recta_prima_continuo)
                         self.recta_prima(qp, segmento)
                         qp.setPen(self.pen_recta_prima2_continuo)
@@ -838,7 +838,7 @@ class Diedrico(QWidget):
             if poligono.render.isChecked():
                 segmentos = poligono.puntos
 
-                # Tercera proyección
+                # Cambia el color del trazo en modo oscuro
                 if self.programa.tercera_proyeccion.checkState():
                     if self.programa.modo_oscuro:
                         self.pen_prima3.setColor(QColor(200, 200, 200))
@@ -847,7 +847,7 @@ class Diedrico(QWidget):
 
                 for j in range(len(segmentos)):
                     segmento = segmentos[j - 1], segmentos[j]
-                    if segmento[0][1] >= 0 and segmento[0][2] >= 0 and segmento[1][1] >= 0 and segmento[1][2] >= 0:
+                    if segmento[0].y >= 0 and segmento[0].z >= 0 and segmento[1].y >= 0 and segmento[1].z >= 0:
                         qp.setPen(self.pen_recta_prima_continuo)
                         self.recta_prima(qp, segmento)
                         qp.setPen(self.pen_recta_prima2_continuo)
