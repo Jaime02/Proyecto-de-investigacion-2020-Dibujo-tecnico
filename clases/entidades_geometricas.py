@@ -863,10 +863,9 @@ class Poligono(WidgetFila):
 
         for i in range(1, numero_de_lados + 1):
             vector_v = calcular_vector_v(radio, angulo_desviacion + i * 360 / numero_de_lados)
-            punto = rodri(vector_v, vector_k, angulo_theta)
-            for j in range(3):
-                punto.coords[j] = round(punto.coords[j] + centro[j], 4)
+            punto = Punto(*rodri(vector_v, vector_k, angulo_theta).coords) + Punto(*centro)
             puntos.append(punto)
+
         return puntos
 
     def borrar(self, borrar_id: int):
