@@ -39,9 +39,6 @@ class Vector:
                            self.coords[1] - other.coords[1],
                            self.coords[2] - other.coords[2]])
 
-    def __repr__(self):
-        return str(self.coords)
-
     def __truediv__(self, scalar):
         return Vector([coord / scalar for coord in self.coords])
 
@@ -90,9 +87,6 @@ class Punto:
 
     def __rmul__(self, escalar):
         return Punto(*[self.coords[i] * escalar for i in range(3)])
-
-    def __repr__(self):
-        return str(self.coords)
 
     def distancia(self, punto):
         return sum([(self.coords[i] - punto.coords[i]) ** 2 for i in range(3)]) ** 0.5
@@ -767,12 +761,12 @@ class Circunferencia(WidgetFila):
         WidgetFila.__init__(self, programa, programa.id_circunferencia, nombre)
         programa.id_circunferencia += 1
         if not puntos:
-            self.puntos = self.calcular_circunferencia(vector_normal, radio, centro)
+            self.puntos = self.calcular_puntos(vector_normal, radio, centro)
         else:
             self.puntos = puntos
 
     @staticmethod
-    def calcular_circunferencia(vector_normal, radio, centro):
+    def calcular_puntos(vector_normal, radio, centro):
         # TODO: Mejorar el punto en el que la circunferencia toca a los planos de proyección
         # Rotación de rodrigues
         def rodri(v: Vector, k: Vector, theta):
@@ -792,17 +786,14 @@ class Circunferencia(WidgetFila):
         else:
             vector_k = Vector([0, 0, 1])
 
-        # Hacer que el número de segmentos dependa de r, mejora la resolución de la circunferencia cuando el r es grande
+        # Hacer que el número de segmentos dependa de r mejora la resolución de la circunferencia cuando el r es grande
         numero_de_lados = radio + 20
 
-        # Lista que guarda los puntos
         puntos = []
 
         for i in range(1, numero_de_lados + 1):
             vector_v = calcular_vector_v(radio, i * 360 / numero_de_lados)
-            punto = rodri(vector_v, vector_k, angulo_theta)
-            for j in range(3):
-                punto.coords[j] = round(punto.coords[j] + centro[j], 4)
+            punto = Punto(*rodri(vector_v, vector_k, angulo_theta).coords) + Punto(*centro)
             puntos.append(punto)
 
         return puntos

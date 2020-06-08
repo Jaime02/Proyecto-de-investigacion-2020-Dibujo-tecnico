@@ -809,7 +809,6 @@ class Diedrico(QWidget):
             circ = self.programa.lista_circunferencias.itemWidget(self.programa.lista_circunferencias.item(i))
             if circ.render.isChecked():
                 segmentos = circ.puntos
-
                 # Cambia el color del trazo en modo oscuro
                 if self.programa.tercera_proyeccion.checkState():
                     if self.programa.modo_oscuro:
