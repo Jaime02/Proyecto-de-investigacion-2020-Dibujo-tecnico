@@ -8,7 +8,7 @@ from . import ventanas_base
 
 
 class Vector:
-    def __init__(self, coords, normalizar=False):
+    def __init__(self, coords: list, normalizar=False):
         if normalizar:
             self.coords = self.normalizar(coords)
         else:
@@ -42,11 +42,16 @@ class Vector:
     def __truediv__(self, scalar):
         return Vector([coord / scalar for coord in self.coords])
 
+    def __repr__(self):
+        return str(self.coords)
+
     def dot(self, vec):
         # Producto escalar
         return sum([self.coords[indx] * vec.coords[indx] for indx in range(3)])
 
     def cross(self, vec):
+        if self.coords == vec.coords or self.coords == [-i for i in vec.coords]:
+            raise Exception("El producto vectorial entre dos vectores cuya direccion es la misma no esta definido")
         # Producto vectorial
         return Vector([self.coords[1] * vec.coords[2] - self.coords[2] * vec.coords[1],
                        self.coords[2] * vec.coords[0] - self.coords[0] * vec.coords[2],
@@ -56,13 +61,30 @@ class Vector:
         return sum([coord ** 2 for coord in self.coords]) ** 0.5
 
     @staticmethod
-    def normalizar(vector):
+    def normalizar(vector: list):
         # Normaliza los vectores para que tengan la misma longitud
-        longitud = (vector.x ** 2 + vector.y ** 2 + vector.z ** 2) ** 0.5
+        longitud = (vector[0] ** 2 + vector[1] ** 2 + vector[2] ** 2) ** 0.5
         if longitud == 0:
             return [0, 0, 0]
-        vector = [i / longitud for i in vector.coords]
+        vector = [i / longitud for i in vector]
         return vector
+
+    def calcular_angulo_entre_vectores(self, v2):
+        if Vector(self.coords, normalizar=True).coords == Vector(v2.coords, normalizar=True).coords:
+            return 0
+        elif Vector(self.coords, normalizar=True).coords == Vector([-i for i in v2.coords], normalizar=True).coords:
+            return 180
+
+        vn = self.cross(v2)
+        if vn.coords[2] != 0:
+            dot = self.coords[0] * v2.coords[0] + self.coords[1] * v2.coords[1]
+            det = self.coords[1] * v2.coords[0] - self.coords[0] * v2.coords[1]
+            alfa = atan2(det, dot)
+        elif vn.coords[1] != 0:
+            alfa = atan2(v2.coords[0], v2.coords[2]) - atan2(self.coords[0], self.coords[2])
+        else:
+            alfa = atan2(self.coords[1], self.coords[2]) + atan2(v2.coords[1], v2.coords[2])
+        return degrees(alfa)
 
 
 class Punto:
@@ -822,50 +844,38 @@ class Poligono(WidgetFila):
 
     @staticmethod
     def calcular_vertices(vector_normal, vertice, centro, numero_de_lados):
-
-        def distancia_entre_puntos(p1: list, p2: list):
-            return ((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2 + (p2[2] - p1[2]) ** 2) ** 0.5
-
-        radio = distancia_entre_puntos(vertice, centro)
-
         # Rotación de rodrigues
         def rodri(v: Vector, k: Vector, theta):
             return v * cos(theta) + k.cross(v) * sin(theta) + k * (k.dot(v)) * (1 - cos(theta))
 
+        # Crea una circunferencia en el plano XY
         def calcular_vector_v(r: int, t: int):
             return Vector([r * cos(radians(t)), r * sin(radians(t)), 0])
 
-        def calcular_angulo_entre_vectores(v1, v2, vn):
-            if vn.coords[2] != 0:
-                dot = v1.coords[0] * v2.coords[0] + v1.coords[1] * v2.coords[1]
-                det = v1.coords[1] * v2.coords[0] - v1.coords[0] * v2.coords[1]
-                alfa = atan2(det, dot)
-            elif vn.coords[1] != 0:
-                alfa = atan2(v2.coords[0], v2.coords[2]) - atan2(v1.coords[0], v1.coords[2])
-            else:
-                alfa = atan2(v1.coords[1], v1.coords[2]) + atan2(v2.coords[1], v2.coords[2])
-            return degrees(alfa)
-
+        radio = Punto(*vertice).distancia(Punto(*centro))
         # Vector E, eje Z
         vector_e = Vector([0, 0, 1])
-        # El vector normal al plano paralelo al polígono
-        vector_u = Vector(vector_normal, normalizar=True)
-        angulo_theta = acos(vector_e.dot(vector_u) / vector_u.modulo())
-        denominador = vector_e.cross(vector_u).modulo()
-        if denominador != 0:
-            vector_k = vector_e.cross(vector_u) / denominador
+        # Vector normal al plano paralelo al polígono
+        vector_normal = Vector(vector_normal.coords, normalizar=True)
+        angulo_theta = acos(vector_e.dot(vector_normal) / vector_normal.modulo())
+
+        if vector_e == vector_normal:
+            denominador = vector_e.cross(vector_normal).modulo()
+            if denominador != 0:
+                vector_k = vector_e.cross(vector_normal) / denominador
+            else:
+                vector_k = Vector([0, 0, 1])
         else:
             vector_k = Vector([0, 0, 1])
 
-        puntos = []
         desviacion = Vector([vertice[i] - centro[i] for i in range(3)])
-        angulo_desviacion = calcular_angulo_entre_vectores(desviacion, Vector([1, 0, 0]), vector_u)
+        angulo_desviacion = desviacion.calcular_angulo_entre_vectores(Vector([1, 0, 0]))
 
+        puntos = []
         for i in range(1, numero_de_lados + 1):
             vector_v = calcular_vector_v(radio, angulo_desviacion + i * 360 / numero_de_lados)
             punto = Punto(*rodri(vector_v, vector_k, angulo_theta).coords) + Punto(*centro)
             puntos.append(punto)
-
         return puntos
 
     def borrar(self, borrar_id: int):

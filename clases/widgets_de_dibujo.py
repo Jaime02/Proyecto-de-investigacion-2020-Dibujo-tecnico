@@ -737,7 +737,7 @@ class Diedrico(QWidget):
         x = extremos[1].x
         y0 = -extremos[0].y
         y = -extremos[1].y
-        if not (x0 == x and y0 == y):
+        if not (round(x0, 1) == round(x, 1) and round(y0, 1) == round(y, 1)):
             qp.drawLine(QPointF(x0, y0), QPointF(x, y))
 
     @staticmethod
@@ -746,7 +746,7 @@ class Diedrico(QWidget):
         x = extremos[1].x
         y0 = extremos[0].z
         y = extremos[1].z
-        if not (x0 == x and y0 == y):
+        if not (round(x0, 1) == round(x, 1) and round(y0, 1) == round(y, 1)):
             qp.drawLine(QPointF(x0, y0), QPointF(x, y))
 
     def recta_prima3(self, qp, extremos):
@@ -761,7 +761,8 @@ class Diedrico(QWidget):
             x = -extremos[1].y
             y0 = extremos[0].z
             y = extremos[1].z
-            qp.drawLine(QPointF(x0, y0), QPointF(x, y))
+            if not (round(x0, 1) == round(x, 1) and round(y0, 1) == round(y, 1)):
+                qp.drawLine(QPointF(x0, y0), QPointF(x, y))
 
     def dibujar_trazas_recta(self, qp, recta):
         qp.setPen(self.pen_trazas)
