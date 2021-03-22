@@ -2,7 +2,6 @@ from PyQt5.QtCore import Qt, QRect
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (QWidget, QCheckBox, QPushButton, QMainWindow, QLabel, QLineEdit, QComboBox,
                              QMessageBox, QColorDialog, QSpinBox, QListWidgetItem)
-from sympy import Point3D, Line3D, Plane, intersection
 
 from . import entidades_geometricas
 
@@ -83,7 +82,7 @@ class PuntoMedio(VentanaBaseConNombre):
                                  "Debes crear al menos dos puntos para calcular su punto medio")
         else:
             nombre = self.programa.evitar_nombre_punto_blanco(self.nombre.text())
-            punto_medio = punto.sympy.midpoint(punto2.sympy)
+            punto_medio = punto.entidad_geometica.midpoint(punto2.entidad_geometica)
             nombre = f"{nombre} ({punto_medio.x}, {punto_medio.y}, {punto_medio.z})"
             self.programa.crear_punto(nombre, punto_medio)
             self.close()
@@ -128,7 +127,7 @@ class RectaPerpendicularAPlano(VentanaBaseConNombre):
         else:
             nombre = self.programa.evitar_nombre_recta_blanco(self.nombre.text())
             nombre = f"{nombre}({punto.nombre}⊥{plano.nombre})"
-            recta = plano.sympy.perpendicular_line(punto.sympy)
+            recta = plano.entidad_geometica.perpendicular_line(punto.entidad_geometica)
             self.programa.crear_recta(nombre, recta)
             self.close()
 
@@ -184,12 +183,13 @@ class PlanoPerpendicularAPlano(VentanaBaseConNombre):
         if punto == "" or plano == "":
             QMessageBox.critical(self, "Error al crear el plano",
                                  "Debes crear al menos un plano y un punto para crear un plano perpendicular a este")
-        elif punto.sympy == punto2.sympy:
+        elif punto.entidad_geometica == punto2.entidad_geometica:
             QMessageBox.critical(self, "Error al crear el plano", "Los puntos son coincidentes")
         else:
             nombre = self.programa.evitar_nombre_plano_blanco(self.nombre.text())
             nombre = f"{nombre}⊥{plano.nombre}"
-            plano_perpendicular = plano.sympy.perpendicular_plane(punto.sympy, punto2.sympy)
+            plano_perpendicular = plano.entidad_geometica.perpendicular_plane(punto.entidad_geometica,
+                                                                              punto2.entidad_geometica)
             self.programa.crear_plano(nombre, plano_perpendicular)
             self.close()
 
@@ -233,7 +233,7 @@ class PlanoParaleloAPlano(VentanaBaseConNombre):
         else:
             nombre = self.programa.evitar_nombre_plano_blanco(self.nombre.text())
             nombre = f"{nombre}║{plano.nombre}"
-            plano_paralelo = plano.sympy.parallel_plane(punto.sympy)
+            plano_paralelo = plano.entidad_geometica.parallel_plane(punto.entidad_geometica)
             self.programa.crear_plano(nombre, plano_paralelo)
             self.close()
 
@@ -275,7 +275,7 @@ class RectaPerpendicularARecta(VentanaBaseConNombre):
         else:
             nombre = self.programa.evitar_nombre_recta_blanco(self.nombre.text())
             nombre = f"{nombre}({recta.nombre}⊥{punto.nombre})"
-            recta_perpendicular = recta.sympy.perpendicular_line(punto.sympy)
+            recta_perpendicular = recta.entidad_geometica.perpendicular_line(punto.entidad_geometica)
             self.programa.crear_recta(nombre, recta_perpendicular)
             self.close()
 
@@ -319,7 +319,7 @@ class RectaParalelaARecta(VentanaBaseConNombre):
         else:
             nombre = self.programa.evitar_nombre_recta_blanco(self.nombre.text())
             nombre = f"{nombre}({recta.nombre}║{punto.nombre})"
-            recta_perpendicular = recta.sympy.parallel_line(punto.sympy)
+            recta_perpendicular = recta.entidad_geometica.parallel_line(punto.entidad_geometica)
             self.programa.crear_recta(nombre, recta_perpendicular)
             self.close()
 
@@ -383,7 +383,7 @@ class Distancia(VentanaBase):
             QMessageBox.critical(self, "Error al calcular la distancia",
                                  "Los elementos seleccionados son el mismo")
         else:
-            distancia = round(entidad_1.sympy.distance(entidad_2.sympy), 2)
+            distancia = round(entidad_1.entidad_geometica.distance(entidad_2.entidad_geometica), 2)
             QMessageBox.about(self, "Resultado",
                               f"La distancia entre estos dos elementos es de {distancia} mm")
 
@@ -436,18 +436,18 @@ class Interseccion(VentanaBase):
             QMessageBox.critical(self, "Error al calcular la intersección",
                                  "Los elementos seleccionados son el mismo")
         else:
-            interseccion = intersection(entidad_1.sympy, entidad_2.sympy)
+            interseccion = intersection(entidad_1.entidad_geometica, entidad_2.entidad_geometica)
             if interseccion:
                 # Si no se produce una intersección es porque los elementos son paralelos
                 interseccion = interseccion[0]
-                if isinstance(entidad_1.sympy, Line3D) and isinstance(entidad_2.sympy, Line3D):
+                if isinstance(entidad_1.entidad_geometica, Recta) and isinstance(entidad_2.entidad_geometica, Recta):
                     """
                     Intersección recta-recta. Tres opciones: 
                     Ambas son coincidentes -> Se produce un error
                     Secantes -> Se crea un punto de intersección
                     Paralelas -> No tienen ningún punto en común
                     """
-                    if isinstance(interseccion, Point3D):
+                    if isinstance(interseccion, entidades_geometricas.Punto):
                         if any(abs(i) > 499 for i in interseccion.coordinates):
                             QMessageBox.critical(self, "Error al calcular la intersección",
                                                  "Las rectas se cortan en un punto fuera de los límites establecidos en"
@@ -456,14 +456,14 @@ class Interseccion(VentanaBase):
                             self.programa.crear_punto(f"{entidad_1.nombre}∩{entidad_2.nombre}", interseccion)
                     else:
                         QMessageBox.critical(self, "Error al calcular la intersección", "Las rectas son coincidentes")
-                elif isinstance(entidad_1.sympy, Plane) and isinstance(entidad_2.sympy, Plane):
+                elif isinstance(entidad_1.entidad_geometica, Plano) and isinstance(entidad_2.entidad_geometica, Plano):
                     """
                     Lo mismo, 3 casos:
                     Planos paralelos -> No se crea nada
                     Secantes -> Se crea una recta
                     Coincidentes -> Ambos planos son iguales
                     """
-                    if isinstance(interseccion, Line3D):
+                    if isinstance(interseccion, Recta):
                         try:
                             nombre = f"{entidad_1.nombre}∩{entidad_2.nombre}"
                             self.programa.crear_recta(nombre, interseccion)
@@ -472,7 +472,7 @@ class Interseccion(VentanaBase):
                             QMessageBox.critical(self, "Error al crear la intersección",
                                                  "Se ha producido un grave error debido a limitaciones del programa")
                 else:
-                    if isinstance(interseccion, Point3D):
+                    if isinstance(interseccion, entidades_geometricas.Punto):
                         if any(abs(i) > 499 for i in interseccion.coordinates):
                             QMessageBox.critical(self, "Error al calcular la intersección",
                                                  "Las intersección se encuentra en un punto fuera de los límites "
@@ -538,21 +538,24 @@ class Proyectar(VentanaBaseConNombre):
             QMessageBox.critical(self, "Error al crear la proyección",
                                  "Debes crear al menos un punto y un plano para calcular su proyección")
         else:
-            if plano.sympy.intersection(punto.sympy):
+            if plano.entidad_geometica.intersection(punto.entidad_geometica):
                 QMessageBox.critical(self, "Error al crear la proyección", "El punto pertenece al plano")
             else:
                 modo = self.modo.currentText()
                 if modo == "Perpendicular al plano":
-                    proyectado = plano.sympy.projection(punto.sympy)
+                    proyectado = plano.entidad_geometica.projection(punto.entidad_geometica)
                 else:
                     if modo == "Vertical":
-                        segmento = Segment3D(Point3D(punto.x, 500, punto.z), Point3D(punto.x, -500, punto.z))
+                        segmento = Segment3D(entidades_geometricas.Punto(punto.x, 500, punto.z),
+                                             entidades_geometricas.Punto(punto.x, -500, punto.z))
                     elif modo == "Horizontal":
-                        segmento = Segment3D(Point3D(punto.x, punto.y, 500), Point3D(punto.x, punto.y, -500))
+                        segmento = Segment3D(entidades_geometricas.Punto(punto.x, punto.y, 500),
+                                             entidades_geometricas.Punto(punto.x, punto.y, -500))
                     else:
                         # modo = perfil
-                        segmento = Segment3D(Point3D(500, punto.y, punto.z), Point3D(-500, punto.y, punto.z))
-                    proyectado = plano.sympy.intersection(segmento)
+                        segmento = Segment3D(entidades_geometricas.Punto(500, punto.y, punto.z),
+                                             entidades_geometricas.Punto(-500, punto.y, punto.z))
+                    proyectado = plano.entidad_geometica.intersection(segmento)
 
                     if proyectado:
                         proyectado = proyectado[0]
@@ -609,15 +612,15 @@ class Bisectriz(VentanaBaseConNombre):
             QMessageBox.critical(self, "Error al crear la bisectriz",
                                  "Debes crear al menos dos rectas que se corten para calcular su bisectriz")
         else:
-            interseccion = recta1.sympy.intersection(recta2.sympy)
+            interseccion = recta1.entidad_geometica.intersection(recta2.entidad_geometica)
             if interseccion:
-                if isinstance(interseccion[0], Line3D):
+                if isinstance(interseccion[0], Recta):
                     QMessageBox.critical(self, "Error al crear la bisectriz", "Las rectas son coincidentes")
                 else:
                     punto = interseccion[0]
 
-                    direccion1 = recta1.sympy.direction_ratio
-                    direccion2 = recta2.sympy.direction_ratio
+                    direccion1 = recta1.entidad_geometica.direction_ratio
+                    direccion2 = recta2.entidad_geometica.direction_ratio
 
                     d1 = self.normalizar(direccion1)
                     d2 = self.normalizar(direccion2)
@@ -625,8 +628,8 @@ class Bisectriz(VentanaBaseConNombre):
                     direccion1 = [d1[i] + d2[i] for i in range(3)]
                     direccion2 = [d1[i] - d2[i] for i in range(3)]
 
-                    bis1 = Line3D(punto, direction_ratio=direccion1)
-                    bis2 = Line3D(punto, direction_ratio=direccion2)
+                    bis1 = Recta(punto, direction_ratio=direccion1)
+                    bis2 = Recta(punto, direction_ratio=direccion2)
 
                     nombre = "bis. 1 " + self.programa.evitar_nombre_recta_blanco(self.nombre.text())
                     nombre2 = "bis. 2 " + self.programa.evitar_nombre_recta_blanco(self.nombre.text())
@@ -847,12 +850,12 @@ class VentanaCircunferencia(QMainWindow):
         self.plano = QComboBox(cw, geometry=QRect(10, 80, 161, 22))
         nombre = QLabel("Nombre:", cw, geometry=QRect(10, 160, 47, 13))
         self.nombre = QLineEdit(cw, geometry=QRect(10, 180, 161, 31))
+        radio = QLabel("Radio:", cw, geometry=QRect(10, 110, 47, 13))
+        self.radio = QSpinBox(cw, geometry=QRect(10, 130, 161, 22))
         self.boton_cancelar = QPushButton("Cancelar", cw, geometry=QRect(94, 220, 81, 23))
         self.boton_cancelar.clicked.connect(self.close)
         self.boton_crear = QPushButton("Crear", cw, geometry=QRect(10, 220, 81, 23))
         self.boton_crear.clicked.connect(self.comprobar_circunferencia)
-        radio = QLabel("Radio:", cw, geometry=QRect(10, 110, 47, 13))
-        self.radio = QSpinBox(cw, geometry=QRect(10, 130, 161, 22))
         self.radio.setRange(1, 250)
         self.setCentralWidget(cw)
 
@@ -876,16 +879,22 @@ class VentanaCircunferencia(QMainWindow):
             centro = self.centro.currentText()
             plano = self.plano.currentText()
             radio = self.radio.value()
-            for i in range(self.programa.lista_puntos.count()):
-                if self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre == centro:
-                    centro = self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i))
-            for i in range(self.programa.lista_planos.count()):
-                if self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre == plano:
-                    plano = self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i))
-            nombre = f"{nombre}⊂{plano.nombre}, r={radio}"
-            self.crear_circunferencia(nombre, plano.sympy.normal_vector, radio, centro.sympy)
+            if plano == "" or centro == "":
+                QMessageBox.critical(self, "Error al crear la circunferencia", "Debe crear un punto y un plano para "
+                                                                               "definir la circunferencia")
+            else:
+                for i in range(self.programa.lista_puntos.count()):
+                    if self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre == centro:
+                        centro = self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i))
+                for i in range(self.programa.lista_planos.count()):
+                    if self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre == plano:
+                        plano = self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i))
+                nombre = f"{nombre}║{plano.nombre}, r={radio}"
+                v_n = plano.entidad_geometrica.vector_normal
+                centro = centro.entidad_geometrica.coords
+                self.crear_circunferencia(nombre, v_n, radio, centro)
 
-    def crear_circunferencia(self, nombre, vector_normal=None, radio=None, centro: Point3D=None, puntos=None):
+    def crear_circunferencia(self, nombre, vector_normal=None, radio=None, centro=None, puntos: list = None):
         if not puntos:
             circ = entidades_geometricas.Circunferencia(self.programa, nombre, vector_normal=vector_normal,
                                                         radio=radio, centro=centro)
@@ -913,6 +922,7 @@ class VentanaCambiarGrosorPunto(QMainWindow):
         self.boton_cancelar = QPushButton("Candelar", cw, geometry=QRect(90, 60, 75, 23), clicked=self.close)
 
     def abrir(self):
+        self.spinbox_grosor.setValue(5)
         self.show()
         self.activateWindow()
 
@@ -933,5 +943,90 @@ class VentanaCambiarGrosorRecta(QMainWindow):
         self.boton_cancelar = QPushButton("Candelar", cw, geometry=QRect(90, 60, 75, 23), clicked=self.close)
 
     def abrir(self):
+        self.spinbox_grosor.setValue(2)
         self.show()
         self.activateWindow()
+
+
+class VentanaPoligono(QMainWindow):
+    def __init__(self, programa):
+        QMainWindow.__init__(self)
+        self.setWindowModality(Qt.ApplicationModal)
+        self.setWindowFlags(Qt.Tool)
+        self.resize(185, 270)
+        self.setWindowTitle("Crear polígono")
+        self.programa = programa
+        cw = QWidget()
+        self.setCentralWidget(cw)
+
+        etiqueta_centro = QLabel("Centro:", cw, geometry=QRect(10, 10, 51, 16))
+        self.centro = QComboBox(cw, geometry=QRect(10, 30, 161, 22))
+        etiqueta_plano = QLabel("Paralelo al plano:", cw, geometry=QRect(10, 60, 171, 16))
+        self.plano = QComboBox(cw, geometry=QRect(10, 80, 161, 22))
+        etiqueta_vertice = QLabel("Vértice:", cw, geometry=QRect(10, 110, 47, 13))
+        self.vertice = QComboBox(cw, geometry=QRect(10, 130, 161, 22))
+        etiqueta_lados = QLabel("Número de lados:", cw, geometry=QRect(10, 160, 80, 10))
+        self.lados = QSpinBox(cw, geometry=QRect(10, 175, 161, 22))
+        self.lados.setRange(3, 20)
+        nombre = QLabel("Nombre:", cw, geometry=QRect(10, 200, 47, 13))
+        self.nombre = QLineEdit(cw, geometry=QRect(10, 215, 161, 20))
+        self.boton_cancelar = QPushButton("Cancelar", cw, geometry=QRect(94, 240, 81, 23))
+        self.boton_cancelar.clicked.connect(self.close)
+        self.boton_crear = QPushButton("Crear", cw, geometry=QRect(10, 240, 81, 23))
+        self.boton_crear.clicked.connect(self.comprobar_poligono)
+
+    def abrir(self):
+        self.centro.clear()
+        self.plano.clear()
+        self.vertice.clear()
+
+        for i in range(self.programa.lista_puntos.count()):
+            self.centro.addItem(self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
+            self.vertice.addItem(self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre)
+
+        for i in range(self.programa.lista_planos.count()):
+            self.plano.addItem(self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre)
+
+        self.show()
+        self.activateWindow()
+
+    def comprobar_poligono(self):
+        nombre = self.nombre.text()
+        centro = self.centro.currentText()
+        plano = self.plano.currentText()
+        vertice = self.vertice.currentText()
+        if not nombre:
+            QMessageBox.critical(self, "Error al crear el polígono", "No ha introducido un nombre")
+        elif plano == "" or centro == "" or vertice == "":
+            QMessageBox.critical(self, "Error al crear el polígono", "Debe crear dos puntos diferentes y un plano para"
+                                                                     " definir el polígono")
+        else:
+            num_lados = self.lados.value()
+            for i in range(self.programa.lista_puntos.count()):
+                if self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre == centro:
+                    centro = self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i))
+                if self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i)).nombre == vertice:
+                    vertice = self.programa.lista_puntos.itemWidget(self.programa.lista_puntos.item(i))
+            for i in range(self.programa.lista_planos.count()):
+                if self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i)).nombre == plano:
+                    plano = self.programa.lista_planos.itemWidget(self.programa.lista_planos.item(i))
+            if centro == vertice:
+                QMessageBox.critical(self, "Error al crear el polígono", "El centro coincide con el vértice")
+            else:
+                nombre = f"{nombre}║{plano.nombre}, vertice: {vertice.nombre}"
+                vertice = vertice.entidad_geometrica.coords
+                centro = centro.entidad_geometrica.coords
+                v_n = plano.entidad_geometrica.vector_normal
+                self.crear_poligono(nombre, vector_normal=v_n, vertice=vertice, num_lados=num_lados, centro=centro)
+
+    def crear_poligono(self, nombre, vector_normal=None, vertice=None, centro=None, num_lados=None,
+                       puntos: list = None):
+        if not puntos:
+            poligono = entidades_geometricas.Poligono(self.programa, nombre, vector_normal=vector_normal,
+                                                      num_lados=num_lados, vertice=vertice, centro=centro)
+        else:
+            poligono = entidades_geometricas.Poligono(self.programa, nombre, puntos=puntos)
+        item = QListWidgetItem()
+        item.setSizeHint(poligono.minimumSizeHint())
+        self.programa.lista_poligonos.addItem(item)
+        self.programa.lista_poligonos.setItemWidget(item, poligono)

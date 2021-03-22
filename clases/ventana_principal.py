@@ -7,12 +7,11 @@ from PyQt5.QtGui import QFont, QColor, QIcon, QPalette
 from PyQt5.QtWidgets import (QWidget, QCheckBox, QPushButton, QMainWindow, QLabel, QVBoxLayout, QSpinBox, QMenuBar,
                              QComboBox, QMessageBox, QGraphicsScene, QGraphicsView, QListWidgetItem, QListWidget,
                              QAction, QDockWidget, QFileDialog, QStackedWidget, QLineEdit)
-from sympy import Point3D, Plane, Line3D
 
-from .entidades_geometricas import Punto, Recta, Plano
-from .ventanas_base import (PuntoMedio, Interseccion, Bisectriz, Distancia, Proyectar, RectaParalelaARecta,
-                            RectaPerpendicularAPlano, RectaPerpendicularARecta, PlanoParaleloAPlano,
-                            PlanoPerpendicularAPlano, Ajustes, AcercaDe, Controles, VentanaCircunferencia)
+from .entidades_geometricas import WidgetPunto, WidgetRecta, WidgetPlano, Punto, Recta, Plano
+from .ventanas_base import (PuntoMedio, Interseccion, Bisectriz, Distancia, Proyectar, RectaParalelaARecta, Ajustes,
+                            RectaPerpendicularAPlano, RectaPerpendicularARecta, PlanoParaleloAPlano, Controles,
+                            AcercaDe, PlanoPerpendicularAPlano, VentanaCircunferencia, VentanaPoligono)
 from .widgets_de_dibujo import Diedrico, Renderizador
 
 
@@ -105,7 +104,7 @@ class VentanaPrincipal(QMainWindow):
         boton_cambiar_a_tab_2 = QPushButton("Volver", p2, geometry=QRect(400, 0, 70, 23))
         boton_cambiar_a_tab_2.clicked.connect(lambda: self.widget_stack.setCurrentIndex(0))
 
-        circunferencia = QLabel("Circunferencia:", p2, font=fuente, geometry=QRect(0, 30, 91, 16))
+        etiqueta_circunferencia = QLabel("Circunferencia:", p2, font=fuente, geometry=QRect(0, 30, 91, 16))
         boton_circunferencia = QPushButton("Crear circunferencia", p2, geometry=QRect(0, 50, 140, 20))
         self.ventana_circunferencia = VentanaCircunferencia(self)
         boton_circunferencia.clicked.connect(self.ventana_circunferencia.abrir)
@@ -115,6 +114,17 @@ class VentanaPrincipal(QMainWindow):
         vertical_circunferencia.setContentsMargins(0, 0, 0, 0)
         self.lista_circunferencias = QListWidget(widget_circunferencia)
         vertical_circunferencia.addWidget(self.lista_circunferencias)
+
+        etiqueta_poligono = QLabel("Polígono:", p2, font=fuente, geometry=QRect(150, 30, 91, 16))
+        boton_poligono = QPushButton("Crear polígono", p2, geometry=QRect(150, 50, 140, 20))
+        self.ventana_poligono = VentanaPoligono(self)
+        boton_poligono.clicked.connect(self.ventana_poligono.abrir)
+
+        widget_poligono = QWidget(p2, geometry=QRect(150, 75, 140, 140))
+        vertical_poligono = QVBoxLayout(widget_poligono)
+        vertical_poligono.setContentsMargins(0, 0, 0, 0)
+        self.lista_poligonos = QListWidget(widget_poligono)
+        vertical_poligono.addWidget(self.lista_poligonos)
 
         informacion = QLabel("Información:", wc, font=fuente, geometry=QRect(0, 10, 91, 16))
         posicion = QLabel("Posición:", wc, font=fuente, geometry=QRect(0, 30, 71, 16))
@@ -245,6 +255,7 @@ class VentanaPrincipal(QMainWindow):
         self.id_recta = 1
         self.id_plano = 1
         self.id_circunferencia = 1
+        self.id_poligono = 1
 
         self.mayusculas = cycle("PQRSTUVWXYZABCDEFGHIJKLMNO")
         self.minusculas = cycle("rstuvwxyzabcdefghijklmnopq")
@@ -278,8 +289,7 @@ class VentanaPrincipal(QMainWindow):
             self.punto_plano_3.addItem(self.lista_puntos.itemWidget(self.lista_puntos.item(i)).nombre)
 
     def actualizar_texto(self):
-        # self.angulo_vertical.setText("Ángulo vertical: " + str(self.renderizador.theta - 360))
-        self.angulo_vertical.setText("Ángulo vertical: " + str(self.renderizador.theta))
+        self.angulo_vertical.setText("Ángulo vertical: " + str(self.renderizador.theta - 360))
         self.angulo_horizontal.setText("Ángulo horizontal: " + str(self.renderizador.phi))
 
         y = self.renderizador.y
@@ -346,10 +356,10 @@ class VentanaPrincipal(QMainWindow):
         nombre = self.evitar_nombre_punto_blanco(nombre)
         nombre = f"{nombre}({do}, {alejamiento}, {cota})"
         if self.evitar_nombre_duplicado(nombre):
-            self.crear_punto(nombre, Point3D(do, alejamiento, cota))
+            self.crear_punto(nombre, Punto(do, alejamiento, cota))
 
-    def crear_punto(self, nombre: str, sympy: Point3D):
-        punto = Punto(self, self.id_punto, nombre, sympy)
+    def crear_punto(self, nombre: str, entidad_geometrica: Punto):
+        punto = WidgetPunto(self, self.id_punto, nombre, entidad_geometrica)
         item = QListWidgetItem()
         item.setSizeHint(punto.minimumSizeHint())
         self.lista_puntos.addItem(item)
@@ -376,11 +386,10 @@ class VentanaPrincipal(QMainWindow):
             nombre = f"{nombre}({punto1.nombre}, {punto2.nombre})"
 
             if self.evitar_nombre_duplicado(nombre):
-                sympy = Line3D(punto1.sympy, punto2.sympy)
-                self.crear_recta(nombre, sympy, [punto1.sympy, punto2.sympy])
+                self.crear_recta(nombre, Recta(punto1.entidad_geometrica, punto2.entidad_geometrica), [punto1.entidad_geometrica, punto2.entidad_geometrica])
 
-    def crear_recta(self, nombre: str, sympy: Line3D, puntos: list = None):
-        recta = Recta(self, self.id_recta, nombre, sympy, puntos)
+    def crear_recta(self, nombre: str, entidad_geometrica: Recta, puntos: list = None):
+        recta = WidgetRecta(self, self.id_recta, nombre, entidad_geometrica, puntos)
         item = QListWidgetItem()
         self.lista_rectas.addItem(item)
         item.setSizeHint(recta.minimumSizeHint())
@@ -407,7 +416,7 @@ class VentanaPrincipal(QMainWindow):
         elif len({punto1.coordenadas, punto2.coordenadas, punto3.coordenadas}) < 3:
             QMessageBox.critical(self, "Error al crear el plano",
                                  "Dos de los puntos proporcionados son coincidentes")
-        elif Point3D.is_collinear(punto1.sympy, punto2.sympy, punto3.sympy):
+        elif punto1.entidad_geometrica.colinear(punto2.entidad_geometrica, punto3.entidad_geometrica):
             QMessageBox.critical(self, "Error al crear el plano",
                                  "El plano debe ser creado por tres puntos no alineados")
         else:
@@ -415,11 +424,11 @@ class VentanaPrincipal(QMainWindow):
             nombre = f"{nombre}({punto1.nombre}, {punto3.nombre}, {punto2.nombre})"
 
             if self.evitar_nombre_duplicado(nombre):
-                plano = Plane(punto1.sympy, punto2.sympy, punto3.sympy)
-                self.crear_plano(nombre, plano, puntos=[punto1.coordenadas, punto2.coordenadas, punto3.coordenadas])
+                self.crear_plano(nombre, Plano(punto1.entidad_geometrica, punto2.entidad_geometrica, punto3.entidad_geometrica),
+                                 puntos=[punto1.coordenadas, punto2.coordenadas, punto3.coordenadas])
 
-    def crear_plano(self, nombre: str, sympy: Plane, puntos: list = None):
-        plano = Plano(self, self.id_plano, nombre, sympy, puntos)
+    def crear_plano(self, nombre: str, entidad_geometrica: Plano, puntos: list = None):
+        plano = WidgetPlano(self, self.id_plano, nombre, entidad_geometrica, puntos)
         item = QListWidgetItem()
         self.lista_planos.addItem(item)
         item.setSizeHint(plano.minimumSizeHint())
@@ -431,6 +440,7 @@ class VentanaPrincipal(QMainWindow):
         self.lista_rectas.clear()
         self.lista_planos.clear()
         self.lista_circunferencias.clear()
+        self.lista_poligonos.clear()
         self.actualizar_opciones()
 
     def guardar(self):
@@ -448,7 +458,7 @@ class VentanaPrincipal(QMainWindow):
             QMessageBox.critical(self, "Error al guardar", "Se ha producido un error al guardar el archivo")
 
     def recolectar_elementos(self) -> dict:
-        elementos = {"Puntos": [], "Rectas": [], "Planos": [], "Circunferencias": []}
+        elementos = {"Puntos": [], "Rectas": [], "Planos": [], "Circunferencias": [], "Poligonos": []}
 
         for i in range(self.lista_puntos.count()):
             punto = self.lista_puntos.itemWidget(self.lista_puntos.item(i)).guardar()
@@ -466,7 +476,11 @@ class VentanaPrincipal(QMainWindow):
             circunferencia = self.lista_circunferencias.itemWidget(self.lista_circunferencias.item(i)).guardar()
             elementos["Circunferencias"].append(circunferencia)
 
-        if elementos != {"Puntos": [], "Rectas": [], "Planos": [], "Circunferencias": []}:
+        for i in range(self.lista_poligonos.count()):
+            poligono = self.lista_poligonos.itemWidget(self.lista_poligonos.item(i)).guardar()
+            elementos["Poligonos"].append(poligono)
+
+        if elementos != {"Puntos": [], "Rectas": [], "Planos": [], "Circunferencias": [], "Poligonos": []}:
             return elementos
         else:
             return False
@@ -503,6 +517,9 @@ class VentanaPrincipal(QMainWindow):
 
             for circ in elementos["Circunferencias"]:
                 self.ventana_circunferencia.crear_circunferencia(circ["Nombre"], puntos=circ["Puntos"])
+
+            for poligono in elementos["Poligonos"]:
+                self.ventana_poligono.crear_poligono(poligono["Nombre"], puntos=poligono["Puntos"])
 
     def cambiar_modo(self):
         if self.modo_oscuro:

@@ -207,116 +207,114 @@ class Renderizador(QOpenGLWidget):
                 if recta.infinita.isChecked():
                     if "I" in recta.partes and cuadrante == "I":
                         glBegin(GL_LINES)
-                        glVertex(recta.partes["I"][0])
-                        glVertex(recta.partes["I"][1])
+                        glVertex(recta.partes["I"][0].coords)
+                        glVertex(recta.partes["I"][1].coords)
                         glEnd()
                     if "II" in recta.partes and cuadrante == "II":
                         glBegin(GL_LINES)
-                        glVertex(recta.partes["II"][0])
-                        glVertex(recta.partes["II"][1])
+                        glVertex(recta.partes["II"][0].coords)
+                        glVertex(recta.partes["II"][1].coords)
                         glEnd()
                     elif "III" in recta.partes and cuadrante == "III":
                         glBegin(GL_LINES)
-                        glVertex(recta.partes["III"][0])
-                        glVertex(recta.partes["III"][1])
+                        glVertex(recta.partes["III"][0].coords)
+                        glVertex(recta.partes["III"][1].coords)
                         glEnd()
                     elif "IV" in recta.partes and cuadrante == "IV":
                         glBegin(GL_LINES)
-                        glVertex(recta.partes["IV"][0])
-                        glVertex(recta.partes["IV"][1])
+                        glVertex(recta.partes["IV"][0].coords)
+                        glVertex(recta.partes["IV"][1].coords)
                         glEnd()
                     self.traza_v_recta(recta)
                     self.traza_h_recta(recta)
                 else:
                     if recta.traza_v == "Contenida en PV" and recta.traza_h == "Contenida en PH":
                         if cuadrante == "I":
-                            dibujar(recta.punto_1.coordinates, recta.punto_2.coordinates)
+                            dibujar(recta.punto_1.coords, recta.punto_2.coords)
                     if recta.traza_v == "Contenida en PV":
                         if recta.traza_h_entre_puntos:
                             if cuadrante == recta.cuadrante_punto_1:
-                                dibujar(recta.punto_1.coordinates, recta.traza_h)
+                                dibujar(recta.punto_1.coords, recta.traza_h.coords)
                             if cuadrante == recta.cuadrante_punto_2:
-                                dibujar(recta.punto_2.coordinates, recta.traza_h)
+                                dibujar(recta.punto_2.coords, recta.traza_h.coords)
                             self.traza_h_recta(recta)
                         else:
                             if cuadrante == recta.cuadrante_punto_1:
-                                dibujar(recta.punto_1.coordinates, recta.punto_2.coordinates)
-
+                                dibujar(recta.punto_1.coords, recta.punto_2.coords)
                     elif recta.traza_h == "Contenida en PH":
                         if recta.traza_v_entre_puntos:
                             if cuadrante == recta.cuadrante_punto_1:
-                                dibujar(recta.punto_1.coordinates, recta.traza_v)
+                                dibujar(recta.punto_1.coords, recta.traza_v.coords)
                             if cuadrante == recta.cuadrante_punto_2:
-                                dibujar(recta.punto_2.coordinates, recta.traza_v)
+                                dibujar(recta.punto_2.coords, recta.traza_v.coords)
                             self.traza_v_recta(recta)
                         else:
                             if cuadrante == recta.cuadrante_punto_1:
-                                dibujar(recta.punto_1.coordinates, recta.punto_2.coordinates)
-
+                                dibujar(recta.punto_1.coords, recta.punto_2.coords)
                     elif recta.cuadrante_punto_1 == recta.cuadrante_punto_2 == cuadrante == "I":
-                        dibujar(recta.punto_1.coordinates, recta.punto_2.coordinates)
+                        dibujar(recta.punto_1.coords, recta.punto_2.coords)
                     elif recta.cuadrante_punto_1 == recta.cuadrante_punto_2 == cuadrante == "II":
-                        dibujar(recta.punto_1.coordinates, recta.punto_2.coordinates)
+                        dibujar(recta.punto_1.coords, recta.punto_2.coords)
                     elif recta.cuadrante_punto_1 == recta.cuadrante_punto_2 == cuadrante == "III":
-                        dibujar(recta.punto_1.coordinates, recta.punto_2.coordinates)
+                        dibujar(recta.punto_1.coords, recta.punto_2.coords)
                     elif recta.cuadrante_punto_1 == recta.cuadrante_punto_2 == cuadrante == "IV":
-                        dibujar(recta.punto_1.coordinates, recta.punto_2.coordinates)
+                        dibujar(recta.punto_1.coords, recta.punto_2.coords)
                     else:
                         if recta.traza_v_entre_puntos and recta.traza_h_entre_puntos:
                             if recta.segmento_entre_trazas == cuadrante:
-                                dibujar(recta.traza_v, recta.traza_h)
+                                dibujar(recta.traza_v.coords, recta.traza_h.coords)
                             elif recta.traza_v_entre_puntos == recta.traza_h_entre_puntos == "LT":
                                 if recta.cuadrante_punto_1 == cuadrante:
-                                    dibujar(recta.punto_1.coordinates, recta.traza_h)
+                                    dibujar(recta.punto_1.coords, recta.traza_h.coords)
                                 if recta.cuadrante_punto_2 == cuadrante:
-                                    dibujar(recta.punto_2.coordinates, recta.traza_h)
+                                    dibujar(recta.punto_2.coords, recta.traza_h.coords)
                                 self.traza_h_recta(recta)
                         if recta.cuadrante_punto_1 == cuadrante:
                             if recta.traza_h_entre_puntos == "PH+" and (cuadrante == "I" or cuadrante == "IV"):
-                                dibujar(recta.punto_1.coordinates, recta.traza_h)
+                                dibujar(recta.punto_1.coords, recta.traza_h.coords)
                                 self.traza_h_recta(recta)
                             if recta.traza_h_entre_puntos == "PH-" and (cuadrante == "II" or cuadrante == "III"):
-                                dibujar(recta.punto_1.coordinates, recta.traza_h)
+                                dibujar(recta.punto_1.coords, recta.traza_h.coords)
                                 self.traza_h_recta(recta)
 
                             if recta.traza_v_entre_puntos == "PV+" and (cuadrante == "I" or cuadrante == "II"):
-                                dibujar(recta.punto_1.coordinates, recta.traza_v)
+                                dibujar(recta.punto_1.coords, recta.traza_v.coords)
                                 self.traza_v_recta(recta)
                             if recta.traza_v_entre_puntos == "PV-" and (cuadrante == "III" or cuadrante == "IV"):
-                                dibujar(recta.punto_1.coordinates, recta.traza_v)
+                                dibujar(recta.punto_1.coords, recta.traza_v.coords)
                                 self.traza_v_recta(recta)
                         if recta.cuadrante_punto_2 == cuadrante:
                             if recta.traza_h_entre_puntos == "PH+" and (cuadrante == "I" or cuadrante == "IV"):
-                                dibujar(recta.punto_2.coordinates, recta.traza_h)
+                                dibujar(recta.punto_2.coords, recta.traza_h.coords)
                                 self.traza_h_recta(recta)
                             if recta.traza_h_entre_puntos == "PH-" and (cuadrante == "II" or cuadrante == "III"):
-                                dibujar(recta.punto_2.coordinates, recta.traza_h)
+                                dibujar(recta.punto_2.coords, recta.traza_h.coords)
                                 self.traza_h_recta(recta)
 
                             if recta.traza_v_entre_puntos == "PV+" and (cuadrante == "I" or cuadrante == "II"):
-                                dibujar(recta.punto_2.coordinates, recta.traza_v)
+                                dibujar(recta.punto_2.coords, recta.traza_v.coords)
                                 self.traza_v_recta(recta)
                             if recta.traza_v_entre_puntos == "PV-" and (cuadrante == "III" or cuadrante == "IV"):
-                                dibujar(recta.punto_2.coordinates, recta.traza_v)
+                                dibujar(recta.punto_2.coords, recta.traza_v.coords)
                                 self.traza_v_recta(recta)
 
     def traza_v_recta(self, recta):
         if self.programa.ajustes.rectas_trazas_v.isChecked():
             if recta.traza_v != "Contenida en PV" and recta.ver_traza_vertical.isChecked():
-                if recta.traza_v[0] < 500 and recta.traza_v[1] < 500:
+                if recta.traza_v.x < 500 and recta.traza_v.y < 500:
                     glColor(0, 1, 0, 1)
                     glBegin(GL_POINTS)
-                    glVertex(recta.traza_v)
+                    glVertex(recta.traza_v.coords)
                     glEnd()
                     glColor(recta.color)
 
     def traza_h_recta(self, recta):
         if self.programa.ajustes.rectas_trazas_h.isChecked():
             if recta.traza_h != "Contenida en PH" and recta.ver_traza_horizontal.isChecked():
-                if recta.traza_h[0] < 500 and recta.traza_h[2] < 500:
+                if recta.traza_h.x < 500 and recta.traza_h.z < 500:
                     glColor(1, 0, 0, 1)
                     glBegin(GL_POINTS)
-                    glVertex(recta.traza_h)
+                    glVertex(recta.traza_h.coords)
                     glEnd()
                     glColor(recta.color)
 
@@ -329,18 +327,17 @@ class Renderizador(QOpenGLWidget):
                 if plano.infinito.isChecked():
                     puntos = plano.partes[cuadrante]
                     for j in puntos:
-                        glVertex(j)
+                        glVertex(j.coords)
                     glEnd()
                     glLineWidth(2)
                     glBegin(GL_LINE_LOOP)
                     for j in plano.limites:
-                        glVertex(j)
-                    glEnd()
-                else:
+                        glVertex(j.coords)
+                elif cuadrante == "I":
                     glVertex(plano.puntos[0])
                     glVertex(plano.puntos[1])
                     glVertex(plano.puntos[2])
-                    glEnd()
+                glEnd()
 
     def paintGL(self):
         glMatrixMode(GL_PROJECTION)
@@ -377,6 +374,7 @@ class Renderizador(QOpenGLWidget):
 
         # TODO: fixea esta wea
         self.dibujar_circunferencias()
+        self.dibujar_poligonos()
 
         # Observador en:
         # Línea de tierra:
@@ -484,7 +482,17 @@ class Renderizador(QOpenGLWidget):
                 glColor(circ.color)
                 glBegin(GL_LINE_LOOP)
                 for punto in circ.puntos:
-                    glVertex(*punto)
+                    glVertex(*punto.coords)
+                glEnd()
+
+    def dibujar_poligonos(self):
+        for i in range(self.programa.lista_poligonos.count()):
+            poligono = self.programa.lista_poligonos.itemWidget(self.programa.lista_poligonos.item(i))
+            if poligono.render.isChecked():
+                glColor(poligono.color)
+                glBegin(GL_LINE_LOOP)
+                for punto in poligono.puntos:
+                    glVertex(*punto.coords)
                 glEnd()
 
     def keyPressEvent(self, evento):
@@ -599,7 +607,8 @@ class Diedrico(QWidget):
             self.dibujar_rectas(qp)
         if self.programa.ver_puntos.checkState():
             self.dibujar_puntos(qp)
-        self.dibujar_circunferencia(qp)
+        self.dibujar_circunferencias(qp)
+        self.dibujar_poligonos(qp)
         self.update()
 
     def keyPressEvent(self, evento):
@@ -670,40 +679,40 @@ class Diedrico(QWidget):
                     self.recta_prima3(qp, recta.extremos)
                 else:
                     if recta.cuadrante_punto_1 == recta.cuadrante_punto_2 == "I":
-                        self.dibujar_continuo(qp, (recta.punto_1.coordinates, recta.punto_2.coordinates))
+                        self.dibujar_continuo(qp, (recta.punto_1, recta.punto_2))
                     elif recta.cuadrante_punto_1 != "I" and recta.cuadrante_punto_2 != "I":
-                        self.dibujar_discontinuo(qp, (recta.punto_1.coordinates, recta.punto_2.coordinates))
+                        self.dibujar_discontinuo(qp, (recta.punto_1, recta.punto_2))
                     else:
                         if recta.cuadrante_punto_1 == "I":
                             if recta.traza_v != "Contenida en PV" and recta.traza_v:
-                                if recta.traza_v[2] >= 0:
-                                    self.dibujar_discontinuo(qp, (recta.traza_v, recta.punto_2.coordinates))
-                                    self.dibujar_continuo(qp, (recta.punto_1.coordinates, recta.traza_v))
+                                if recta.traza_v.z >= 0:
+                                    self.dibujar_discontinuo(qp, (recta.traza_v, recta.punto_2))
+                                    self.dibujar_continuo(qp, (recta.punto_1, recta.traza_v))
                             if recta.traza_h != "Contenida en PH" and recta.traza_h:
-                                if recta.traza_h[1] >= 0:
-                                    self.dibujar_discontinuo(qp, (recta.traza_h, recta.punto_2.coordinates))
-                                    self.dibujar_continuo(qp, (recta.punto_1.coordinates, recta.traza_h))
+                                if recta.traza_h.y >= 0:
+                                    self.dibujar_discontinuo(qp, (recta.traza_h, recta.punto_2))
+                                    self.dibujar_continuo(qp, (recta.punto_1, recta.traza_h))
                         elif recta.cuadrante_punto_2 == "I":
                             if recta.traza_v != "Contenida en PV" and recta.traza_v:
-                                if recta.traza_v[2] >= 0:
-                                    self.dibujar_discontinuo(qp, (recta.traza_v, recta.punto_1.coordinates))
-                                    self.dibujar_continuo(qp, (recta.punto_2.coordinates, recta.traza_v))
+                                if recta.traza_v.z >= 0:
+                                    self.dibujar_discontinuo(qp, (recta.traza_v, recta.punto_1))
+                                    self.dibujar_continuo(qp, (recta.punto_2, recta.traza_v))
                             if recta.traza_h != "Contenida en PH" and recta.traza_h:
-                                if recta.traza_h[1] >= 0:
-                                    self.dibujar_discontinuo(qp, (recta.traza_h, recta.punto_1.coordinates))
-                                    self.dibujar_continuo(qp, (recta.punto_2.coordinates, recta.traza_h))
+                                if recta.traza_h.y >= 0:
+                                    self.dibujar_discontinuo(qp, (recta.traza_h, recta.punto_1))
+                                    self.dibujar_continuo(qp, (recta.punto_2, recta.traza_h))
                         if recta.traza_v != "Contenida en PV" and recta.traza_v \
                                 and recta.traza_h and recta.traza_h != "Contenida en PH":
-                            if recta.traza_v[2] >= 0 and recta.traza_h[1] >= 0:
+                            if recta.traza_v.z >= 0 and recta.traza_h.y >= 0:
                                 if recta.cuadrante_punto_1 == "II":
-                                    self.dibujar_discontinuo(qp, (recta.traza_v, recta.punto_1.coordinates))
+                                    self.dibujar_discontinuo(qp, (recta.traza_v, recta.punto_1))
                                 else:
-                                    self.dibujar_discontinuo(qp, (recta.traza_v, recta.punto_2.coordinates))
+                                    self.dibujar_discontinuo(qp, (recta.traza_v, recta.punto_2))
 
                                 if recta.cuadrante_punto_1 == "IV":
-                                    self.dibujar_discontinuo(qp, (recta.traza_h, recta.punto_1.coordinates))
+                                    self.dibujar_discontinuo(qp, (recta.traza_h, recta.punto_1))
                                 else:
-                                    self.dibujar_discontinuo(qp, (recta.traza_h, recta.punto_2.coordinates))
+                                    self.dibujar_discontinuo(qp, (recta.traza_h, recta.punto_2))
 
                                 self.dibujar_continuo(qp, (recta.traza_v, recta.traza_h))
                     self.recta_prima3(qp, recta.puntos)
@@ -724,20 +733,20 @@ class Diedrico(QWidget):
 
     @staticmethod
     def recta_prima(qp, extremos):
-        x0 = extremos[0][0]
-        x = extremos[1][0]
-        y0 = -extremos[0][1]
-        y = -extremos[1][1]
-        if not (x0 == x and y0 == y):
+        x0 = extremos[0].x
+        x = extremos[1].x
+        y0 = -extremos[0].y
+        y = -extremos[1].y
+        if not (round(x0, 1) == round(x, 1) and round(y0, 1) == round(y, 1)):
             qp.drawLine(QPointF(x0, y0), QPointF(x, y))
 
     @staticmethod
     def recta_prima2(qp, extremos):
-        x0 = extremos[0][0]
-        x = extremos[1][0]
-        y0 = extremos[0][2]
-        y = extremos[1][2]
-        if not (x0 == x and y0 == y):
+        x0 = extremos[0].x
+        x = extremos[1].x
+        y0 = extremos[0].z
+        y = extremos[1].z
+        if not (round(x0, 1) == round(x, 1) and round(y0, 1) == round(y, 1)):
             qp.drawLine(QPointF(x0, y0), QPointF(x, y))
 
     def recta_prima3(self, qp, extremos):
@@ -748,28 +757,29 @@ class Diedrico(QWidget):
             else:
                 self.pen_prima3.setColor(QColor(0, 0, 0))
             qp.setPen(self.pen_prima3)
-            x0 = -extremos[0][1]
-            x = -extremos[1][1]
-            y0 = extremos[0][2]
-            y = extremos[1][2]
-            qp.drawLine(QPointF(x0, y0), QPointF(x, y))
+            x0 = -extremos[0].y
+            x = -extremos[1].y
+            y0 = extremos[0].z
+            y = extremos[1].z
+            if not (round(x0, 1) == round(x, 1) and round(y0, 1) == round(y, 1)):
+                qp.drawLine(QPointF(x0, y0), QPointF(x, y))
 
     def dibujar_trazas_recta(self, qp, recta):
         qp.setPen(self.pen_trazas)
         if recta.infinita.isChecked():
             if recta.traza_h != "Contenida en PH" and recta.traza_h and recta.ver_traza_horizontal.isChecked():
-                qp.drawPoint(round(recta.traza_h[0]), round(-recta.traza_h[1]))  # H "
-                qp.drawPoint(round(recta.traza_h[0]), 0)  # H '
+                qp.drawPoint(round(recta.traza_h.x), round(-recta.traza_h.y))  # H "
+                qp.drawPoint(round(recta.traza_h.x), 0)  # H '
             if recta.traza_v != "Contenida en PV" and recta.traza_v and recta.ver_traza_vertical.isChecked():
-                qp.drawPoint(round(recta.traza_v[0]), round(recta.traza_v[2]))  # V '
-                qp.drawPoint(round(recta.traza_v[0]), 0)  # V "
+                qp.drawPoint(round(recta.traza_v.x), round(recta.traza_v.z))  # V '
+                qp.drawPoint(round(recta.traza_v.x), 0)  # V "
         else:
             if recta.traza_v_entre_puntos and recta.traza_v:
-                qp.drawPoint(round(recta.traza_v[0]), round(recta.traza_v[2]))  # H '
-                qp.drawPoint(round(recta.traza_v[0]), 0)  # H "
+                qp.drawPoint(round(recta.traza_v.x), round(recta.traza_v.z))  # H '
+                qp.drawPoint(round(recta.traza_v.x), 0)  # H "
             if recta.traza_h_entre_puntos and recta.traza_h:
-                qp.drawPoint(round(recta.traza_h[0]), round(-recta.traza_h[1]))  # H "
-                qp.drawPoint(round(recta.traza_h[0]), 0)  # H '
+                qp.drawPoint(round(recta.traza_h.x), round(-recta.traza_h.y))  # H "
+                qp.drawPoint(round(recta.traza_h.x), 0)  # H '
 
     def dibujar_planos(self, qp):
         for i in range(self.programa.lista_planos.count()):
@@ -795,13 +805,12 @@ class Diedrico(QWidget):
                             qp.setPen(self.pen_plano_prima2_discontinuo)
                             self.recta_prima2(qp, (plano.traza_v[1], plano.traza_v[2]))
 
-    def dibujar_circunferencia(self, qp):
+    def dibujar_circunferencias(self, qp):
         for i in range(self.programa.lista_circunferencias.count()):
             circ = self.programa.lista_circunferencias.itemWidget(self.programa.lista_circunferencias.item(i))
             if circ.render.isChecked():
                 segmentos = circ.puntos
-
-                # Tercera proyección
+                # Cambia el color del trazo en modo oscuro
                 if self.programa.tercera_proyeccion.checkState():
                     if self.programa.modo_oscuro:
                         self.pen_prima3.setColor(QColor(200, 200, 200))
@@ -810,7 +819,35 @@ class Diedrico(QWidget):
 
                 for j in range(len(segmentos)):
                     segmento = segmentos[j-1], segmentos[j]
-                    if segmento[0][1] >= 0 and segmento[0][2] >= 0 and segmento[1][1] >= 0 and segmento[1][2] >= 0:
+                    if segmento[0].y >= 0 and segmento[0].z >= 0 and segmento[1].y >= 0 and segmento[1].z >= 0:
+                        qp.setPen(self.pen_recta_prima_continuo)
+                        self.recta_prima(qp, segmento)
+                        qp.setPen(self.pen_recta_prima2_continuo)
+                        self.recta_prima2(qp, segmento)
+                    else:
+                        qp.setPen(self.pen_recta_prima)
+                        self.recta_prima(qp, segmento)
+                        qp.setPen(self.pen_recta_prima2)
+                        self.recta_prima2(qp, segmento)
+
+                    self.recta_prima3(qp, segmento)
+
+    def dibujar_poligonos(self, qp):
+        for i in range(self.programa.lista_poligonos.count()):
+            poligono = self.programa.lista_poligonos.itemWidget(self.programa.lista_poligonos.item(i))
+            if poligono.render.isChecked():
+                segmentos = poligono.puntos
+
+                # Cambia el color del trazo en modo oscuro
+                if self.programa.tercera_proyeccion.checkState():
+                    if self.programa.modo_oscuro:
+                        self.pen_prima3.setColor(QColor(200, 200, 200))
+                    else:
+                        self.pen_prima3.setColor(QColor(0, 0, 0))
+
+                for j in range(len(segmentos)):
+                    segmento = segmentos[j - 1], segmentos[j]
+                    if segmento[0].y >= 0 and segmento[0].z >= 0 and segmento[1].y >= 0 and segmento[1].z >= 0:
                         qp.setPen(self.pen_recta_prima_continuo)
                         self.recta_prima(qp, segmento)
                         qp.setPen(self.pen_recta_prima2_continuo)
