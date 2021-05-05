@@ -544,7 +544,7 @@ class VentanaPrincipal(QMainWindow):
             modo_oscuro.setColor(QPalette.Text, Qt.white)
             modo_oscuro.setColor(QPalette.Button, QColor(53, 53, 53))
             modo_oscuro.setColor(QPalette.ButtonText, Qt.white)
-            modo_oscuro.setColor(QPalette.Link, QColor(200, 130, 218))
+            modo_oscuro.setColor(QPalette.Link, Qt.red)
             modo_oscuro.setColor(QPalette.Highlight, QColor(42, 130, 218))
             modo_oscuro.setColor(QPalette.HighlightedText, Qt.black)
             self.evento_principal.setPalette(modo_oscuro)
