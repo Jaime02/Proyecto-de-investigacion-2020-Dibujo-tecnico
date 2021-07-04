@@ -2,11 +2,11 @@ from itertools import cycle
 from pickle import dump, loads
 from sys import exit
 
-from PyQt5.QtCore import Qt, QRect
-from PyQt5.QtGui import QFont, QColor, QIcon, QPalette
-from PyQt5.QtWidgets import (QWidget, QCheckBox, QPushButton, QMainWindow, QLabel, QVBoxLayout, QSpinBox, QMenuBar,
+from PySide6.QtCore import Qt, QRect
+from PySide6.QtGui import QFont, QColor, QIcon, QPalette, QAction
+from PySide6.QtWidgets import (QWidget, QCheckBox, QPushButton, QMainWindow, QLabel, QVBoxLayout, QSpinBox, QMenuBar,
                              QComboBox, QMessageBox, QGraphicsScene, QGraphicsView, QListWidgetItem, QListWidget,
-                             QAction, QDockWidget, QFileDialog, QStackedWidget, QLineEdit)
+                             QDockWidget, QFileDialog, QStackedWidget, QLineEdit)
 
 from .entidades_geometricas import WidgetPunto, WidgetRecta, WidgetPlano, Punto, Recta, Plano
 from .ventanas_base import (PuntoMedio, Interseccion, Bisectriz, Distancia, Proyectar, RectaParalelaARecta, Ajustes,
@@ -71,12 +71,12 @@ class VentanaPrincipal(QMainWindow):
         dock_renderizador.setFeatures(QDockWidget.DockWidgetMovable)
         self.addDockWidget(Qt.LeftDockWidgetArea, dock_renderizador)
 
-        scene = QGraphicsScene()
-        self.vista = QGraphicsView(scene)
+        self.scene = QGraphicsScene()
+        self.vista = QGraphicsView(self.scene)
         self.diedrico = Diedrico(self)
         self.diedrico.setFocusPolicy(Qt.ClickFocus)
         self.diedrico.setFixedSize(1000, 1000)
-        scene.addWidget(self.diedrico)
+        self.scene.addWidget(self.diedrico)
 
         dock_diedrico = QDockWidget("Diédrico")
         dock_diedrico.setFeatures(QDockWidget.DockWidgetMovable)

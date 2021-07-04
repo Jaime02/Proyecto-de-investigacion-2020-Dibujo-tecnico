@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from PyQt5.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 from clases.ventana_principal import VentanaPrincipal
 from sys import argv
 

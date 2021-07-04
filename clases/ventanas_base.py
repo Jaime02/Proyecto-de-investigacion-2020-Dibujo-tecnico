@@ -1,6 +1,6 @@
-from PyQt5.QtCore import Qt, QRect
-from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import (QWidget, QCheckBox, QPushButton, QMainWindow, QLabel, QLineEdit, QComboBox,
+from PySide6.QtCore import Qt, QRect
+from PySide6.QtGui import QFont
+from PySide6.QtWidgets import (QWidget, QCheckBox, QPushButton, QMainWindow, QLabel, QLineEdit, QComboBox,
                              QMessageBox, QColorDialog, QSpinBox, QListWidgetItem)
 
 from . import entidades_geometricas
@@ -757,7 +757,7 @@ class AcercaDe(QMainWindow):
         self.t.setText("Este es un programa enfocado al uso educativo del sistema diédrico.<br>"
                        "Ha sido desarrollado por Jaime Resano Aisa, estudiante de 18 años del instituto "
                        "IES Ribera del Arga de Peralta, Navarra.<br>Ha sido programado en el lenguaje Python 3. "
-                       "Utiliza PyQt5 para la interfaz, Sympy para los cálculos matemáticos y OpenGL para el dibujado "
+                       "Utiliza PySide6 para la interfaz, Sympy para los cálculos matemáticos y OpenGL para el dibujado "
                        "3D. <br>El código fuente del programa se encuentra disponible en "
                        "<a href=\"https://github.com/Jaime02/Proyecto-de-investigacion-2019-Dibujo-tecnico/\">GitHub</a>."
                        "<br>También está disponible el trabajo de investigación realizado que explica cómo funciona el "

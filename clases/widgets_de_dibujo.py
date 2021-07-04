@@ -5,9 +5,10 @@ from OpenGL.GL import (glClear, GL_COLOR_BUFFER_BIT, glEnable, glMatrixMode, GL_
                        glPointSize, GL_POINT_SMOOTH, GL_POINTS, GL_BLEND, glBlendFunc, GL_SRC_ALPHA, GL_QUADS, GL_LINES,
                        GL_LINE_LOOP, GL_ONE_MINUS_SRC_ALPHA, GL_TRIANGLE_FAN, glLoadMatrixf)
 from OpenGL.GLU import gluLookAt
-from PyQt5.QtCore import Qt, QSize, QPoint, QPointF
-from PyQt5.QtGui import QPainter, QPen, QTransform, QColor
-from PyQt5.QtWidgets import QOpenGLWidget, QWidget
+from PySide6.QtCore import Qt, QSize, QPoint, QPointF
+from PySide6.QtGui import QPainter, QPen, QTransform, QColor
+from PySide6.QtWidgets import QWidget
+from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
 
 class Renderizador(QOpenGLWidget):

@@ -1,8 +1,8 @@
 from math import atan2, sin, cos, acos, radians, degrees
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QCursor
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QMessageBox, QAction, QColorDialog, QMenu
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QCursor, QAction
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QMessageBox, QColorDialog, QMenu
 
 from . import ventanas_base
 
