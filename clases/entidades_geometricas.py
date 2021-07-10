@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QCursor, QAction
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QMessageBox, QColorDialog, QMenu
 
-from . import ventanas_base
+from . import ventanas_secundarias
 
 
 class Vector:
@@ -89,6 +89,7 @@ class Vector:
 
 class Punto:
     def __init__(self, x, y, z):
+        # Todo: redondear las coordenadas float
         self.x = x
         self.y = y
         self.z = z
@@ -119,6 +120,9 @@ class Punto:
             return True
         return False
 
+    def midpoint(self, p: "Punto"):
+        return Punto((self.x + p.x) / 2, (self.y + p.y) / 2, (self.z + p.z) / 2)
+
 
 class Recta:
     def __init__(self, p1: Punto, p2: Punto):
@@ -129,14 +133,14 @@ class Recta:
     def comprobar_punto_en_recta(self, p):
         if self.p2.x - self.p1.x == 0:
             if self.p2.y - self.p1.y == 0:
-                l = (p.z - self.p1.z) / (self.p2.z - self.p1.z)
+                _lambda = (p.z - self.p1.z) / (self.p2.z - self.p1.z)
             else:
-                l = (p.y - self.p1.y) / (self.p2.y - self.p1.y)
+                _lambda = (p.y - self.p1.y) / (self.p2.y - self.p1.y)
         else:
-            l = (p.x - self.p1.x) / (self.p2.x - self.p1.x)
-        if self.p1.x + l * (self.p2.x - self.p1.x) == p.x:
-            if self.p1.y + l * (self.p2.y - self.p1.y) == p.y:
-                if self.p1.z + l * (self.p2.z - self.p1.z) == p.z:
+            _lambda = (p.x - self.p1.x) / (self.p2.x - self.p1.x)
+        if self.p1.x + _lambda * (self.p2.x - self.p1.x) == p.x:
+            if self.p1.y + _lambda * (self.p2.y - self.p1.y) == p.y:
+                if self.p1.z + _lambda * (self.p2.z - self.p1.z) == p.z:
                     return True
         return False
 
@@ -247,7 +251,7 @@ class WidgetFila(QWidget):
         self.render = QAction("Visible", checkable=True, checked=True)
         self.actualizar_nombre = QAction("Renombrar")
 
-        self.ventana_cambiar_nombre = ventanas_base.VentanaRenombrar()
+        self.ventana_cambiar_nombre = ventanas_secundarias.VentanaRenombrar()
         self.actualizar_nombre.triggered.connect(self.ventana_cambiar_nombre.abrir)
         self.ventana_cambiar_nombre.boton_crear.clicked.connect(self.cambiar_nombre)
 
@@ -319,7 +323,7 @@ class WidgetPunto(WidgetFila):
 
         self.grosor = 5
         self.accion_grosor = QAction("Cambiar grosor")
-        self.ventana_cambiar_grosor = ventanas_base.VentanaCambiarGrosorPunto()
+        self.ventana_cambiar_grosor = ventanas_secundarias.VentanaCambiarGrosorPunto()
         self.ventana_cambiar_grosor.boton_crear.clicked.connect(self.cambiar_grosor)
         self.accion_grosor.triggered.connect(self.ventana_cambiar_grosor.abrir)
         self.menu.addAction(self.accion_grosor)
@@ -358,12 +362,12 @@ class WidgetPunto(WidgetFila):
 
 
 class WidgetRecta(WidgetFila):
-    def __init__(self, programa, internal_id: int, nombre: str, entidad_geometrica: Recta, puntos: list = None):
+    def __init__(self, programa, internal_id: int, nombre: str, entidad_geometrica: Recta, puntos: tuple = None):
         WidgetFila.__init__(self, programa, internal_id, nombre)
         self.entidad_geometrica = entidad_geometrica
         self.grosor = 2
         self.accion_grosor = QAction("Cambiar grosor")
-        self.ventana_cambiar_grosor = ventanas_base.VentanaCambiarGrosorRecta()
+        self.ventana_cambiar_grosor = ventanas_secundarias.VentanaCambiarGrosorRecta()
         self.ventana_cambiar_grosor.boton_crear.clicked.connect(self.cambiar_grosor)
         self.accion_grosor.triggered.connect(self.ventana_cambiar_grosor.abrir)
         self.menu.addAction(self.accion_grosor)
@@ -429,7 +433,8 @@ class WidgetRecta(WidgetFila):
 
     def guardar(self):
         if self.puntos:
-            return {"Nombre": self.nombre, "Punto_1": self.punto_1, "Punto_2": self.punto_2, "Sympy": self.entidad_geometrica}
+            return {"Nombre": self.nombre, "Punto_1": self.punto_1, "Punto_2": self.punto_2,
+                    "Sympy": self.entidad_geometrica}
         else:
             return {"Nombre": self.nombre, "Sympy": self.entidad_geometrica}
 

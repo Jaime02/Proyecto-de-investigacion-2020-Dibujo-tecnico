@@ -3,7 +3,7 @@ from math import sin, cos, radians
 from OpenGL.GL import (glClear, GL_COLOR_BUFFER_BIT, glEnable, glMatrixMode, GL_PROJECTION, glLoadIdentity, glOrtho,
                        glClearColor, GL_DEPTH_BUFFER_BIT, GL_MODELVIEW, glLineWidth, glBegin, glColor, glVertex, glEnd,
                        glPointSize, GL_POINT_SMOOTH, GL_POINTS, GL_BLEND, glBlendFunc, GL_SRC_ALPHA, GL_QUADS, GL_LINES,
-                       GL_LINE_LOOP, GL_ONE_MINUS_SRC_ALPHA, GL_TRIANGLE_FAN, glLoadMatrixf)
+                       GL_LINE_LOOP, GL_ONE_MINUS_SRC_ALPHA, GL_TRIANGLE_FAN, glLoadMatrixf, glGetFloat, GL_PROJECTION_MATRIX)
 from OpenGL.GLU import gluLookAt
 from PySide6.QtCore import Qt, QSize, QPoint, QPointF
 from PySide6.QtGui import QPainter, QPen, QTransform, QColor
@@ -349,8 +349,11 @@ class Renderizador(QOpenGLWidget):
             arriba = -1
         gluLookAt(self.x, self.y, self.z, self.desviacion_x, self.desviacion_y, self.desviacion_z, 0, arriba, 0)
 
+        # a = glGetFloat(GL_PROJECTION_MATRIX)
+        # print(a)
+
         glMatrixMode(GL_MODELVIEW)
-        if self.programa.modo_oscuro:
+        if self.programa.tema_oscuro:
             glClearColor(0.3, 0.3, 0.3, 0)
         else:
             glClearColor(1, 1, 1, 0)
@@ -656,7 +659,7 @@ class Diedrico(QWidget):
 
                 # Si la tercera proyección del punto está activada, la dibuja
                 if self.programa.tercera_proyeccion.checkState():
-                    if self.programa.modo_oscuro:
+                    if self.programa.tema_oscuro:
                         self.pen_prima3.setColor(QColor(200, 200, 200))
                     else:
                         self.pen_prima3.setColor(QColor(0, 0, 0))
@@ -753,7 +756,7 @@ class Diedrico(QWidget):
     def recta_prima3(self, qp, extremos):
         # Tercera proyección
         if self.programa.tercera_proyeccion.checkState():
-            if self.programa.modo_oscuro:
+            if self.programa.tema_oscuro:
                 self.pen_prima3.setColor(QColor(200, 200, 200))
             else:
                 self.pen_prima3.setColor(QColor(0, 0, 0))
@@ -811,9 +814,9 @@ class Diedrico(QWidget):
             circ = self.programa.lista_circunferencias.itemWidget(self.programa.lista_circunferencias.item(i))
             if circ.render.isChecked():
                 segmentos = circ.puntos
-                # Cambia el color del trazo en modo oscuro
+                # Cambia el color del trazo en tema oscuro
                 if self.programa.tercera_proyeccion.checkState():
-                    if self.programa.modo_oscuro:
+                    if self.programa.tema_oscuro:
                         self.pen_prima3.setColor(QColor(200, 200, 200))
                     else:
                         self.pen_prima3.setColor(QColor(0, 0, 0))
@@ -839,9 +842,9 @@ class Diedrico(QWidget):
             if poligono.render.isChecked():
                 segmentos = poligono.puntos
 
-                # Cambia el color del trazo en modo oscuro
+                # Cambia el color del trazo en tema oscuro
                 if self.programa.tercera_proyeccion.checkState():
-                    if self.programa.modo_oscuro:
+                    if self.programa.tema_oscuro:
                         self.pen_prima3.setColor(QColor(200, 200, 200))
                     else:
                         self.pen_prima3.setColor(QColor(0, 0, 0))
